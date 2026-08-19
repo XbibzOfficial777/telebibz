@@ -1,0 +1,57 @@
+name: Feature request
+description: Propose a new capability or improvement for telebibz.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe a user problem and a maintainable solution. Proposals must respect the public API, zero runtime vendor dependency policy, Node.js >=20 support, security controls, and release workflow.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and use case
+      description: Who needs this, what are they trying to accomplish, and what is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior or API
+      description: Include signatures, lifecycle behavior, errors, persistence, and configuration where relevant.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Explain existing APIs, workarounds, or competing designs that were considered.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration impact
+      description: Explain breaking changes, storage changes, performance impact, and documentation requirements.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that would prove the feature is complete.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+        - label: I separated the problem from a specific implementation.
+          required: true
+        - label: I removed secrets and private data.
+          required: true

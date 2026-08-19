@@ -26,6 +26,14 @@ The API references are organized by lifecycle: bot startup and shutdown, API cli
 | Mini Apps, payments, business features | Web App signature validation and PaymentsClient wrappers available; UI is application-owned |
 | Testing and security | Unit, integration, type-level, gated E2E, CI, and security policy available |
 | Deployment and migration | Release automation is documented in `RELEASE_AUTOMATION.md` |
+| Governance and community | `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `CONTRIBUTING.md`, and `CONTRIBUTION_RULES.md` |
+| Security and support | `SECURITY.md` and `SUPPORT.md` |
+| Third-party notices | `NOTICE.md` and `LICENSE` |
+| GitHub contribution templates | Bug, feature, documentation, question/support, security notice, and pull request templates under `.github/` |
+
+## GitHub templates
+
+Issue forms are available for bug reports, feature requests, documentation problems, and support questions. A security notice template redirects reporters to the private process in `SECURITY.md`; vulnerabilities must not be disclosed in public issues. Pull requests use `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md` to require tests, documentation, compatibility, and security checks.
 
 ## Documentation principle
 

@@ -9,7 +9,7 @@ const expect = (condition, message) => { if (!condition) failures.push(message);
 expect(packageJson.name === "@xbibzlibrary/telebibz", "package name must be @xbibzlibrary/telebibz");
 expect(packageJson.private !== true, "package must not be private for publish");
 expect(packageJson.publishConfig?.access === "public", "publishConfig.access must be public");
-expect(packageJson.publishConfig?.provenance === true, "publishConfig.provenance must be true");
+expect(packageJson.publishConfig?.provenance === false, "publishConfig.provenance must be false for the private source repository");
 expect(!packageJson.scripts?.preinstall && !packageJson.scripts?.install && !packageJson.scripts?.postinstall, "install lifecycle scripts are not allowed");
 for (const path of ["dist", "dist-cjs", "README.md", "LICENSE", "SECURITY.md", "APPROVAL_FEATURE.md"]) expect(existsSync(resolve(root, path)), `required release path missing: ${path}`);
 const secretPattern = /(?:npm_[A-Za-z0-9]{20,}|NPM_TOKEN\s*[:=]\s*[^\s$][^\s`"']+)/;

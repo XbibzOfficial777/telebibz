@@ -14,6 +14,7 @@
 - JSON-file, Redis, SQL-driver, Mongo-driver, and persistent approval storage adapters.
 - Storage-backed conversations, full five-field cron parsing, scheduler error hooks, permission-aware menus, `MenuController`, Web App init-data validation, PaymentsClient, and vendored Telegram declarations.
 - Callback-update test fixtures and expanded failure-path/regression coverage.
+- Code of Conduct, Contributing Guide, Contribution Rules, Governance, Support Policy, expanded Security Policy, third-party Notice, CODEOWNERS, Dependabot configuration, and complete GitHub issue/PR templates.
 
 ## 0.1.2 — 2026-08-19
 

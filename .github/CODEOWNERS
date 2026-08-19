@@ -1,0 +1,9 @@
+# Default owner for source, documentation, and repository policy changes.
+* @XbibzOfficial777
+
+# Release, security, and governance changes require explicit maintainer review.
+/.github/ @XbibzOfficial777
+/SECURITY.md @XbibzOfficial777
+/RELEASE_POLICY.md @XbibzOfficial777
+/RELEASE_AUTOMATION.md @XbibzOfficial777
+/GOVERNANCE.md @XbibzOfficial777

@@ -149,6 +149,20 @@ Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui
 
 Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates, memilih patch version yang belum dipakai, membuat commit dan tag, menerbitkan package ke npm, lalu membuat GitHub Release. Karena source repository bersifat private, workflow menggunakan `--provenance=false`, sesuai batasan npm untuk source private. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
 
+## Policy project dan kontribusi
+
+| Dokumen | Tujuan |
+|---|---|
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Perilaku komunitas, penegakan, pelaporan, dan banding. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup lokal, branch/commit, test, review, dan release workflow. |
+| [CONTRIBUTION_RULES.md](CONTRIBUTION_RULES.md) | Aturan API, compatibility, testing, dependency, security, dan release. |
+| [GOVERNANCE.md](GOVERNANCE.md) | Peran, pengambilan keputusan, triage, perlindungan repository, dan perubahan aturan. |
+| [SECURITY.md](SECURITY.md) | Pelaporan vulnerability privat, batas security, dan rotasi credential. |
+| [SUPPORT.md](SUPPORT.md) | Channel support, aturan laporan aman, dan ekspektasi response. |
+| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | Automation GitHub-to-npm dan setup `NPM_TOKEN`. |
+| [RELEASE_POLICY.md](RELEASE_POLICY.md) | Kontrol immutable release dan hardening. |
+| [NOTICE.md](NOTICE.md) | Atribusi declaration pihak ketiga. |
+
 ## Keamanan
 
 Jangan commit token Telegram atau npm. Gunakan variabel lingkungan atau secret manager. Untuk kebijakan keamanan dan peningkatan keamanan rilis, lihat [SECURITY.md](SECURITY.md) dan [RELEASE_POLICY.md](RELEASE_POLICY.md).

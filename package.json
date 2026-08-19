@@ -6,7 +6,7 @@
   "private": false,
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "provenance": false
   },
   "license": "MIT",
   "repository": {
@@ -75,6 +75,12 @@
     "LICENSE",
     "CHANGELOG.md",
     "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTION_RULES.md",
+    "GOVERNANCE.md",
+    "SUPPORT.md",
+    "NOTICE.md",
     "APPROVAL_FEATURE.md",
     "RELEASE_POLICY.md",
     "RELEASE_AUTOMATION.md",

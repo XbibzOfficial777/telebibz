@@ -149,6 +149,20 @@ npm run release:check
 
 GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，发布 npm package，然后创建 GitHub Release。由于 source repository 是 private，workflow 使用 `--provenance=false`，符合 npm 对 private source 的限制。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md)。
 
+## 项目 policy 和贡献
+
+| 文档 | 用途 |
+|---|---|
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | 社区行为、执行、报告和申诉。 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 本地 setup、branch/commit、测试、review 和 release workflow。 |
+| [CONTRIBUTION_RULES.md](CONTRIBUTION_RULES.md) | API、兼容性、测试、依赖、安全和 release 规则。 |
+| [GOVERNANCE.md](GOVERNANCE.md) | 角色、决策、triage、repository protection 和规则修改。 |
+| [SECURITY.md](SECURITY.md) | 私密漏洞报告、security boundary 和 credential rotation。 |
+| [SUPPORT.md](SUPPORT.md) | Support channel、安全报告规则和 response 预期。 |
+| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | GitHub-to-npm automation 和 `NPM_TOKEN` setup。 |
+| [RELEASE_POLICY.md](RELEASE_POLICY.md) | Immutable release 和 hardening 控制。 |
+| [NOTICE.md](NOTICE.md) | 第三方 declaration attribution。 |
+
 ## 安全
 
 不要将 Telegram token 或 npm 凭证提交到版本控制。使用环境变量或机密管理器。有关安全策略和发布加固，请参见 [SECURITY.md](SECURITY.md) 和 [RELEASE_POLICY.md](RELEASE_POLICY.md)。
