@@ -51,7 +51,7 @@ jobs:
           const current = process.env.CURRENT_VERSION;
           const latest = process.env.LATEST_VERSION;
           const parse = (value) => {
-            const match = /^(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(value);
+            const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value);
             if (!match) throw new Error(`Invalid semver: ${value}`);
             return match.slice(1).map(Number);
           };

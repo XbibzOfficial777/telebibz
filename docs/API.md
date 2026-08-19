@@ -1,10 +1,13 @@
-# telebibz API Reference
+# telebibz API Reference — English
+[English](API.md) · [Bahasa Indonesia](API.id.md) · [简体中文](API.zh-CN.md)
 
-Dokumen ini adalah referensi API untuk `@xbibzlibrary/telebibz@0.1.2`. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
+![telebibz overview](../assets/telebibz-readme-preview.png)
 
-> **Status implementasi.** Dokumentasi ini menjelaskan kemampuan yang benar-benar tersedia pada release saat ini. `MemoryStorage`, `MemoryCache`, `TaskQueue`, dan `Scheduler` adalah primitive in-memory; adapter distributed, persistence eksternal, dan full schema typing untuk seluruh Telegram Bot API belum termasuk dalam release ini.
+This document is the API reference for `@xbibzlibrary/telebibz@0.1.2`. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
 
-## Instalasi dan import
+> **Implementation status.** This documentation describes the capabilities that are actually available in the current release. `MemoryStorage`, `MemoryCache`, `TaskQueue`, and `Scheduler` are in-memory primitives; distributed adapters, external persistence, and full schema typing for the entire Telegram Bot API are not included in this release.
+
+## Installation and import
 
 ```bash
 npm install @xbibzlibrary/telebibz
@@ -28,18 +31,18 @@ CommonJS:
 const { Bot, InlineKeyboard } = require("@xbibzlibrary/telebibz");
 ```
 
-Subpath exports yang tersedia adalah sebagai berikut.
+The available subpath exports are as follows.
 
-| Subpath | Isi |
+| Subpath | Content |
 |---|---|
-| `@xbibzlibrary/telebibz` | Seluruh public API utama dari `src/index.ts` |
-| `@xbibzlibrary/telebibz/api` | Client, transport, errors, dan semua tipe API Telegram |
-| `@xbibzlibrary/telebibz/keyboard` | `InlineKeyboard`, `ReplyKeyboard`, dan helpers keyboard |
-| `@xbibzlibrary/telebibz/testing` | `MockTransport` dan test factories |
+| `@xbibzlibrary/telebibz` | The entire main public API from `src/index.ts` |
+| `@xbibzlibrary/telebibz/api` | Client, transport, errors, and all Telegram API types |
+| `@xbibzlibrary/telebibz/keyboard` | `InlineKeyboard`, `ReplyKeyboard`, and keyboard helpers |
+| `@xbibzlibrary/telebibz/testing` | `MockTransport` and test factories |
 
 ---
 
-## 1. Core bot
+## 1. Core Bot
 
 ### `BotStatus`
 
@@ -57,22 +60,22 @@ type BotStatus =
 
 ### `BotOptions<S>`
 
-| Properti | Tipe | Default | Keterangan |
+| Property | Type | Default | Description |
 |---|---|---:|---|
-| `token` | `string` | wajib | Token BotFather dengan format `<digits>:<token>`. |
-| `apiBaseUrl` | `string` | `https://api.telegram.org` | Base URL API Telegram. Akhiran `/` dihapus otomatis. |
-| `transport` | `Transport` | `FetchTransport` | Transport custom untuk mock, proxy, atau implementasi lain. |
-| `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, dan fetch implementation. |
-| `session` | `MemoryStorage<string, S>` | storage baru | Penyimpanan session berdasarkan key chat/user. |
-| `services` | `Record<string, unknown>` | `{}` | Dependency/service yang tersedia melalui `ctx.services`. |
-| `polling.timeout` | `number` | `30` | Long-poll timeout dalam detik untuk `getUpdates`. |
-| `polling.limit` | `number` | `100` | Jumlah maksimum update per request polling. |
-| `polling.allowedUpdates` | `string[]` | `[]` | Filter update Telegram. |
-| `polling.retryDelayMs` | `number` | `500` | Delay awal ketika polling gagal. |
-| `polling.maxRetryDelayMs` | `number` | `30000` | Batas maksimum delay reconnect. |
-| `approval` | `ApprovalOptions` | disabled | Mengaktifkan approval gate owner. |
+| `token` | `string` | required | BotFather token in the format `<digits>:<token>`. |
+| `apiBaseUrl` | `string` | `https://api.telegram.org` | Telegram API base URL. Trailing `/` is removed automatically. |
+| `transport` | `Transport` | `FetchTransport` | Custom transport for mocks, proxies, or other implementations. |
+| `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, and fetch implementation. |
+| `session` | `MemoryStorage<string, S>` | new storage | Session storage keyed by chat/user. |
+| `services` | `Record<string, unknown>` | `{}` | Dependencies/services available via `ctx.services`. |
+| `polling.timeout` | `number` | `30` | Long-poll timeout in seconds for `getUpdates`. |
+| `polling.limit` | `number` | `100` | Maximum number of updates per polling request. |
+| `polling.allowedUpdates` | `string[]` | `[]` | Telegram update filters. |
+| `polling.retryDelayMs` | `number` | `500` | Initial delay when polling fails. |
+| `polling.maxRetryDelayMs` | `number` | `30000` | Maximum reconnect delay. |
+| `approval` | `ApprovalOptions` | disabled | Enable approval gate for the owner. |
 
-### `Bot` constructor
+### Constructor `Bot`
 
 ```ts
 new Bot<S extends object = Record<string, unknown>>(
@@ -80,24 +83,24 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-Jika argumen berupa string, string tersebut dianggap sebagai token. Constructor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan approval gate bila dikonfigurasi. Constructor langsung memancarkan event `bot:created` secara asynchronous.
+If the argument is a string, it is treated as the token. The constructor creates `ApiClient`, router, event bus, plugin manager, session storage, and approval gate if configured. The constructor emits the `bot:created` event asynchronously.
 
-Constructor melempar `Error` jika token kosong atau tidak sesuai pola token Telegram.
+The constructor throws `Error` if the token is empty or does not match the Telegram token pattern.
 
-### Properti dan getter `Bot`
+### Properties and getters `Bot`
 
-| API | Tipe | Deskripsi |
+| API | Type | Description |
 |---|---|---|
-| `api` | `ApiClient` | Client Telegram typed/dynamic. |
-| `router` | `Router<Context<S>>` | Router utama bot. |
-| `events` | `EventBus<EventMap>` | Event bus lifecycle, update, API, webhook, dan polling. |
-| `plugins` | `PluginManager<Context<S>>` | Manager lifecycle plugin. |
-| `session` | `MemoryStorage<string, S>` | Session in-memory bot. |
-| `services` | `Record<string, unknown>` | Salinan service yang diberikan saat constructor. |
-| `approval` | `ApprovalGate \| undefined` | Approval gate jika `approval` dikonfigurasi. |
-| `token` | `string` | Token bot yang dipakai client. |
-| `status` | `BotStatus` | Status lifecycle terkini. |
-| `botInfo` | `User \| undefined` | Hasil `getMe()` terakhir yang tersimpan. |
+| `api` | `ApiClient` | Telegram typed/dynamic client. |
+| `router` | `Router<Context<S>>` | Bot's main router. |
+| `events` | `EventBus<EventMap>` | Event bus for lifecycle, updates, API, webhook, and polling. |
+| `plugins` | `PluginManager<Context<S>>` | Plugin lifecycle manager. |
+| `session` | `MemoryStorage<string, S>` | Bot in-memory session. |
+| `services` | `Record<string, unknown>` | A copy of services provided to the constructor. |
+| `approval` | `ApprovalGate \| undefined` | Approval gate if `approval` is configured. |
+| `token` | `string` | Bot token used by the client. |
+| `status` | `BotStatus` | Current lifecycle status. |
+| `botInfo` | `User \| undefined` | Last stored result of `getMe()`. |
 
 ### `bot.use(...middleware)`
 
@@ -105,7 +108,7 @@ Constructor melempar `Error` jika token kosong atau tidak sesuai pola token Tele
 use(...middleware: Middleware<Context<S>>[]): this
 ```
 
-Menambahkan middleware global. Middleware dijalankan sebelum router pada setiap update, sesuai urutan registrasi. Mengembalikan instance bot untuk chaining.
+Adds global middleware. Middleware are executed before the router on every update, in registration order. Returns the bot instance for chaining.
 
 ### `bot.command(name, handler)`
 
@@ -113,7 +116,7 @@ Menambahkan middleware global. Middleware dijalankan sebelum router pada setiap 
 command(name: string, handler: Middleware<Context<S>>): this
 ```
 
-Mendaftarkan command Telegram tanpa awalan `/` maupun dengan awalan `/`. Matching mengambil token pertama setelah `/` dan mengabaikan bot mention setelah `@`. Contoh `/start@my_bot` cocok dengan `"start"`.
+Registers a Telegram command with or without the leading `/`. Matching takes the first token after `/` and ignores bot mentions after `@`. For example, `/start@my_bot` matches `"start"`.
 
 ### `bot.callback(pattern, handler)`
 
@@ -121,7 +124,7 @@ Mendaftarkan command Telegram tanpa awalan `/` maupun dengan awalan `/`. Matchin
 callback(pattern: string | RegExp, handler: Middleware<Context<S>>): this
 ```
 
-Shortcut untuk route callback query. String yang berakhiran `*` berarti prefix match; string lain harus sama persis.
+Shortcut for a callback query route. A string ending with `*` means prefix matching; other strings must match exactly.
 
 ### `bot.onText(text, handler)`
 
@@ -129,7 +132,7 @@ Shortcut untuk route callback query. String yang berakhiran `*` berarti prefix m
 onText(text: string, handler: Middleware<Context<S>>): this
 ```
 
-Menangani message yang `message.text`-nya sama persis dengan `text`.
+Handles messages whose `message.text` is exactly equal to `text`.
 
 ### `bot.onRegex(expression, handler)`
 
@@ -137,7 +140,7 @@ Menangani message yang `message.text`-nya sama persis dengan `text`.
 onRegex(expression: RegExp, handler: Middleware<Context<S>>): this
 ```
 
-Menangani message text menggunakan `RegExp`. Parameter route tidak diekstrak otomatis ke `ctx.params`; gunakan predicate atau middleware custom jika memerlukan ekstraksi.
+Handles message text using a `RegExp`. Route parameters are not automatically extracted into `ctx.params`; use a predicate or custom middleware if extraction is needed.
 
 ### `bot.usePlugin(plugin)`
 
@@ -145,7 +148,7 @@ Menangani message text menggunakan `RegExp`. Parameter route tidak diekstrak oto
 usePlugin(plugin: Plugin<Context<S>>): this
 ```
 
-Mendaftarkan plugin. Nama plugin harus unik.
+Registers a plugin. Plugin names must be unique.
 
 ### `bot.init()`
 
@@ -153,11 +156,11 @@ Mendaftarkan plugin. Nama plugin harus unik.
 init(): Promise<this>
 ```
 
-Memanggil `getMe()`, menyimpan informasi bot, memproses approval gate jika aktif, lalu menjalankan lifecycle plugin `setup()` dan `start()`.
+Calls `getMe()`, stores the bot information, processes the approval gate if active, then runs plugin lifecycle `setup()` and `start()`.
 
-Jika approval belum diberikan, method mengubah status menjadi `"awaiting-approval"`, mengirim notifikasi ke owner melalui `ApprovalGate`, dan mengembalikan bot tanpa mengaktifkan status `initialized`. Panggilan berikutnya tetap dapat dipakai setelah owner memberikan approval.
+If approval has not been granted, the method sets the status to `"awaiting-approval"`, notifies the owner via the `ApprovalGate`, and returns the bot without marking it as `initialized`. Subsequent calls can be used after the owner grants approval.
 
-`init()` idempotent ketika status sudah `initialized` atau `running`.
+`init()` is idempotent when the status is already `initialized` or `running`.
 
 ### `bot.start()`
 
@@ -165,7 +168,7 @@ Jika approval belum diberikan, method mengubah status menjadi `"awaiting-approva
 start(): Promise<void>
 ```
 
-Shortcut untuk `launch({ mode: "polling" })`. Method ini menjalankan long polling dan menunggu sampai polling dihentikan atau gagal secara fatal.
+Shortcut for `launch({ mode: "polling" })`. This method runs long polling and waits until polling is stopped or fails fatally.
 
 ### `bot.launch(options?)`
 
@@ -177,9 +180,9 @@ launch(options?: {
 }): Promise<void>
 ```
 
-Menjalankan bot dalam mode polling. Saat mulai, lifecycle berpindah melalui `starting` lalu `running`, kemudian loop `getUpdates()` memproses setiap update secara berurutan. Kegagalan polling memancarkan `polling:reconnect` dan menggunakan exponential backoff.
+Runs the bot in polling mode. On start, the lifecycle moves through `starting` to `running`, then the `getUpdates()` loop processes each update sequentially. Polling failures emit `polling:reconnect` and use exponential backoff.
 
-Mode selain `"polling"` melempar error dan menyarankan penggunaan `createWebhookHandler()` untuk webhook.
+Modes other than `"polling"` throw an error and suggest using `createWebhookHandler()` for webhooks.
 
 ### `bot.stop()`
 
@@ -187,7 +190,7 @@ Mode selain `"polling"` melempar error dan menyarankan penggunaan `createWebhook
 stop(): Promise<void>
 ```
 
-Menghentikan polling melalui `AbortController`, menjalankan `plugins.dispose()`, mengubah status menjadi `stopped`, dan memancarkan event stopping/stopped. Pemanggilan ketika status `created` atau `stopped` tidak melakukan apa-apa.
+Stops polling via an `AbortController`, runs `plugins.dispose()`, sets the status to `stopped`, and emits stopping/stopped events. Calling it when the status is `created` or `stopped` does nothing.
 
 ### `bot.restart()`
 
@@ -195,7 +198,7 @@ Menghentikan polling melalui `AbortController`, menjalankan `plugins.dispose()`,
 restart(): Promise<void>
 ```
 
-Menjalankan `stop()` lalu `start()`.
+Runs `stop()` and then `start()`.
 
 ### `bot.health()`
 
@@ -203,7 +206,7 @@ Menjalankan `stop()` lalu `start()`.
 health(): Promise<HealthStatus>
 ```
 
-Memanggil `getMe()` untuk memeriksa keterjangkauan API. Tidak melempar error untuk kegagalan request; kegagalan dikembalikan sebagai `apiReachable: false` dan pesan error.
+Calls `getMe()` to check API reachability. It does not throw on request failures; failures are returned as `apiReachable: false` with an error message.
 
 ```ts
 interface HealthStatus {
@@ -221,7 +224,7 @@ interface HealthStatus {
 getMe(): Promise<User>
 ```
 
-Mengambil data bot dari Telegram dan memperbarui `botInfo`.
+Fetches the bot data from Telegram and updates `botInfo`.
 
 ### `bot.setCommands(commands, scope?, languageCode?)`
 
@@ -233,7 +236,7 @@ setCommands(
 ): Promise<true>
 ```
 
-Shortcut ke `setMyCommands`. `languageCode` dipetakan menjadi field Telegram `language_code`.
+Shortcut to `setMyCommands`. `languageCode` is mapped to Telegram's `language_code` field.
 
 ### `bot.deleteCommands(scope?, languageCode?)`
 
@@ -244,7 +247,7 @@ deleteCommands(
 ): Promise<true>
 ```
 
-Shortcut ke `deleteMyCommands`.
+Shortcut to `deleteMyCommands`.
 
 ### `bot.handleUpdate(update)`
 
@@ -252,13 +255,13 @@ Shortcut ke `deleteMyCommands`.
 handleUpdate(update: Update): Promise<void>
 ```
 
-Memproses satu update secara manual. Method menentukan key session dari `chat.id` dan `from.id`, membuat `Context`, memancarkan event `update` dan `message`, menjalankan middleware lalu router, dan menyimpan session setelah pipeline selesai.
+Processes a single update manually. The method determines the session key from `chat.id` and `from.id`, creates a `Context`, emits `update` and `message` events, runs middleware then the router, and saves the session after the pipeline completes.
 
-Jika approval aktif dan bot belum diizinkan, update biasa dihentikan. Callback approval tetap diteruskan ke `ApprovalGate.handleCallback()`.
+If approval is active and the bot has not been approved, normal updates are stopped. Approval callbacks are still forwarded to `ApprovalGate.handleCallback()`.
 
-Error pipeline mengubah status bot menjadi `error`, memancarkan `bot:error`, lalu dilempar kembali.
+Pipeline errors set the bot status to `error`, emit `bot:error`, and then rethrow the error.
 
-### Contoh bot minimal
+### Minimal bot example
 
 ```ts
 import { Bot, InlineKeyboard } from "@xbibzlibrary/telebibz";
@@ -269,7 +272,7 @@ const bot = new Bot({
 });
 
 bot.command("start", async (ctx) => {
-  await ctx.reply("Halo dari telebibz", {
+  await ctx.reply("Hello from telebibz", {
     reply_markup: new InlineKeyboard()
       .text("Status", "status")
       .build(),
@@ -277,7 +280,7 @@ bot.command("start", async (ctx) => {
 });
 
 bot.callback("status", async (ctx) => {
-  await ctx.answerCallbackQuery("Bot aktif");
+  await ctx.answerCallbackQuery("Bot is active");
   await ctx.reply("Status: running");
 });
 
@@ -315,14 +318,14 @@ await bot.start();
 new EventBus<Events extends Record<string, unknown> = EventMap>()
 ```
 
-| Method | Signature | Perilaku |
+| Method | Signature | Behavior |
 |---|---|---|
-| `on` | `on<K>(event: K, listener: (payload: Events[K]) => void \| Promise<void>): () => void` | Menambah listener dan mengembalikan fungsi unsubscribe. |
-| `once` | `once<K>(event: K, listener: ...): () => void` | Listener hanya dipanggil sekali, lalu dilepas. |
-| `off` | `off<K>(event: K, listener: ...): void` | Melepas listener tertentu. |
-| `emit` | `emit<K>(event: K, payload: Events[K]): Promise<void>` | Memanggil listener secara berurutan dan menunggu masing-masing. |
-| `removeAllListeners` | `removeAllListeners(): void` | Menghapus semua listener. |
-| `listenerCount` | `listenerCount<K>(event: K): number` | Mengembalikan jumlah listener event. |
+| `on` | `on<K>(event: K, listener: (payload: Events[K]) => void \| Promise<void>): () => void` | Adds a listener and returns an unsubscribe function. |
+| `once` | `once<K>(event: K, listener: ...): () => void` | Listener is called only once, then removed. |
+| `off` | `off<K>(event: K, listener: ...): void` | Removes a specific listener. |
+| `emit` | `emit<K>(event: K, payload: Events[K]): Promise<void>` | Calls listeners sequentially and awaits each. |
+| `removeAllListeners` | `removeAllListeners(): void` | Removes all listeners. |
+| `listenerCount` | `listenerCount<K>(event: K): number` | Returns the number of listeners for the event. |
 
 ```ts
 const unsubscribe = bot.events.on("bot:error", ({ error }) => {
@@ -333,9 +336,9 @@ unsubscribe();
 
 ---
 
-## 3. API client, transport, dan error
+## 3. API client, transport, and errors
 
-### Tipe dasar
+### Basic types
 
 ```ts
 type ChatId = number | string;
@@ -349,7 +352,7 @@ type InputFile =
   | { source: string | Uint8Array | ArrayBuffer | Blob | NodeJS.ReadableStream; filename?: string };
 ```
 
-`InputFile` string dapat berupa string biasa atau path file ketika digunakan sebagai `source` dalam object upload. Pada Node.js, path absolut, `./...`, dan `../...` dibaca oleh `FetchTransport` lalu dikirim sebagai multipart file.
+`InputFile` string can be a plain string or a file path when used as the `source` in an upload object. In Node.js, absolute paths, `./...`, and `../...` are read by `FetchTransport` and then sent as multipart files.
 
 ### `TelegramResponse<T>`
 
@@ -363,7 +366,7 @@ interface TelegramResponse<T> {
 }
 ```
 
-### `TransportRequest`, `TransportResponse`, dan `Transport`
+### `TransportRequest`, `TransportResponse`, and `Transport`
 
 ```ts
 interface TransportRequest {
@@ -385,16 +388,16 @@ interface Transport {
 
 ### `FetchTransportOptions`
 
-| Properti | Default | Deskripsi |
+| Property | Default | Description |
 |---|---:|---|
-| `baseUrl` | `https://api.telegram.org` | Prefix URL sebelum `/<method>`. |
-| `fetch` | `globalThis.fetch` | Implementasi fetch custom. |
+| `baseUrl` | `https://api.telegram.org` | URL prefix before `/<method>`. |
+| `fetch` | `globalThis.fetch` | Custom fetch implementation. |
 | `timeoutMs` | `30000` | Timeout per attempt. |
-| `retries` | `2` | Jumlah retry network error setelah attempt awal. |
-| `backoffMs` | `250` | Delay exponential awal. |
-| `maxBackoffMs` | `8000` | Batas delay transport. |
-| `jitter` | `0.2` | Variasi acak ±20% dari exponential delay. |
-| `headers` | `{}` | Header tambahan. |
+| `retries` | `2` | Number of retries for network errors after the initial attempt. |
+| `backoffMs` | `250` | Initial exponential delay. |
+| `maxBackoffMs` | `8000` | Transport delay cap. |
+| `jitter` | `0.2` | Random variation ±20% of the exponential delay. |
+| `headers` | `{}` | Additional headers. |
 
 ### `new FetchTransport(options?)`
 
@@ -402,7 +405,7 @@ interface Transport {
 new FetchTransport(options?: FetchTransportOptions): FetchTransport
 ```
 
-Transport bawaan berbasis `fetch`. Payload tanpa upload dikirim sebagai JSON. Payload yang mengandung `Uint8Array`, `ArrayBuffer`, `Blob`, atau nested upload dikirim sebagai `multipart/form-data` menggunakan `FormData`.
+Default transport based on `fetch`. Payloads without uploads are sent as JSON. Payloads that contain `Uint8Array`, `ArrayBuffer`, `Blob`, or nested uploads are sent as `multipart/form-data` using `FormData`.
 
 ### `fetchTransport.request(request)`
 
@@ -410,9 +413,9 @@ Transport bawaan berbasis `fetch`. Payload tanpa upload dikirim sebagai JSON. Pa
 request<T>(request: TransportRequest): Promise<TransportResponse<T>>
 ```
 
-Mengirim POST ke `${baseUrl}/${method}`. Method dengan awalan `/` dinormalisasi. AbortSignal eksternal diteruskan ke controller internal. Network error yang dianggap retryable akan diulang dengan exponential backoff dan jitter; ketika retry habis, error dibungkus sebagai `TelegramNetworkError`.
+Sends a POST to `${baseUrl}/${method}`. Methods with a leading `/` are normalized. External AbortSignals are forwarded to the internal controller. Network errors considered retryable are retried with exponential backoff and jitter; when retries are exhausted, the error is wrapped as a `TelegramNetworkError`.
 
-### `ApiHookContext`, `ApiClientOptions`, dan `ApiMethods`
+### `ApiHookContext`, `ApiClientOptions`, and `ApiMethods`
 
 ```ts
 interface ApiHookContext {
@@ -434,7 +437,7 @@ interface ApiClientOptions {
 }
 ```
 
-`ApiMethods` adalah mapped type dari 184 `TelegramMethodName`:
+`ApiMethods` is a mapped type of the 184 `TelegramMethodName`s:
 
 ```ts
 type ApiMethods = {
@@ -449,11 +452,11 @@ type ApiMethods = {
 new ApiClient(options: ApiClientOptions): ApiClient
 ```
 
-Membuat proxy method dinamis pada `client.methods`. Hook `onRequest` dipanggil sebelum transport, `onResponse` setelah response diterima, dan `onError` ketika request gagal atau response Telegram `ok: false`.
+Creates dynamic proxy methods on `client.methods`. The `onRequest` hook is called before the transport, `onResponse` after a response is received, and `onError` when a request fails or Telegram's response is `ok: false`.
 
 ### `api.methods.<method>(params?)`
 
-Method dinamis dapat dipanggil langsung. Method yang memiliki parameter kosong seperti `getMe()` dipanggil tanpa argumen; method lain menerima satu object parameter.
+Dynamic methods can be called directly. Methods that have empty parameters like `getMe()` are called without arguments; other methods accept a single parameter object.
 
 ```ts
 const me = await bot.api.methods.getMe();
@@ -473,7 +476,7 @@ call<M extends TelegramMethodName>(
 ): Promise<ApiResult<M>>
 ```
 
-Bentuk typed untuk pemanggilan method berdasarkan string literal.
+Typed form for calling a method based on a string literal.
 
 ### `api.request(method, payload?, signal?)`
 
@@ -485,7 +488,7 @@ request<M extends TelegramMethodName>(
 ): Promise<ApiResult<M>>
 ```
 
-Method request tingkat rendah yang memungkinkan `AbortSignal` eksplisit.
+Low-level request method that allows an explicit `AbortSignal`.
 
 ### `api.raw(method, payload?, signal?)`
 
@@ -497,11 +500,11 @@ raw(
 ): Promise<unknown>
 ```
 
-Memanggil method string arbitrary di transport. Gunakan ini untuk method Telegram atau parameter baru yang belum masuk `TelegramMethodMap`. Response `ok: false` tetap diubah menjadi `TelegramError`.
+Calls an arbitrary method string on the transport. Use this for Telegram methods or new parameters not yet included in `TelegramMethodMap`. Responses with `ok: false` are still converted into a `TelegramError`.
 
-### Typed parameter dan result yang tersedia
+### Available typed parameters and results
 
-Tipe berikut dipetakan khusus pada release ini.
+The following types are specially mapped in this release.
 
 | Method | Parameter | Result |
 |---|---|---|
@@ -520,9 +523,9 @@ Tipe berikut dipetakan khusus pada release ini.
 | `sendPhoto` | `SendPhotoParams` | `Message` |
 | `sendDocument` | `SendDocumentParams` | `Message` |
 
-Tipe parameter tambahan yang tersedia adalah `ReplyParameters`, `LinkPreviewOptions`, `InlineKeyboardButton`, `ReplyMarkup`, `BotCommand`, `BotCommandScope`, dan seluruh tipe update Telegram yang diekspor dari `api/types.ts`.
+Additional parameter types available are `ReplyParameters`, `LinkPreviewOptions`, `InlineKeyboardButton`, `ReplyMarkup`, `BotCommand`, `BotCommandScope`, and all Telegram update types exported from `api/types.ts`.
 
-### Error API
+### API Errors
 
 ```ts
 type TelegramErrorKind =
@@ -549,18 +552,18 @@ new TelegramError(message: string, options: {
 })
 ```
 
-Properti publik adalah `kind`, `errorCode`, `parameters`, `method`, `payload`, dan `status`. Getter `retryAfter` membaca `parameters.retry_after`; getter `migrateToChatId` membaca `parameters.migrate_to_chat_id`.
+Public properties are `kind`, `errorCode`, `parameters`, `method`, `payload`, and `status`. The `retryAfter` getter reads `parameters.retry_after`; the `migrateToChatId` getter reads `parameters.migrate_to_chat_id`.
 
-#### Subclass error
+#### Subclass errors
 
-| Class | `name` | `kind` paksa |
+| Class | `name` | forced `kind` |
 |---|---|---|
 | `TelegramRateLimitError` | `TelegramRateLimitError` | `rate-limit` |
 | `TelegramAuthError` | `TelegramAuthError` | `authentication` |
 | `TelegramValidationError` | `TelegramValidationError` | `validation` |
 | `TelegramNetworkError` | `TelegramNetworkError` | `network` |
 
-Keempat subclass memakai constructor options yang sama seperti `TelegramError`.
+All four subclasses use the same constructor options as `TelegramError`.
 
 #### `classifyTelegramError(errorCode?, status?)`
 
@@ -571,7 +574,7 @@ classifyTelegramError(
 ): TelegramErrorKind
 ```
 
-Klasifikasi aktual: `429` menjadi `rate-limit`; error `401` atau HTTP `401/403` menjadi `authentication`; error code `400–499` menjadi `validation`; HTTP `500+` menjadi `server`; selain itu `unknown`.
+Actual classification: `429` becomes `rate-limit`; error `401` or HTTP `401/403` becomes `authentication`; error codes `400–499` become `validation`; HTTP `500+` becomes `server`; otherwise `unknown`.
 
 #### `telegramErrorFromResponse(response, context)`
 
@@ -582,7 +585,7 @@ telegramErrorFromResponse<T>(
 ): TelegramError
 ```
 
-Mengubah response Telegram gagal menjadi subclass yang sesuai. Error `429`, auth, dan validation menghasilkan subclass khusus; error lain menghasilkan `TelegramError` biasa.
+Converts a failed Telegram response into the appropriate subclass. `429`, auth, and validation errors produce specific subclasses; other errors produce a plain `TelegramError`.
 
 ---
 
@@ -603,15 +606,15 @@ interface ContextOptions<S extends object = Record<string, unknown>> {
 
 | Properti | Isi |
 |---|---|
-| `update` | Update mentah Telegram. |
-| `api` | `ApiClient` bot. |
-| `session` | Object session mutable milik update key saat ini. |
-| `state` | Object transient per-context, tidak otomatis disimpan ke session. |
-| `services` | Service yang dikirim melalui `BotOptions.services`. |
-| `params` | Object parameter route; router bawaan saat ini tidak mengisi otomatis. |
-| `message` | Message utama dari message/edited/channel/business/guest update. |
-| `chat` | `message.chat` bila tersedia. |
-| `from` / `sender` | User dari message, callback query, atau inline query. |
+| `update` | Raw Telegram update. |
+| `api` | The bot's `ApiClient`. |
+| `session` | Mutable session object for the current update key. |
+| `state` | Per-context transient object, not automatically saved to the session. |
+| `services` | Services injected via `BotOptions.services`. |
+| `params` | Route parameters object; the built-in router currently does not populate it automatically. |
+| `message` | The main message from message/edited/channel/business/guest updates. |
+| `chat` | `message.chat` when available. |
+| `from` / `sender` | User from the message, callback query, or inline query. |
 | `callbackQuery` | `update.callback_query`. |
 | `inlineQuery` | `update.inline_query`. |
 | `poll` | `update.poll`. |
@@ -620,7 +623,7 @@ interface ContextOptions<S extends object = Record<string, unknown>> {
 | `myChatMember` | `update.my_chat_member`. |
 | `chatJoinRequest` | `update.chat_join_request`. |
 | `reaction` | `update.message_reaction`. |
-| `boost` | `chat_boost` atau `removed_chat_boost`. |
+| `boost` | `chat_boost` or `removed_chat_boost`. |
 
 ### `new Context(options)`
 
@@ -628,33 +631,33 @@ interface ContextOptions<S extends object = Record<string, unknown>> {
 new Context<S>(options: ContextOptions<S>): Context<S>
 ```
 
-### Context messaging methods
+### Context message methods
 
-| Method | Signature | Perilaku |
+| Method | Signature | Behavior |
 |---|---|---|
-| `reply` | `reply(text, extra?): Promise<Message>` | Mengirim message ke chat update dan mengisi `reply_parameters.message_id` bila ada message. |
-| `send` | `send(text, extra?): Promise<Message>` | Mengirim message ke chat update tanpa reply reference. |
-| `edit` | `edit(text, extra?): Promise<Message \| true>` | Mengedit message update menggunakan `editMessageText`. |
-| `delete` | `delete(): Promise<true>` | Menghapus message update. |
-| `copy` | `copy(fromChatId, messageId, extra?): Promise<unknown>` | Memanggil `copyMessage` ke chat context. |
-| `forward` | `forward(fromChatId, messageId, extra?): Promise<Message>` | Memanggil `forwardMessage` ke chat context. |
-| `pin` | `pin(messageId?, extra?): Promise<true>` | Memanggil `pinChatMessage`, default message id dari context. |
-| `unpin` | `unpin(messageId?, extra?): Promise<true>` | Memanggil `unpinChatMessage`, default message id dari context. |
-| `react` | `react(reaction, extra?): Promise<true>` | Memanggil `setMessageReaction`. |
-| `answerCallbackQuery` | `answerCallbackQuery(text?, extra?): Promise<true>` | Menjawab callback query aktif. Error jika bukan callback update. |
-| `answerInlineQuery` | `answerInlineQuery(results, extra?): Promise<true>` | Menjawab inline query aktif. Error jika bukan inline update. |
-| `getChat` | `getChat(): Promise<Chat>` | Mengambil detail chat context. |
-| `getUserProfilePhotos` | `getUserProfilePhotos(userId?, extra?): Promise<unknown>` | Mengambil foto profile user context. |
-| `getFile` | `getFile(fileId): Promise<unknown>` | Mengambil file berdasarkan id. |
-| `withReplyMarkup` | `withReplyMarkup(markup): this` | Menyimpan markup di `ctx.state.reply_markup` dan mengembalikan context. Method ini tidak otomatis mengirim message. |
+| `reply` | `reply(text, extra?): Promise<Message>` | Sends a message to the update chat and sets `reply_parameters.message_id` if there is a message. |
+| `send` | `send(text, extra?): Promise<Message>` | Sends a message to the update chat without a reply reference. |
+| `edit` | `edit(text, extra?): Promise<Message \| true>` | Edits the update message using `editMessageText`. |
+| `delete` | `delete(): Promise<true>` | Deletes the update message. |
+| `copy` | `copy(fromChatId, messageId, extra?): Promise<unknown>` | Calls `copyMessage` to the context chat. |
+| `forward` | `forward(fromChatId, messageId, extra?): Promise<Message>` | Calls `forwardMessage` to the context chat. |
+| `pin` | `pin(messageId?, extra?): Promise<true>` | Calls `pinChatMessage`; defaults to the context message id. |
+| `unpin` | `unpin(messageId?, extra?): Promise<true>` | Calls `unpinChatMessage`; defaults to the context message id. |
+| `react` | `react(reaction, extra?): Promise<true>` | Calls `setMessageReaction`. |
+| `answerCallbackQuery` | `answerCallbackQuery(text?, extra?): Promise<true>` | Answers the active callback query. Throws an error if the update is not a callback. |
+| `answerInlineQuery` | `answerInlineQuery(results, extra?): Promise<true>` | Answers the active inline query. Throws an error if the update is not an inline query. |
+| `getChat` | `getChat(): Promise<Chat>` | Fetches the context chat details. |
+| `getUserProfilePhotos` | `getUserProfilePhotos(userId?, extra?): Promise<unknown>` | Fetches the context user's profile photos. |
+| `getFile` | `getFile(fileId): Promise<unknown>` | Fetches a file by id. |
+| `withReplyMarkup` | `withReplyMarkup(markup): this` | Stores markup in `ctx.state.reply_markup` and returns the context. This method does not automatically send a message. |
 
-`reply`, `send`, `getChat`, dan beberapa helper lain melempar error ketika update tidak memiliki chat yang diperlukan. `edit` dan `delete` membutuhkan chat serta message.
+`reply`, `send`, `getChat`, and some other helpers throw an error when the update does not have the required chat. `edit` and `delete` require both chat and message.
 
 ---
 
-## 5. Middleware dan router
+## 5. Middleware and router
 
-### Middleware types
+### Types of middleware
 
 ```ts
 type Next = () => Promise<void>;
@@ -669,7 +672,7 @@ compose<Context>(
 ): (ctx: Context) => Promise<void>
 ```
 
-Menyusun middleware dengan pola onion. `next()` menjalankan middleware berikutnya. Jika middleware yang sama memanggil `next()` lebih dari sekali, compose melempar `Error("next() called multiple times")`.
+Compose middleware in an onion pattern. `next()` runs the next middleware. If the same middleware calls `next()` more than once, compose throws `Error("next() called multiple times")`.
 
 ### `middleware(handler)`
 
@@ -677,11 +680,11 @@ Menyusun middleware dengan pola onion. `next()` menjalankan middleware berikutny
 middleware<Context>(handler: Middleware<Context>): Middleware<Context>
 ```
 
-Identity helper untuk memberi anotasi/type inference middleware.
+Identity helper to provide type annotation/inference for middleware.
 
 ### `RoutableContext`
 
-Context minimal yang dibutuhkan router: `update`, `message`, `callbackQuery`, dan `params`.
+Minimal context required by the router: `update`, `message`, `callbackQuery`, and `params`.
 
 ### `Router<Context>`
 
@@ -689,20 +692,20 @@ Context minimal yang dibutuhkan router: `update`, `message`, `callbackQuery`, da
 new Router<Context extends RoutableContext>(): Router<Context>
 ```
 
-Route diproses menurut priority dan urutan registrasi. Route yang cocok tidak menghentikan route berikutnya secara otomatis; semua route yang cocok dapat dijalankan. Jika tidak ada route yang cocok, `terminal` pada `handle` dipanggil.
+Routes are processed according to priority and registration order. A matching route does not automatically stop subsequent routes; all matching routes may run. If no route matches, `terminal` on `handle` is called.
 
 | Method | Signature | Matching |
 |---|---|---|
-| `use` | `use(...middleware): this` | Middleware global router dengan priority paling tinggi untuk dijalankan lebih awal. |
-| `route` | `route(matcher, ...middleware): this` | Matcher boolean atau async custom. |
-| `command` | `command(name: string \| RegExp, ...middleware): this` | Command pertama dari message text yang diawali `/`. |
-| `text` | `text(value: string, ...middleware): this` | Exact text match. |
-| `regex` | `regex(expression: RegExp, ...middleware): this` | `RegExp.test` atas message text atau string kosong. |
-| `callback` | `callback(pattern: string \| RegExp, ...middleware): this` | Exact, prefix dengan suffix `*`, atau regex atas callback data. |
-| `chat` | `chat(chatId: number \| string, ...middleware): this` | Cocokkan `message.chat.id`, numeric atau string-equivalent. |
-| `predicate` | `predicate(matcher, ...middleware): this` | Alias semantik untuk custom matcher. |
-| `nest` | `nest(child: Router<Context>): this` | Menjalankan router child sebagai nested route. |
-| `handle` | `handle(ctx, terminal?): Promise<void>` | Mengevaluasi dan menjalankan seluruh route yang cocok. |
+| `use` | `use(...middleware): this` | Router-global middleware with the highest priority, executed early. |
+| `route` | `route(matcher, ...middleware): this` | Boolean or async custom matcher. |
+| `command` | `command(name: string \| RegExp, ...middleware): this` | First command from message text starting with `/`. |
+| `text` | `text(value: string, ...middleware): this` | Exact text matching. |
+| `regex` | `regex(expression: RegExp, ...middleware): this` | `RegExp.test` against the message text or empty string. |
+| `callback` | `callback(pattern: string \| RegExp, ...middleware): this` | Exact, prefix with suffix `*`, or regex against callback data. |
+| `chat` | `chat(chatId: number \| string, ...middleware): this` | Match `message.chat.id`, numeric or string-equivalent. |
+| `predicate` | `predicate(matcher, ...middleware): this` | Semantic alias for a custom matcher. |
+| `nest` | `nest(child: Router<Context>): this` | Run a child router as a nested route. |
+| `handle` | `handle(ctx, terminal?): Promise<void>` | Evaluate and execute all matching routes. |
 
 ```ts
 const router = new Router<Context>();
@@ -718,7 +721,7 @@ router.predicate((ctx) => Boolean(ctx.from?.id), async (ctx) => {
 });
 ```
 
-**Catatan RegExp.** Router memanggil `.test()` langsung. Untuk expression dengan flag `g` atau `y`, stateful `lastIndex` dari JavaScript dapat memengaruhi pencocokan berulang.
+**RegExp note.** The router calls `.test()` directly. For expressions with flags `g` or `y`, JavaScript's stateful `lastIndex` property can affect repeated matching.
 
 ---
 
@@ -731,29 +734,29 @@ new InlineKeyboard(): InlineKeyboard
 InlineKeyboard.from(rows: InlineKeyboardButton[][]): InlineKeyboard
 ```
 
-Builder menyimpan rows secara mutable dan seluruh method builder mengembalikan `this`.
+The builder stores rows mutably and all builder methods return `this`.
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `from` | `static from(rows): InlineKeyboard` | Membuat keyboard dari rows dan menyalin setiap row. |
-| `text` | `text(text, callbackData): this` | Button callback. |
-| `url` | `url(text, url): this` | Button URL. |
-| `webApp` | `webApp(text, url): this` | Button Web App. |
-| `pay` | `pay(text = "Pay"): this` | Button pembayaran. |
-| `copy` | `copy(text, copiedText): this` | Button copy text. |
-| `button` | `button(button): this` | Menambahkan satu button ke row terakhir atau membuat row pertama. |
-| `row` | `row(...buttons): this` | Menambahkan row baru. |
-| `conditional` | `conditional(condition, factory): this` | Menjalankan factory hanya jika condition true. |
-| `grid` | `grid(buttons, columns): this` | Membagi button ke row dengan jumlah kolom. |
-| `build` | `build(): InlineKeyboardMarkup` | Menghasilkan markup baru. |
-| `asReplyMarkup` | `asReplyMarkup(): InlineKeyboardMarkup` | Alias `build`. |
+| `from` | `static from(rows): InlineKeyboard` | Creates a keyboard from rows and copies each row. |
+| `text` | `text(text, callbackData): this` | Callback button. |
+| `url` | `url(text, url): this` | URL button. |
+| `webApp` | `webApp(text, url): this` | Web App button. |
+| `pay` | `pay(text = "Pay"): this` | Payment button. |
+| `copy` | `copy(text, copiedText): this` | Copy text button. |
+| `button` | `button(button): this` | Adds a single button to the last row or creates the first row. |
+| `row` | `row(...buttons): this` | Adds a new row. |
+| `conditional` | `conditional(condition, factory): this` | Runs the factory only if the condition is true. |
+| `grid` | `grid(buttons, columns): this` | Splits buttons into rows based on the number of columns. |
+| `build` | `build(): InlineKeyboardMarkup` | Produces a new markup. |
+| `asReplyMarkup` | `asReplyMarkup(): InlineKeyboardMarkup` | Alias for `build`. |
 
-Setiap inline button wajib memiliki text dan tepat satu action. Callback data dibatasi maksimum 64 bytes UTF-8; pelanggaran melempar `RangeError`.
+Each inline button must have `text` and exactly one action. Callback data is limited to a maximum of 64 UTF-8 bytes; violations throw `RangeError`.
 
 ```ts
 const keyboard = new InlineKeyboard()
-  .text("Izinkan", "approve:123")
-  .url("Dokumentasi", "https://example.com")
+  .text("Allow", "approve:123")
+  .url("Documentation", "https://example.com")
   .row(
     { text: "A", callback_data: "a" },
     { text: "B", callback_data: "b" },
@@ -767,20 +770,20 @@ const keyboard = new InlineKeyboard()
 new ReplyKeyboard(): ReplyKeyboard
 ```
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `text` | `text(text): this` | Button teks biasa. |
-| `contact` | `contact(text): this` | Request contact. |
-| `location` | `location(text): this` | Request location. |
-| `poll` | `poll(text, type?): this` | Request poll `quiz` atau `regular`. |
-| `webApp` | `webApp(text, url): this` | Button Web App. |
-| `button` | `button(button): this` | Tambah satu button ke row terakhir. |
-| `row` | `row(...buttons): this` | Tambah row baru. |
-| `grid` | `grid(buttons, columns): this` | Bagi button menjadi grid. |
-| `build` | `build(options?): ReplyKeyboardMarkup` | Hasilkan markup dan gabungkan options. |
-| `asReplyMarkup` | `asReplyMarkup(): ReplyKeyboardMarkup` | Alias `build()` tanpa options. |
+| `text` | `text(text): this` | Plain text button. |
+| `contact` | `contact(text): this` | Requests contact. |
+| `location` | `location(text): this` | Requests location. |
+| `poll` | `poll(text, type?): this` | Requests a poll of type `quiz` or `regular`. |
+| `webApp` | `webApp(text, url): this` | Web App button. |
+| `button` | `button(button): this` | Adds one button to the last row. |
+| `row` | `row(...buttons): this` | Adds a new row. |
+| `grid` | `grid(buttons, columns): this` | Splits buttons into a grid. |
+| `build` | `build(options?): ReplyKeyboardMarkup` | Produces the markup and merges options. |
+| `asReplyMarkup` | `asReplyMarkup(): ReplyKeyboardMarkup` | Alias for `build()` without options. |
 
-`columns` harus integer positif; jika tidak, `grid` melempar `RangeError`.
+`columns` must be a positive integer; otherwise `grid` throws `RangeError`.
 
 ### `removeKeyboard(selective?)`
 
@@ -788,7 +791,7 @@ new ReplyKeyboard(): ReplyKeyboard
 removeKeyboard(selective = false): ReplyMarkup
 ```
 
-Menghasilkan `{ remove_keyboard: true }`, dengan `selective: true` bila diminta.
+Generates `{ remove_keyboard: true }`, with `selective: true` if requested.
 
 ### `forceReply(placeholder?, selective?)`
 
@@ -796,11 +799,11 @@ Menghasilkan `{ remove_keyboard: true }`, dengan `selective: true` bila diminta.
 forceReply(placeholder?: string, selective = false): ReplyMarkup
 ```
 
-Menghasilkan ForceReply. Placeholder hanya ditambahkan jika truthy.
+Generates a ForceReply. The placeholder is only added if it is truthy.
 
 ---
 
-## 7. Storage dan cache
+## 7. Storage and cache
 
 ### `Storage<K, V>`
 
@@ -828,7 +831,7 @@ interface Storage<K, V> {
 new MemoryStorage<K, V>(): MemoryStorage<K, V>
 ```
 
-Implementasi in-memory berbasis `Map`. TTL dibersihkan secara lazy ketika key dibaca atau diiterasi; tidak ada timer background. `update` membuat operasi updater per key berjalan serial sehingga update konkuren untuk key sama tidak saling menimpa secara tidak terduga.
+In-memory implementation based on `Map`. TTLs are cleaned up lazily when keys are read or iterated; there is no background timer. `update` ensures per-key updater operations run serially so concurrent updates for the same key do not unpredictably overwrite each other.
 
 ```ts
 const sessions = new MemoryStorage<string, { count: number }>();
@@ -856,17 +859,17 @@ interface Cache<K = string, V = unknown> {
 new MemoryCache(namespace = "telebibz"): MemoryCache
 ```
 
-Cache string-keyed yang melakukan namespace internal pada setiap key.
+Cache that uses strings as keys and applies an internal namespace to each key.
 
-| Method | Perilaku |
+| Method | Behavior |
 |---|---|
-| `get` | Mengambil value atau `undefined`. |
-| `set` | Menyimpan value dengan TTL opsional. |
-| `delete` | Menghapus key dan mengembalikan boolean. |
-| `invalidate(prefix = "")` | Menghapus semua key dalam namespace yang diawali prefix. |
-| `getOrSet` | Mengembalikan cache hit; jika miss, menjalankan factory, menyimpan hasil, lalu mengembalikannya. |
+| `get` | Retrieves the value or `undefined`. |
+| `set` | Stores the value with an optional TTL. |
+| `delete` | Deletes the key and returns a boolean. |
+| `invalidate(prefix = "")` | Removes all keys in the namespace that start with the prefix. |
+| `getOrSet` | Returns the value from cache if present; if not, runs the factory, stores its result, then returns it. |
 
-`getOrSet` tidak menggunakan lock deduplikasi; factory dapat dijalankan lebih dari sekali bila dipanggil konkuren saat key belum tersedia.
+`getOrSet` does not use deduplication locking; the factory may run more than once if called concurrently while the key is missing.
 
 ### `RateLimitResult`
 
@@ -888,13 +891,13 @@ new TokenBucketLimiter(
 ): TokenBucketLimiter
 ```
 
-Constructor melempar `RangeError` jika salah satu nilai tidak positif. `consume(key, cost = 1)` mengurangi token bila tersedia; jika tidak cukup, mengembalikan `allowed: false` serta estimasi `retryAfterMs`. `clear(key?)` menghapus satu bucket atau seluruh bucket.
+The constructor throws a `RangeError` if either value is not positive. `consume(key, cost = 1)` deducts tokens if available; if there are not enough, it returns `allowed: false` and an estimated `retryAfterMs`. `clear(key?)` removes a single bucket or all buckets.
 
 ---
 
-## 8. Queue dan scheduler
+## 8. Queue and scheduler
 
-### `Job<T>` dan `QueueOptions`
+### `Job<T>` and `QueueOptions`
 
 ```ts
 interface Job<T = unknown> {
@@ -924,15 +927,15 @@ new TaskQueue<T>(
 ): TaskQueue<T>
 ```
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `add` | `add(data, options?): Job<T>` | Menambah job; options `id`, `priority`, `delayMs`. Job langsung dijadwalkan. |
-| `get` | `get(id): Job<T> \| undefined` | Mengembalikan salinan status job. |
-| `cancel` | `cancel(id): boolean` | Membatalkan queued/running job dan abort signal worker. |
-| `onIdle` | `onIdle(): Promise<void>` | Menunggu sampai pending dan active kosong. |
-| `close` | `close(): Promise<void>` | Menghentikan draining baru dan membatalkan controller aktif. |
+| `add` | `add(data, options?): Job<T>` | Adds a job; options `id`, `priority`, `delayMs`. Job is scheduled immediately. |
+| `get` | `get(id): Job<T> \| undefined` | Returns a copy of the job status. |
+| `cancel` | `cancel(id): boolean` | Cancels a queued or running job and aborts the worker via its `AbortSignal`. |
+| `onIdle` | `onIdle(): Promise<void>` | Waits until pending and active are empty. |
+| `close` | `close(): Promise<void>` | Stops new draining and cancels the active controller. |
 
-Job dengan priority lebih besar dijalankan lebih dahulu; jika sama, `runAt` lebih awal dijalankan lebih dahulu. Retry dilakukan sampai `retries` terlampaui. Delay retry adalah exponential dengan batas `maxBackoffMs` default 30 detik.
+Jobs with higher `priority` are executed first; if equal, jobs with earlier `runAt` are executed first. Retries are attempted until the `retries` value is exceeded. Retry delays use exponential backoff with a default `maxBackoffMs` limit of 30 seconds.
 
 ### `ScheduledJob`
 
@@ -949,19 +952,17 @@ interface ScheduledJob {
 new Scheduler(): Scheduler
 ```
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `every` | `every(id, intervalMs, task): ScheduledJob` | Menjalankan task menggunakan `setInterval`. Mengganti timer dengan id sama. |
-| `after` | `after(id, delayMs, task): ScheduledJob` | Menjalankan task sekali menggunakan `setTimeout`. |
-| `cron` | `cron(id, expression, task): ScheduledJob` | Mendukung format sederhana `*/N` pada field menit, setara interval `N * 60_000`. |
-| `cancel` | `cancel(id): boolean` | Membatalkan timer. |
-| `clear` | `clear(): void` | Membatalkan semua timer. |
+| `every` | `every(id, intervalMs, task): ScheduledJob` | Runs a task using `setInterval`. Replaces any timer with the same id. |
+| `after` | `after(id, delayMs, task): ScheduledJob` | Runs the task once using `setTimeout`. |
+| `cron` | `cron(id, expression, task): ScheduledJob` | Supports the simple `*/N` format in the minutes field, equivalent to an interval of `N * 60_000`. |
+| `cancel` | `cancel(id): boolean` | Cancels a timer. |
+| `clear` | `clear(): void` | Cancels all timers. |
 
-Format cron penuh tidak didukung oleh built-in scheduler. Expression selain `*/N` melempar `Error`.
+The full cron format is not supported by the built-in scheduler. Expressions other than `*/N` throw an `Error`.
 
----
-
-## 9. Plugin dan services
+## 9. Plugins and services
 
 ### `Plugin<Context>`
 
@@ -989,7 +990,7 @@ interface PluginApi<Context> {
 }
 ```
 
-Pada release ini, `registerMiddleware` dan `registerRoute` tersedia sebagai hook API tetapi implementation manager belum menghubungkan keduanya secara otomatis ke bot/router. Plugin dapat memakai `api.bot` dan `api.services` secara langsung.
+In this release, `registerMiddleware` and `registerRoute` are available as API hooks but the implementation manager does not yet connect them automatically to the bot/router. Plugins may use `api.bot` and `api.services` directly.
 
 ### `ServiceContainer`
 
@@ -997,12 +998,12 @@ Pada release ini, `registerMiddleware` dan `registerRoute` tersedia sebagai hook
 new ServiceContainer(): ServiceContainer
 ```
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `register` | `register<T>(name: string \| symbol, value: T): this` | Menyimpan service dan mendukung chaining. |
-| `get` | `get<T>(name: string \| symbol): T` | Mengambil service; melempar jika belum terdaftar. |
-| `has` | `has(name: string \| symbol): boolean` | Memeriksa keberadaan service. |
-| `delete` | `delete(name: string \| symbol): boolean` | Menghapus service. |
+| `register` | `register<T>(name: string \| symbol, value: T): this` | Stores a service and supports chaining. |
+| `get` | `get<T>(name: string \| symbol): T` | Retrieves a service; throws if not registered. |
+| `has` | `has(name: string \| symbol): boolean` | Checks for the existence of a service. |
+| `delete` | `delete(name: string \| symbol): boolean` | Removes a service. |
 
 ### `PluginManager<Context>`
 
@@ -1010,17 +1011,17 @@ new ServiceContainer(): ServiceContainer
 new PluginManager<Context>(bot: unknown): PluginManager<Context>
 ```
 
-| Method | Perilaku |
+| Method | Behavior |
 |---|---|
-| `use(plugin)` | Menambah plugin; nama duplicate melempar error. |
-| `setup()` | Untuk setiap plugin, menjalankan `install` lalu `setup`. |
-| `start()` | Menjalankan `onStart` sesuai urutan registrasi. |
-| `update(context)` | Menjalankan `onUpdate` sesuai urutan registrasi. |
-| `stop()` | Menjalankan `onStop`. |
-| `dispose()` | Menjalankan `dispose` dalam urutan reverse registration. |
-| `list()` | Mengembalikan daftar plugin read-only. |
+| `use(plugin)` | Adds a plugin; duplicate names throw an error. |
+| `setup()` | For each plugin, runs `install` then `setup`. |
+| `start()` | Executes `onStart` in registration order. |
+| `update(context)` | Executes `onUpdate` in registration order. |
+| `stop()` | Executes `onStop`. |
+| `dispose()` | Executes `dispose` in reverse registration order. |
+| `list()` | Returns a read-only list of plugins. |
 
-`Bot.handleUpdate()` pada release ini tidak memanggil `plugins.update()` secara otomatis; panggil manager secara eksplisit bila plugin memerlukan update lifecycle.
+`Bot.handleUpdate()` in this release does not call `plugins.update()` automatically; call the manager explicitly if plugins require an update lifecycle.
 
 ---
 
@@ -1045,18 +1046,18 @@ createWebhookHandler<S extends object>(
 ): (request: Request) => Promise<Response>
 ```
 
-Handler menerima Web standard `Request` dan mengembalikan `Response`.
+The handler accepts a standard Web `Request` and returns a `Response`.
 
-| Kondisi | Response |
+| Condition | Response |
 |---|---|
-| Method bukan POST | `405 Method Not Allowed`, header `allow: POST` |
-| Secret header tidak cocok | `401 Unauthorized` |
-| `Content-Length` atau body melebihi limit | `413 Payload Too Large` |
-| JSON invalid atau `update_id` bukan integer | `400 Bad Request` untuk update id; exception parsing masuk `500` |
-| `bot.handleUpdate` sukses | `200 OK` dengan body `OK` |
-| Exception lain | `500 Internal Server Error` dan `onError` dipanggil |
+| Method is not POST | `405 Method Not Allowed`, header `allow: POST` |
+| Secret header does not match | `401 Unauthorized` |
+| Header `Content-Length` or body exceeds limit | `413 Payload Too Large` |
+| Invalid JSON or `update_id` is not an integer | `400 Bad Request` for update id; exception during parsing results in `500` |
+| `bot.handleUpdate` succeeds | `200 OK` with body `OK` |
+| Other exceptions | `500 Internal Server Error` and `onError` is called |
 
-Default `maxBodyBytes` adalah `1_048_576` bytes. Secret Telegram dibaca dari header `x-telegram-bot-api-secret-token`.
+The default value of `maxBodyBytes` is `1_048_576` bytes. The Telegram secret token is read from the `x-telegram-bot-api-secret-token` header.
 
 ```ts
 import { Bot, createWebhookHandler } from "@xbibzlibrary/telebibz";
@@ -1071,9 +1072,9 @@ export default { fetch: handler };
 
 ---
 
-## 11. Conversation, wizard, forms, dan menu
+## 11. Conversations, wizards, forms, and menus
 
-### Conversation
+### Conversations
 
 ```ts
 interface ConversationState {
@@ -1091,17 +1092,17 @@ interface ConversationState {
 new ConversationFlow(ctx: Context<S>, state: ConversationState)
 ```
 
-| Method/property | Signature | Deskripsi |
+| Method/property | Signature | Description |
 |---|---|---|
-| `ctx` | `Context<S>` | Context update saat ini. |
-| `state` | `ConversationState` | State percakapan mutable. |
-| `values` | `Record<string, unknown>` | Alias ke `state.values`. |
-| `set` | `set<T>(key, value): this` | Menyimpan value dan memperbarui `updatedAt`. |
-| `get` | `get<T>(key): T \| undefined` | Mengambil typed value. |
-| `next` | `next(): this` | Menaikkan step satu. |
-| `previous` | `previous(): this` | Menurunkan step dengan minimum 0. |
-| `complete` | `complete(): void` | Status menjadi `completed`. |
-| `cancel` | `cancel(): void` | Status menjadi `cancelled`. |
+| `ctx` | `Context<S>` | Current update context. |
+| `state` | `ConversationState` | Mutable conversation state. |
+| `values` | `Record<string, unknown>` | Alias for `state.values`. |
+| `set` | `set<T>(key, value): this` | Stores a value and updates `updatedAt`. |
+| `get` | `get<T>(key): T \| undefined` | Retrieves a typed value. |
+| `next` | `next(): this` | Advance the step by one. |
+| `previous` | `previous(): this` | Decrement the step, clamped at 0. |
+| `complete` | `complete(): void` | Sets status to `completed`. |
+| `cancel` | `cancel(): void` | Sets status to `cancelled`. |
 
 #### `ConversationManager<S>`
 
@@ -1109,13 +1110,13 @@ new ConversationFlow(ctx: Context<S>, state: ConversationState)
 new ConversationManager<S>(): ConversationManager<S>
 ```
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `start` | `start(key, name, values?): ConversationState` | Membuat atau mengganti conversation state. |
-| `get` | `get(key): ConversationState \| undefined` | Mengambil state aktif. |
-| `cancel` | `cancel(key): boolean` | Menandai cancelled jika ada. |
-| `clearExpired` | `clearExpired(maxAgeMs): number` | Menghapus state yang `updatedAt` lebih lama dari threshold. |
-| `run` | `run(ctx, key, name, steps): Promise<ConversationState>` | Menjalankan step sesuai `state.step`; jika tidak ada step, status completed. |
+| `start` | `start(key, name, values?): ConversationState` | Creates or replaces a conversation state. |
+| `get` | `get(key): ConversationState \| undefined` | Retrieves the active state. |
+| `cancel` | `cancel(key): boolean` | Marks as cancelled if it exists. |
+| `clearExpired` | `clearExpired(maxAgeMs): number` | Removes states whose `updatedAt` is older than the threshold. |
+| `run` | `run(ctx, key, name, steps): Promise<ConversationState>` | Runs steps according to `state.step`; if no step, status becomes completed. |
 
 ```ts
 const conversations = new ConversationManager();
@@ -1125,13 +1126,13 @@ await conversations.run(ctx, "chat:1", "profile", [
     flow.next();
   },
   async (flow) => {
-    await flow.ctx.reply(`Nama: ${flow.get<string>("name")}`);
+    await flow.ctx.reply(`Name: ${flow.get<string>("name")}`);
     flow.complete();
   },
 ]);
 ```
 
-#### `Wizard<S>` dan `WizardStep<S>`
+#### `Wizard<S>` and `WizardStep<S>`
 
 ```ts
 interface WizardStep<S> {
@@ -1143,11 +1144,11 @@ interface WizardStep<S> {
 new Wizard<S>()
 ```
 
-| Method/property | Deskripsi |
+| Method/property | Description |
 |---|---|
-| `step(definition)` | Menambahkan step dan mengembalikan wizard. `optional` disimpan dalam definition tetapi belum diproses khusus oleh runner. |
-| `run(ctx, key, manager?)` | Menjalankan step wizard melalui `ConversationManager` dengan name `"wizard"`. |
-| `steps` | Daftar step read-only. |
+| `step(definition)` | Adds a step and returns the wizard. `optional` is stored in the definition but not specially handled by the runner. |
+| `run(ctx, key, manager?)` | Runs the wizard steps via `ConversationManager` with the name `"wizard"`. |
+| `steps` | Read-only list of steps. |
 
 ### Forms
 
@@ -1173,13 +1174,13 @@ interface Field<T> {
 new Form<T extends Record<string, unknown>>(): Form<T>
 ```
 
-| Method | Deskripsi |
+| Method | Description |
 |---|---|
-| `field(definition)` | Mendaftarkan field typed berdasarkan `name`. |
-| `parse(input)` | Memproses seluruh field. Return union success atau issues. Urutan: required check, parse, transform, validate. |
-| `reset()` | Menghapus data hasil parse yang tersimpan internal. |
+| `field(definition)` | Registers a typed field by `name`. |
+| `parse(input)` | Processes all fields. Returns a union of success or issues. Order: required check, parse, transform, validate. |
+| `reset()` | Clears internally stored parsed data. |
 
-Result parse:
+Parse result:
 
 ```ts
 type FormResult<T> =
@@ -1187,19 +1188,19 @@ type FormResult<T> =
   | { success: false; issues: ValidationIssue[] };
 ```
 
-Issue memakai code `required`, `parse`, atau `invalid`.
+Issues use the code `required`, `parse`, or `invalid`.
 
 #### `validators`
 
-| Validator | Input | Result/error |
+| Validator | Input | Result/Error |
 |---|---|---|
-| `validators.string` | `unknown` | String; selain itu `TypeError("Expected string")`. |
-| `validators.number` | `unknown` | Number finite, termasuk numeric string; selain itu `TypeError("Expected number")`. |
-| `validators.integer` | `unknown` | Integer; selain itu `TypeError("Expected integer")`. |
-| `validators.email` | `unknown` | String dengan pola email sederhana; selain itu `TypeError("Expected email")`. |
-| `validators.url` | `unknown` | String yang diterima constructor `URL`; selain itu `TypeError("Expected URL")`. |
+| `validators.string` | `unknown` | String; otherwise `TypeError("Expected string")`. |
+| `validators.number` | `unknown` | Finite number, including numeric strings; otherwise `TypeError("Expected number")`. |
+| `validators.integer` | `unknown` | Integer; otherwise `TypeError("Expected integer")`. |
+| `validators.email` | `unknown` | String matching a simple email pattern; otherwise `TypeError("Expected email")`. |
+| `validators.url` | `unknown` | String accepted by the `URL` constructor; otherwise `TypeError("Expected URL")`. |
 
-### Pagination dan menu
+### Pagination and menus
 
 #### `Page<T>`
 
@@ -1223,7 +1224,7 @@ paginate<T>(
 ): Page<T>
 ```
 
-Page memakai index berbasis 0. Page yang melebihi batas di-clamp ke halaman terakhir. Collection kosong tetap memiliki `pageCount: 1`. `page` negatif/non-integer atau `pageSize < 1` melempar `RangeError`.
+Pages use 0-based indexing. Pages that exceed bounds are clamped to the last page. An empty collection still has `pageCount: 1`. Negative/non-integer `page` or `pageSize < 1` throws `RangeError`.
 
 #### `paginationButtons(page, prefix)`
 
@@ -1234,7 +1235,7 @@ paginationButtons(
 ): InlineKeyboardButton[]
 ```
 
-Menghasilkan button `Previous`, indicator `${page + 1}/${pageCount}` dengan callback `${prefix}:noop`, dan `Next` sesuai flag page.
+Generates a `Previous` button, an indicator `${page + 1}/${pageCount}` with callback `${prefix}:noop`, and `Next` according to the page flags.
 
 #### `MenuItem`
 
@@ -1255,33 +1256,33 @@ interface MenuItem {
 new Menu(id: string): Menu
 ```
 
-| Method/property | Deskripsi |
+| Method/property | Description |
 |---|---|
-| `item(item)` | Menambah item dan mendukung chaining. |
-| `breadcrumb(label)` | Menambah label breadcrumb. |
-| `build()` | Menunggu predicate visibility, melewati item invisible, lalu menghasilkan `InlineKeyboard`. URL diprioritaskan dibanding callback. |
-| `breadcrumbs` | Array breadcrumb read-only. |
+| `item(item)` | Adds an item and supports chaining. |
+| `breadcrumb(label)` | Adds a breadcrumb label. |
+| `build()` | Waits for visibility predicates, skips invisible items, then produces an `InlineKeyboard`. URL is prioritized over callbacks. |
+| `breadcrumbs` | Read-only array of breadcrumbs. |
 
-`permission` hanya disimpan sebagai metadata item; `Menu.build()` tidak melakukan authorization otomatis.
+`permission` is only stored as item metadata; `Menu.build()` does not perform automatic authorization.
 
 ---
 
-## 12. Approval gate
+## 12. Approval Gate
 
-Approval gate mengirim notifikasi owner saat bot baru pertama kali menggunakan library. Default message memakai label `Dev Gantenggg`, menyertakan bot ID/username dan owner ID, lalu menyediakan tombol `Izinkan` dan `Tidak Diizinkan`.
+The approval gate sends a notification to the owner when a bot uses the library for the first time. The default message uses the label `Dev Gantenggg`, includes the bot ID/username and owner ID, and provides `Izinkan` and `Tidak Diizinkan` buttons.
 
 ### `ApprovalOptions`
 
-| Properti | Tipe | Default | Deskripsi |
+| Property | Type | Default | Description |
 |---|---|---:|---|
-| `ownerChatId` | `ChatId` | wajib | Chat tujuan notifikasi. |
-| `ownerUserId` | `number` | wajib | User ID yang boleh menekan tombol. |
-| `ownerLabel` | `string` | `Dev Gantenggg` | Label pada notifikasi. |
-| `requireApproval` | `boolean` | `true` | `false` menonaktifkan gate. |
-| `notificationCooldownMs` | `number` | `600000` | Cooldown notifikasi pending. |
-| `store` | `ApprovalStore` | `MemoryApprovalStore` | Penyimpanan approval custom. |
+| `ownerChatId` | `ChatId` | wajib | Destination chat for notifications. |
+| `ownerUserId` | `number` | wajib | User ID allowed to press the buttons. |
+| `ownerLabel` | `string` | `Dev Gantenggg` | Label on the notification. |
+| `requireApproval` | `boolean` | `true` | `false` disables the gate. |
+| `notificationCooldownMs` | `number` | `600000` | Pending notification cooldown. |
+| `store` | `ApprovalStore` | `MemoryApprovalStore` | Custom approval storage. |
 
-### Tipe approval
+### Approval types
 
 ```ts
 type ApprovalStatus = "pending" | "approved" | "denied";
@@ -1327,7 +1328,7 @@ interface ApprovalStore {
 new MemoryApprovalStore(): MemoryApprovalStore
 ```
 
-Store in-memory yang mengembalikan salinan record saat `get` dan `set`.
+In-memory storage that returns a copy of the record on `get` and `set`.
 
 ### `ApprovalGate`
 
@@ -1335,14 +1336,14 @@ Store in-memory yang mengembalikan salinan record saat `get` dan `set`.
 new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
 ```
 
-| Method | Signature | Deskripsi |
+| Method | Signature | Description |
 |---|---|---|
-| `check` | `check(identity): Promise<ApprovalCheck>` | Mengembalikan approved jika record approved; mengirim request baru jika belum ada atau cooldown habis. |
-| `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | Memvalidasi nonce dan owner, lalu approve/deny. Callback invalid bukan approval dikembalikan `handled: false`. |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True bila approved atau gate disabled. |
-| `revoke` | `revoke(botId): Promise<boolean>` | Menghapus record jika store mendukung delete. |
+| `check` | `check(identity): Promise<ApprovalCheck>` | Returns approved if the record status is approved; sends a new request if none exists or the cooldown has expired. |
+| `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | Validates the nonce and owner, then performs approve/deny. Invalid callbacks or non-approval callbacks are returned as `handled: false`. |
+| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True if approved or the gate is disabled. |
+| `revoke` | `revoke(botId): Promise<boolean>` | Deletes the record if the store supports delete. |
 
-Callback hanya dapat diputuskan oleh `ownerUserId` yang dikonfigurasi. Nonce random 16 hexadecimal characters mencegah callback lama digunakan kembali. Callback stale menghasilkan alert kedaluwarsa.
+Callbacks can only be decided by the configured `ownerUserId`. A random 16-character hexadecimal nonce prevents old callbacks from being reused. Expired callbacks produce an expiration alert.
 
 ```ts
 const bot = new Bot({
@@ -1357,7 +1358,7 @@ const bot = new Bot({
 
 ---
 
-## 13. Text utilities
+## 13. Text Utilities
 
 ### `escapeMarkdownV2(value)`
 
@@ -1365,7 +1366,7 @@ const bot = new Bot({
 escapeMarkdownV2(value: string): string
 ```
 
-Meng-escape karakter MarkdownV2 Telegram: `\\_ * [ ] ( ) ~ ` > # + - = | { } . !`.
+Escapes Telegram MarkdownV2 characters: `\\_ * [ ] ( ) ~ ` > # + - = | { } . !`.
 
 ### `escapeHtml(value)`
 
@@ -1373,19 +1374,19 @@ Meng-escape karakter MarkdownV2 Telegram: `\\_ * [ ] ( ) ~ ` > # + - = | { } . !
 escapeHtml(value: string): string
 ```
 
-Mengubah `&`, `<`, `>`, dan `"` menjadi HTML entities.
+Converts `&`, `<`, `>`, and `\"` into HTML entities.
 
 ### `md`
 
-Object helper MarkdownV2 berikut tersedia:
+The following MarkdownV2 helper object is available:
 
-| Method | Output konseptual |
+| Method | Conceptual output |
 |---|---|
 | `md.bold(value)` | `*escaped value*` |
 | `md.italic(value)` | `_escaped value_` |
 | `md.link(label, url)` | `[escaped label](escaped url)` |
-| `md.code(value)` | Inline code dengan backtick yang di-escape. |
-| `md.pre(value, language?)` | Code block dengan language label opsional. |
+| `md.code(value)` | Inline code with backticks escaped. |
+| `md.pre(value, language?)` | Code block with an optional language label. |
 | `md.escape(value)` | Alias `escapeMarkdownV2`. |
 
 ### `splitMessage(text, options?)`
@@ -1400,9 +1401,9 @@ splitMessage(
 ): string[]
 ```
 
-Memecah text ke chunk dengan limit default `4096` karakter. Saat memungkinkan, pemotongan memilih boundary paragraph, newline, atau spasi; boundary hanya dipakai jika berada lebih dari separuh window. `parseMode` diterima sebagai option API tetapi belum mengubah algoritma pemotongan.
+Splits text into chunks with a default limit of `4096` characters. When possible, splitting prefers paragraph, newline, or space boundaries; the hard limit is only used if it lies beyond half of the window. `parseMode` is accepted as an API option but does not yet change the splitting algorithm.
 
-Limit kurang dari 1 melempar `RangeError`.
+A limit less than 1 will throw a `RangeError`.
 
 ### `splitCaption(text)`
 
@@ -1410,7 +1411,7 @@ Limit kurang dari 1 melempar `RangeError`.
 splitCaption(text: string): string[]
 ```
 
-Shortcut `splitMessage(text, { limit: 1024 })`.
+Alias `splitMessage(text, { limit: 1024 })`.
 
 ### `template(templateText, values)`
 
@@ -1421,7 +1422,7 @@ template(
 ): string
 ```
 
-Mengganti placeholder `{{ key }}` dan nested path seperti `{{ user.name }}`. Nilai `null` atau `undefined` diganti string kosong; nilai lain dikonversi dengan `String()`.
+Replaces placeholders like `{{ key }}` and nested paths such as `{{ user.name }}`. `null` or `undefined` values are replaced with an empty string; other values are converted with `String()`.
 
 ```ts
 template("Halo {{ user.name }}", { user: { name: "Ayu" } });
@@ -1440,13 +1441,13 @@ Import dari `@xbibzlibrary/telebibz/testing` atau root package.
 new MockTransport(): MockTransport
 ```
 
-| API | Deskripsi |
+| API | Description |
 |---|---|
-| `calls` | Array semua `TransportRequest` yang diterima. |
-| `respond(method, response)` | Mengatur response statis atau callback berdasarkan payload dan mengembalikan transport. |
-| `request(request)` | Mencatat request dan mengembalikan response mock. Response default adalah `{ ok: true, result: true }`. |
+| `calls` | Array of every received `TransportRequest`. |
+| `respond(method, response)` | Configures a static response or payload callback and returns the transport. |
+| `request(request)` | Records the request and returns a mock response. The default response is `{ ok: true, result: true }`. |
 
-Status mock adalah `200` bila `ok: true`, atau `error_code`/`500` bila `ok: false`.
+The mock status is `200` when `ok: true`, or `error_code`/`500` when `ok: false`.
 
 ```ts
 const transport = new MockTransport()
@@ -1462,7 +1463,7 @@ const transport = new MockTransport()
 createMockUpdate(overrides?: Partial<Update>): Update
 ```
 
-Membuat update message default dengan `update_id: 1`, chat private id `1`, user id `2`, dan text `/start`. Object `overrides` digabung shallow dengan default.
+Creates a default message update with `update_id: 1`, private chat id `1`, user id `2`, and text `/start`. The `overrides` object is shallow-merged with the defaults.
 
 ### `createTestBot()`
 
@@ -1470,7 +1471,7 @@ Membuat update message default dengan `update_id: 1`, chat private id `1`, user 
 createTestBot(): { bot: Bot; transport: MockTransport }
 ```
 
-Membuat bot dengan token test `123456:TEST_TOKEN`, mock `getMe()` yang menghasilkan bot id `99`, dan transport yang dapat diperiksa melalui `transport.calls`.
+Creates a bot with the test token `123456:TEST_TOKEN`, a mocked `getMe()` result for bot id `99`, and a transport that can be inspected through `transport.calls`.
 
 ### `createMockContext(bot, update?)`
 
@@ -1481,13 +1482,15 @@ createMockContext(
 ): Context
 ```
 
-Membuat context menggunakan API bot, session kosong, dan services kosong.
+Creates a context using the bot API, an empty session, and empty services.
 
 ---
 
-## 15. Generated Telegram method namespace
 
-`generated/api.ts` adalah source internal generator yang mendefinisikan:
+
+## 15. Generated Telegram methods namespace
+
+`generated/api.ts` is the generator's internal source that defines:
 
 ```ts
 const TELEGRAM_API_VERSION = "10.2";
@@ -1503,9 +1506,9 @@ type GeneratedTelegramMethodMap = {
 const GENERATED_METHODS: Record<TelegramMethodName, TelegramMethodName>;
 ```
 
-`TELEGRAM_METHOD_NAMES` berisi 184 nama method pada source generator. Namespace tersebut menjadi dasar proxy `api.methods`, `api.call`, dan `api.request`, tetapi file generated tidak diekspor sebagai package subpath publik pada release ini. Parameter/result yang belum dipetakan khusus dapat dipanggil dengan `api.raw()` atau dengan cast parameter pada TypeScript.
+`TELEGRAM_METHOD_NAMES` contains 184 method names in the generator source. That namespace forms the basis for the `api.methods`, `api.call`, and `api.request` proxies, but the generated file is not exported as a public package subpath in this release. Methods whose params/results are not specifically mapped can be invoked via `api.raw()` or by casting parameters in TypeScript.
 
-Untuk daftar canonical tanpa pengelompokan, nama method yang tersedia pada generated runtime namespace adalah:
+For an ungrouped canonical list, the method names available on the generated runtime namespace are:
 
 ```text
 addStickerToSet,
@@ -1694,60 +1697,60 @@ uploadStickerFile,
 verifyChat
 ```
 
-> Daftar di atas mengikuti generated source. Jika Telegram menambahkan method baru, jalankan `npm run update:telegram` atau `telebibz generate` setelah schema diperbarui.
+> The list above follows the generated source. If Telegram adds new methods, run `npm run update:telegram` or `telebibz generate` after the schema is updated.
 
 ---
 
 ## 16. CLI
 
-Binary package adalah `telebibz`.
+Binary package is `telebibz`.
 
 ```bash
 npx telebibz <command>
 ```
 
-| Command | Perilaku |
+| Command | Behavior |
 |---|---|
-| `telebibz init [directory]` | Membuat directory, `index.ts` minimal, dan `.env.example`. Default directory `my-telebibz-bot`. |
-| `telebibz doctor` | Menampilkan Node version, presence `TELEGRAM_BOT_TOKEN`, cwd, package name, lalu health API jika token tersedia. Exit code menjadi 1 jika API tidak reachable. |
-| `telebibz generate` | Menjalankan generator method dari `scripts/generate-api.mjs`. |
-| `telebibz build` | Menjalankan `npm run build`. |
-| `telebibz test` | Menjalankan `npm test`. |
-| `telebibz webhook` | Memeriksa `TELEGRAM_BOT_TOKEN`, memakai `TELEGRAM_WEBHOOK_SECRET` bila ada, membuat handler, dan mencetak kesiapan. Command ini tidak membuat HTTP server. |
-| `telebibz inspect` | Menampilkan cwd dan Node version. |
-| tanpa command | Menampilkan daftar command bantuan. |
+| `telebibz init [directory]` | Creates a directory, a minimal `index.ts`, and `.env.example`. Default directory `my-telebibz-bot`. |
+| `telebibz doctor` | Displays Node version, presence of `TELEGRAM_BOT_TOKEN`, cwd, package name, then health API if the token is available. Exit code becomes 1 if the API is not reachable. |
+| `telebibz generate` | Runs the generator method from `scripts/generate-api.mjs`. |
+| `telebibz build` | Runs `npm run build`. |
+| `telebibz test` | Runs `npm test`. |
+| `telebibz webhook` | Checks `TELEGRAM_BOT_TOKEN`, uses `TELEGRAM_WEBHOOK_SECRET` if present, creates a handler, and prints readiness. This command does not create an HTTP server. |
+| `telebibz inspect` | Displays cwd and Node version. |
+| without command | Displays the help command list. |
 
-Environment variable yang dipakai CLI adalah `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_WEBHOOK_SECRET`.
+Environment variables used by the CLI are `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET`.
 
 ---
 
-## 17. Tipe Telegram utama
+## 17. Main Telegram types
 
-Package mengekspor tipe data yang paling sering dipakai langsung.
+The package exports the most commonly used data types directly.
 
 | Tipe | Isi penting |
 |---|---|
-| `User` | ID, bot flag, nama, username, language, dan capability flags. |
-| `Chat` | ID, type, title/username/nama, forum/direct-message flags. |
-| `Message` | ID, tanggal, chat, sender, text/caption, entity, reply, markup, plus index signature untuk field Telegram tambahan. |
-| `Update` | Semua update field yang didukung source, termasuk message, callback, inline, poll, member, join request, reaction, boost, business, dan extension fields. |
+| `User` | ID, bot flag, name, username, language, and capability flags. |
+| `Chat` | ID, type, title/username/name, forum/direct message indicators. |
+| `Message` | ID, date, chat, sender, text/caption, entities, reply, markup, plus an index signature for additional Telegram fields. |
+| `Update` | All update fields supported by the source, including message, callback, inline, poll, member, join request, reaction, boost, business, and extension fields. |
 | `CallbackQuery` | ID, from, message/inline message id, chat instance, data. |
 | `InlineQuery` | ID, from, query, offset, chat type, location. |
-| `Poll`, `PollAnswer` | Data poll dan jawaban. |
-| `ChatMemberUpdated`, `ChatJoinRequest` | Perubahan member dan permintaan join. |
-| `InlineKeyboardMarkup`, `ReplyKeyboardMarkup`, `ReplyKeyboardRemove`, `ForceReply` | Bentuk reply markup Telegram. |
-| `MessageEntity`, `ReplyParameters`, `LinkPreviewOptions` | Metadata entity, reply, dan link preview. |
-| `BotCommand`, `BotCommandScope`, `WebhookInfo`, `File`, `UserProfilePhotos`, `ChatMember`, `ChatAdministratorRights` | Tipe result/parameter helper API. |
+| `Poll`, `PollAnswer` | Poll data and answers. |
+| `ChatMemberUpdated`, `ChatJoinRequest` | Member changes and join requests. |
+| `InlineKeyboardMarkup`, `ReplyKeyboardMarkup`, `ReplyKeyboardRemove`, `ForceReply` | Telegram reply markup forms. |
+| `MessageEntity`, `ReplyParameters`, `LinkPreviewOptions` | Entity, reply, and link preview metadata. |
+| `BotCommand`, `BotCommandScope`, `WebhookInfo`, `File`, `UserProfilePhotos`, `ChatMember`, `ChatAdministratorRights` | Result/parameter types for API helpers. |
 
 ---
 
-## 18. Compatibility dan batasan yang perlu diketahui
+## 18. Compatibility and limitations to be aware of
 
-Library menargetkan Node.js `>=20`, menggunakan ESM sebagai module utama, serta menyediakan build CommonJS. Webhook membutuhkan runtime yang menyediakan Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, dan `AbortController`; Node.js modern menyediakannya secara native.
+The library targets Node.js `>=20`, uses ESM as the primary module, and also provides a CommonJS build. Webhooks require a runtime that provides Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, and `AbortController`; modern Node.js provides these natively.
 
-API generated method list dan API method map bukan hal yang sama. `TelegramMethodName` mencakup 184 nama runtime, tetapi `TelegramMethodMap` hanya memiliki typed parameter/result khusus untuk subset yang tercantum pada bagian API client. Untuk method lain, gunakan `api.raw()` atau tambahkan type declaration di sisi aplikasi.
+The list of generated API methods and the API method map are not the same. `TelegramMethodName` includes 184 runtime names, but `TelegramMethodMap` only has specially-typed parameters/results for the subset listed in the API client section. For other methods, use `api.raw()` or add a type declaration on the application side.
 
-Approval state dan seluruh primitive memory akan hilang ketika process restart kecuali aplikasi memberikan store/session adapter yang lebih durable. `BotOptions.session` saat ini bertipe `MemoryStorage`, sedangkan `ApprovalGate` menerima `ApprovalStore` custom.
+Approval state and all primitive memory will be lost when the process restarts unless the application provides a more persistent store/session adapter. `BotOptions.session` is currently typed as `MemoryStorage`, whereas `ApprovalGate` accepts a custom `ApprovalStore`.
 
 ---
 

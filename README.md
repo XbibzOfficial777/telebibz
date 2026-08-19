@@ -2,32 +2,42 @@
 
 ![telebibz logo](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@0.1.2/assets/telebibz-logo.png)
 
-**`@xbibzlibrary/telebibz`** adalah SDK dan framework Telegram Bot untuk Node.js dan TypeScript. Package ini menyediakan API client, polling, router, middleware, context, keyboard builder, state/session, webhook handler, queue, scheduler, cache, plugin lifecycle, CLI, dan testing utilities.
+[![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
 
-## Instalasi
+**`@xbibzlibrary/telebibz`** is a full-scale Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, approval gates, CLI tooling, and testing utilities.
+
+## Documentation languages
+
+**English (default)** · [Bahasa Indonesia](README.id.md) · [简体中文](README.zh-CN.md)
+
+Complete API references: [English](docs/API.md) · [Indonesia](docs/API.id.md) · [中文](docs/API.zh-CN.md)
+
+![telebibz overview](assets/telebibz-readme-preview.png)
+
+## Installation
 
 ```bash
 npm install @xbibzlibrary/telebibz
 ```
 
-Node.js **20 atau lebih baru** diperlukan.
+Node.js **20 or newer** is required.
 
-## Bot sederhana
+## Minimal bot
 
 ```ts
 import { Bot } from "@xbibzlibrary/telebibz";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.command("start", (ctx) => ctx.reply("Bot aktif."));
+bot.command("start", (ctx) => ctx.reply("Bot is active."));
 bot.onText("ping", (ctx) => ctx.reply("pong"));
 
 await bot.start();
 ```
 
-`Bot.start()` menjalankan long polling. Untuk lifecycle manual, gunakan `init()`, `launch({ mode: "polling" })`, `health()`, `stop()`, atau `restart()`.
+`Bot.start()` runs long polling. For manual lifecycle control, use `init()`, `launch({ mode: "polling" })`, `health()`, `stop()`, or `restart()`.
 
-## Router dan middleware
+## Router and middleware
 
 ```ts
 bot.use(async (ctx, next) => {
@@ -36,46 +46,44 @@ bot.use(async (ctx, next) => {
   console.log(`processed in ${Date.now() - started}ms`);
 });
 
-bot.command("help", (ctx) => ctx.reply("Bantuan tersedia."));
-bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order diterima."));
-bot.callback("profile:", (ctx) => ctx.answerCallbackQuery("Dibuka."));
+bot.command("help", (ctx) => ctx.reply("Help is available."));
+bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order received."));
+bot.callback("profile:", (ctx) => ctx.answerCallbackQuery("Opened."));
 ```
 
-Router mendukung command, text, regex, callback pattern, custom predicate, nested router, middleware per route, dan prioritas route.
+The router supports commands, exact text, regular expressions, callback patterns, custom predicates, nested routers, per-route middleware, and route priority.
 
 ## Telegram API
 
-Generated method access dan raw access tersedia melalui API client:
+Generated method access and raw access are available through the API client:
 
 ```ts
 await bot.api.methods.getMe();
-await bot.api.methods.sendMessage({ chat_id: 123456789, text: "Halo." });
-await bot.api.call("sendMessage", { chat_id: 123456789, text: "Halo." });
+await bot.api.methods.sendMessage({ chat_id: 123456789, text: "Hello." });
+await bot.api.call("sendMessage", { chat_id: 123456789, text: "Hello." });
 await bot.api.raw("futureTelegramMethod", { value: true });
 ```
 
-Transport bawaan menggunakan `fetch`, timeout, retry, exponential backoff, JSON payload, dan multipart upload.
+The built-in transport uses `fetch`, timeouts, retries, exponential backoff, JSON payloads, and multipart upload.
 
-Referensi API lengkap untuk setiap class, function, method, type, error, lifecycle, CLI command, dan generated Telegram method tersedia di [`docs/API.md`](docs/API.md).
-
-## Keyboard
+## Keyboard builders
 
 ```ts
 import { InlineKeyboard } from "@xbibzlibrary/telebibz";
 
 const keyboard = new InlineKeyboard()
-  .text("Profil", "profile")
-  .url("Dokumentasi", "https://core.telegram.org/bots/api")
+  .text("Profile", "profile")
+  .url("Documentation", "https://core.telegram.org/bots/api")
   .build();
 
-await ctx.reply("Pilih menu:", { reply_markup: keyboard });
+await ctx.reply("Choose an option:", { reply_markup: keyboard });
 ```
 
-Builder hanya menghasilkan payload keyboard native Telegram. UI HTML/CSS memerlukan Mini App atau Web App terpisah.
+Builders produce native Telegram keyboard payloads. HTML/CSS interfaces require a separate Mini App or Web App.
 
-## Owner approval
+## Owner approval gate
 
-Approval gate menahan update biasa sampai owner menyetujui bot melalui tombol **Izinkan** atau **Tidak Diizinkan**.
+The approval gate pauses regular updates until the owner approves or denies a new bot through inline buttons.
 
 ```ts
 const bot = new Bot({
@@ -89,7 +97,7 @@ const bot = new Bot({
 });
 ```
 
-Library mengirim notifikasi ke `ownerChatId`, sedangkan hanya `ownerUserId` yang dapat mengambil keputusan. Callback menggunakan nonce acak. Untuk deployment multi-instance, gunakan `ApprovalStore` persisten melalui database atau Redis; default-nya adalah memory store.
+The library sends the notification to `ownerChatId`, while only `ownerUserId` can decide. Callback data uses a random nonce. For multi-instance deployments, provide a persistent `ApprovalStore`; the default store is in memory.
 
 ## Webhook
 
@@ -102,11 +110,11 @@ const handler = createWebhookHandler(bot, {
 });
 ```
 
-`createWebhookHandler` menerima Web standard `Request` dan menghasilkan `Response`. Secret token, ukuran body, parsing JSON, dan duplicate update handling diverifikasi oleh handler.
+`createWebhookHandler` accepts a standard Web `Request` and returns a `Response`. It verifies the optional secret token, body size, JSON payload, and update shape before calling `bot.handleUpdate()`.
 
-## State, queue, scheduler, dan cache
+## State, queue, scheduler, and cache
 
-Package menyediakan `MemoryStorage` dengan TTL dan atomic update, session pada context, conversation/form primitives, menu/pagination, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan simple cron. Adapter Redis, SQL, MongoDB, dan queue vendor harus disediakan oleh aplikasi atau package optional.
+The package provides `MemoryStorage` with TTL and serialized per-key updates, bot sessions, conversation and form primitives, menus and pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and simple cron expressions. Redis, SQL, MongoDB, and vendor queue adapters must be supplied by the application or optional packages.
 
 ## CLI
 
@@ -129,16 +137,22 @@ npm run security
 npm run release:check
 ```
 
-Real Telegram E2E memerlukan `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_TEST_CHAT_ID`. Tanpa credentials, E2E akan dilewati dan tidak dihitung sebagai lulus.
+Real Telegram E2E tests require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_TEST_CHAT_ID`. Without credentials, E2E tests are skipped and are not counted as passing.
 
-## API target dan batasan
+## API targets and limitations
 
-Method list dihasilkan dari dokumentasi Telegram Bot API saat schema diperbarui. Method access tersedia untuk method resmi yang terdeteksi, tetapi tidak semua object, union, enum, dan optional adapter memiliki typing tingkat lanjut penuh. Lihat [FEATURE_MATRIX.md](FEATURE_MATRIX.md) untuk status implementasi dan [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) untuk detail approval.
+The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, but not every object, union, enum, or optional adapter has complete advanced typing. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) for approval details.
 
-## Keamanan
+For every exported class, function, method, type, error, lifecycle hook, CLI command, and generated Telegram method, see the [complete English API reference](docs/API.md).
 
-Jangan commit token Telegram atau npm. Gunakan environment variable atau secret manager. Untuk kebijakan keamanan dan release hardening, lihat [SECURITY.md](SECURITY.md) dan [RELEASE_POLICY.md](RELEASE_POLICY.md).
+## Release automation
 
-## Lisensi
+The GitHub repository includes CI and an auto-publish workflow. A push to `main` runs the quality gates, chooses the next unused patch version, commits the version, creates a tag, publishes to npm with provenance, and creates a GitHub Release. Configure the `NPM_TOKEN` GitHub Actions secret before relying on automatic publication. See [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
 
-MIT. Lihat [LICENSE](LICENSE).
+## Security
+
+Never commit Telegram tokens or npm credentials. Use environment variables or a secret manager. See [SECURITY.md](SECURITY.md) and [RELEASE_POLICY.md](RELEASE_POLICY.md) for security and release hardening policies.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
