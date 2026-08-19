@@ -127,9 +127,13 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish package to GitHub Packages
-        run: npm publish "${{ steps.package.outputs.filename }}" --access public --registry=https://npm.pkg.github.com
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth_file="$RUNNER_TEMP/github-packages.npmrc"
+          printf '//npm.pkg.github.com/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > "$auth_file"
+          npm publish "${{ steps.package.outputs.filename }}" --access public --registry=https://npm.pkg.github.com --userconfig="$auth_file"
 
       - name: Commit version and create tag
         env:
