@@ -2,7 +2,7 @@
 
 [English](API.md) · [Bahasa Indonesia](API.id.md) · **简体中文**
 
-![telebibz 概览](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
+![telebibz 概览](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
 本文件是 `@xbibzlibrary/telebibz@0.1.4` 的 API 参考。此处描述的所有签名和行为均映射自该包导出的 TypeScript 源代码。如果某个 Telegram 类型尚未有特定的参数/结果映射，该包仍通过动态 API 提供运行时访问，但其参数类型仍为通用类型。
 

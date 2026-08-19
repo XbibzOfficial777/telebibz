@@ -1,6 +1,6 @@
 # telebibz
 
-![telebibz 徽标](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-logo.png)
+![telebibz 徽标](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-logo.png)
 
 **`@xbibzlibrary/telebibz`** 是一个面向 Node.js 和 TypeScript 的 Telegram Bot SDK 和框架。该包提供 API 客户端、轮询、路由器、中间件、上下文、键盘构造器、状态/会话、Webhook 处理、队列、调度器、缓存、插件生命周期、CLI 以及测试工具。
 
@@ -8,7 +8,7 @@
 
 完整 API 参考：[English](docs/API.md) · [Indonesia](docs/API.id.md) · **中文**
 
-![telebibz 概览](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
+![telebibz 概览](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
 ## 安装
 

@@ -2,7 +2,7 @@
 
 [English](API.md) · **Bahasa Indonesia** · [简体中文](API.zh-CN.md)
 
-![telebibz overview](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
+![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
 Dokumen ini adalah referensi API untuk `@xbibzlibrary/telebibz@0.1.4`. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
 

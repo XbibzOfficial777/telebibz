@@ -1,7 +1,7 @@
 # telebibz API Reference — English
 [English](API.md) · [Bahasa Indonesia](API.id.md) · [简体中文](API.zh-CN.md)
 
-![telebibz overview](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
+![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
 This document is the API reference for `@xbibzlibrary/telebibz@0.1.4`. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
 
