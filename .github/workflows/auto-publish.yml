@@ -1,4 +1,4 @@
-name: Auto publish to npm
+name: Auto publish to npm and GitHub Packages
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 concurrency:
   group: auto-publish-main
@@ -100,11 +101,35 @@ jobs:
             exit 1
           fi
 
-      - name: Publish package
+      - name: Verify GitHub Packages version is not already published
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          auth_file="$RUNNER_TEMP/github-packages.npmrc"
+          printf '//npm.pkg.github.com/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > "$auth_file"
+          if npm view "@xbibzlibrary/telebibz@$RELEASE_VERSION" --registry=https://npm.pkg.github.com --userconfig="$auth_file" version >/dev/null 2>&1; then
+            echo "Version $RELEASE_VERSION already exists on GitHub Packages; refusing to overwrite immutable release."
+            exit 1
+          fi
+      - name: Pack verified package
+        id: package
+        run: |
+          set -euo pipefail
+          pack_json="$RUNNER_TEMP/telebibz-pack.json"
+          npm pack --json --ignore-scripts > "$pack_json"
+          package_file=$(node -p "JSON.parse(require('fs').readFileSync('$RUNNER_TEMP/telebibz-pack.json', 'utf8'))[0].filename")
+          echo "filename=$package_file" >> "$GITHUB_OUTPUT"
+      - name: Publish package to npmjs
         # npm provenance requires a public source repository; this repository is private.
-        run: npm publish --provenance=false --access public
+        run: npm publish "${{ steps.package.outputs.filename }}" --provenance=false --access public --registry=https://registry.npmjs.org
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish package to GitHub Packages
+        run: npm publish "${{ steps.package.outputs.filename }}" --access public --registry=https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
 
       - name: Commit version and create tag
         env:

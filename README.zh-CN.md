@@ -8,6 +8,8 @@
 
 完整 API 参考：[English](docs/API.md) · [Indonesia](docs/API.id.md) · **中文**
 
+GitHub Packages 指南：[English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
+
 ![telebibz 概览](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
 ## 安装
@@ -143,7 +145,7 @@ npm run release:check
 
 ## 发布自动化
 
-GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，发布 npm package，然后创建 GitHub Release。由于 source repository 是 private，workflow 使用 `--provenance=false`，符合 npm 对 private source 的限制。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md)。
+GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，将相同的 tarball 发布到 npmjs 和 GitHub Packages，然后创建 GitHub Release。由于 source repository 是 private，npmjs 发布使用 `--provenance=false`；GitHub Packages 使用带有 `packages: write` 权限的 `GITHUB_TOKEN`。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) 和 [GitHub Packages 指南](docs/GITHUB_PACKAGES.zh-CN.md)。
 
 ## 项目 policy 和贡献
 
@@ -155,7 +157,7 @@ GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` �
 | [GOVERNANCE.md](GOVERNANCE.md) | 角色、决策、triage、repository protection 和规则修改。 |
 | [SECURITY.md](SECURITY.md) | 私密漏洞报告、security boundary 和 credential rotation。 |
 | [SUPPORT.md](SUPPORT.md) | Support channel、安全报告规则和 response 预期。 |
-| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | GitHub-to-npm automation 和 `NPM_TOKEN` setup。 |
+| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | GitHub-to-npm/GitHub Packages automation 和 `NPM_TOKEN` setup。 |
 | [RELEASE_POLICY.md](RELEASE_POLICY.md) | Immutable release 和 hardening 控制。 |
 | [NOTICE.md](NOTICE.md) | 第三方 declaration attribution。 |
 

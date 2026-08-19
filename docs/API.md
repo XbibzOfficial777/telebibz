@@ -1001,7 +1001,7 @@ interface PluginApi<Context> {
 }
 ```
 
-In this release, `registerMiddleware` and `registerRoute` are available as API hooks but the implementation manager does not yet connect them automatically to the bot/router. Plugins may use `api.bot` and `api.services` directly.
+In this release, `registerMiddleware` connects plugin middleware to `bot.use()`, and `registerRoute` connects plugin routes to `bot.router.route()`. The bot lifecycle invokes plugin `onUpdate` and `onStop` hooks automatically.
 
 ### `ServiceContainer`
 
@@ -1032,7 +1032,7 @@ new PluginManager<Context>(bot: unknown): PluginManager<Context>
 | `dispose()` | Executes `dispose` in reverse registration order. |
 | `list()` | Returns a read-only list of plugins. |
 
-`Bot.handleUpdate()` in this release does not call `plugins.update()` automatically; call the manager explicitly if plugins require an update lifecycle.
+`Bot.handleUpdate()` calls `plugins.update()` automatically after the update is processed, and `Bot.stop()` invokes plugin stop hooks before disposal.
 
 ---
 

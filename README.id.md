@@ -8,6 +8,8 @@
 
 Referensi API lengkap: [English](docs/API.md) · **Indonesia** · [中文](docs/API.zh-CN.md)
 
+Panduan GitHub Packages: [English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
+
 ![overview telebibz](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
 ## Instalasi
@@ -143,7 +145,7 @@ Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui
 
 ## Otomatisasi release
 
-Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates, memilih patch version yang belum dipakai, membuat commit dan tag, menerbitkan package ke npm, lalu membuat GitHub Release. Karena source repository bersifat private, workflow menggunakan `--provenance=false`, sesuai batasan npm untuk source private. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
+Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates, memilih patch version yang belum dipakai, membuat commit dan tag, menerbitkan tarball yang sama ke npmjs dan GitHub Packages, lalu membuat GitHub Release. Karena source repository bersifat private, workflow menggunakan `--provenance=false` untuk npmjs. GitHub Packages memakai `GITHUB_TOKEN` dengan permission `packages: write`. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) dan panduan [GitHub Packages](docs/GITHUB_PACKAGES.id.md).
 
 ## Policy project dan kontribusi
 
@@ -155,7 +157,7 @@ Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main
 | [GOVERNANCE.md](GOVERNANCE.md) | Peran, pengambilan keputusan, triage, perlindungan repository, dan perubahan aturan. |
 | [SECURITY.md](SECURITY.md) | Pelaporan vulnerability privat, batas security, dan rotasi credential. |
 | [SUPPORT.md](SUPPORT.md) | Channel support, aturan laporan aman, dan ekspektasi response. |
-| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | Automation GitHub-to-npm dan setup `NPM_TOKEN`. |
+| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | Automation GitHub-to-npm/GitHub Packages dan setup `NPM_TOKEN`. |
 | [RELEASE_POLICY.md](RELEASE_POLICY.md) | Kontrol immutable release dan hardening. |
 | [NOTICE.md](NOTICE.md) | Atribusi declaration pihak ketiga. |
 
