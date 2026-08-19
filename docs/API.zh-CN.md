@@ -4,7 +4,7 @@
 
 ![telebibz 概览](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
-本文件是 `@xbibzlibrary/telebibz@0.1.4` 的 API 参考。此处描述的所有签名和行为均映射自该包导出的 TypeScript 源代码。如果某个 Telegram 类型尚未有特定的参数/结果映射，该包仍通过动态 API 提供运行时访问，但其参数类型仍为通用类型。
+本文件是当前发布的 `@xbibzlibrary/telebibz` API 参考。此处描述的所有签名和行为均映射自该包导出的 TypeScript 源代码。如果某个 Telegram 类型尚未有特定的参数/结果映射，该包仍通过动态 API 提供运行时访问，但其参数类型仍为通用类型。
 
 > **实现状态。** 本文档说明当前版本中可用的功能。`JsonFileStorage`、基于 driver 的 Redis/SQL/Mongo storage、基于 Storage 的 session/conversation、完整五字段 cron、`MenuController`、带 branding 的 terminal status output、带 redaction 的 structured logging、Web App 验证、`PaymentsClient` 和 `TelegramTypes` declaration 均已提供。core method map 仍主要为特定 request/result inference 提供类型，未来 Telegram method 可通过 `api.raw()` 访问。
 
@@ -1233,8 +1233,8 @@ interface MenuItem {
   label: string;
   callbackData?: string;
   url?: string;
-  visible?: boolean | (() => boolean | Promise<boolean>);
-  permission?: string;
+  visible?: boolean | ((context: MenuContext, item: MenuItem) => boolean | Promise<boolean>);
+  permission?: string | ((context: MenuContext, item: MenuItem) => boolean | Promise<boolean>);
 }
 ```
 

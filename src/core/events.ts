@@ -41,7 +41,13 @@ export class EventBus<Events extends Record<string, unknown> = EventMap> {
 
   async emit<K extends keyof Events>(event: K, payload: Events[K]): Promise<void> {
     const listeners = [...(this.listeners.get(event) ?? [])];
-    for (const listener of listeners) await listener(payload);
+    const errors: unknown[] = [];
+    for (const listener of listeners) {
+      try { await listener(payload); }
+      catch (error) { errors.push(error); }
+    }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, `One or more listeners failed for event ${String(event)}`);
   }
 
   removeAllListeners(): void { this.listeners.clear(); }

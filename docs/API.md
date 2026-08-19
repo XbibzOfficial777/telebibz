@@ -3,7 +3,7 @@
 
 ![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
-This document is the API reference for `@xbibzlibrary/telebibz@0.1.4`. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
+This document is the API reference for the current published `@xbibzlibrary/telebibz` release. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
 
 > **Implementation status.** This documentation describes the capabilities available in the current release. `JsonFileStorage`, driver-based Redis/SQL/Mongo storage, storage-backed sessions/conversations, full five-field cron, `MenuController`, terminal branding, structured redacted logging, Web App validation, PaymentsClient, and vendored `TelegramTypes` declarations are included. The core method map remains specialized for selected request/result inference, while `api.raw()` remains available for future Telegram methods.
 
@@ -1257,8 +1257,8 @@ interface MenuItem {
   label: string;
   callbackData?: string;
   url?: string;
-  visible?: boolean | (() => boolean | Promise<boolean>);
-  permission?: string;
+  visible?: boolean | ((context: MenuContext, item: MenuItem) => boolean | Promise<boolean>);
+  permission?: string | ((context: MenuContext, item: MenuItem) => boolean | Promise<boolean>);
 }
 ```
 

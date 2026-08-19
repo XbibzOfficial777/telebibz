@@ -7,6 +7,7 @@ import { Menu, MenuController } from "../src/state/menu.js";
 import { ConversationManager, Wizard } from "../src/state/conversation.js";
 import type { Context } from "../src/context/context.js";
 import { nextCronOccurrence, parseCronExpression, Scheduler } from "../src/queue/queue.js";
+import { FetchTransport } from "../src/api/transport.js";
 import { createHmac } from "node:crypto";
 import { validateWebAppInitData } from "../src/telegram-features.js";
 import { buildTerminalBranding } from "../src/branding/terminal.js";
@@ -85,6 +86,35 @@ describe("persistent conversation state", () => {
     const afterAge = await wizard.run(context("18"), "chat:registration");
     expect(afterAge).toMatchObject({ step: 2, values: { name: "Alice", age: 18 }, status: "completed" });
     expect((await wizard.manager.getAsync("chat:registration"))?.status).toBe("completed");
+  });
+});
+
+describe("transport reliability", () => {
+  it("retries HTTP 5xx responses", async () => {
+    let attempts = 0;
+    const transport = new FetchTransport({ retries: 1, backoffMs: 0, jitter: 0, fetch: async () => {
+      attempts += 1;
+      const response = attempts === 1 ? { ok: false, error_code: 500, description: "server" } : { ok: true, result: true };
+      return new Response(JSON.stringify(response), { status: attempts === 1 ? 500 : 200, headers: { "content-type": "application/json" } });
+    } });
+    await expect(transport.request({ method: "getMe" })).resolves.toMatchObject({ data: { ok: true, result: true } });
+    expect(attempts).toBe(2);
+  });
+
+  it("retries 429 responses using retry_after", async () => {
+    let attempts = 0;
+    const transport = new FetchTransport({ retries: 1, backoffMs: 0, jitter: 0, fetch: async () => {
+      attempts += 1;
+      const response = attempts === 1 ? { ok: false, error_code: 429, description: "rate", parameters: { retry_after: 0 } } : { ok: true, result: true };
+      return new Response(JSON.stringify(response), { status: attempts === 1 ? 429 : 200, headers: { "content-type": "application/json" } });
+    } });
+    await expect(transport.request({ method: "getMe" })).resolves.toMatchObject({ data: { ok: true, result: true } });
+    expect(attempts).toBe(2);
+  });
+
+  it("reports HTTP status for explicit non-JSON responses", async () => {
+    const transport = new FetchTransport({ retries: 0, fetch: async () => new Response("<html>down</html>", { status: 502, headers: { "content-type": "text/html" } }) });
+    await expect(transport.request({ method: "getMe" })).rejects.toThrow("HTTP 502");
   });
 });
 

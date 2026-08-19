@@ -120,7 +120,7 @@ export class RedisStorage<V> implements Storage<string, V> {
   private key(key: string): string { return `${this.prefix}${key}`; }
   private unkey(key: string): string { return key.slice(this.prefix.length); }
   async get(key: string): Promise<V | undefined> { const value = await this.client.get(this.key(key)); return value === null ? undefined : JSON.parse(value) as V; }
-  async set(key: string, value: V, options: StorageOptions = {}): Promise<void> { const ttl = options.ttlMs; const redisOptions = ttl === undefined ? {} : ttl >= 1000 ? { PX: Math.max(1, Math.floor(ttl)) } : { PX: Math.max(1, Math.floor(ttl)) }; await this.client.set(this.key(key), JSON.stringify(value), redisOptions); }
+  async set(key: string, value: V, options: StorageOptions = {}): Promise<void> { const ttl = options.ttlMs; const redisOptions = ttl === undefined ? {} : { PX: Math.max(1, Math.floor(ttl)) }; await this.client.set(this.key(key), JSON.stringify(value), redisOptions); }
   async delete(key: string): Promise<boolean> { return (await this.client.del(this.key(key))) > 0; }
   async has(key: string): Promise<boolean> { return (await this.client.exists(this.key(key))) > 0; }
   async clear(): Promise<void> { const keys = await this.client.keys(`${this.prefix}*`); if (keys.length) await Promise.all(keys.map((key) => this.client.del(key))); }

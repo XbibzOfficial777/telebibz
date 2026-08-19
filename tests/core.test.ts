@@ -48,6 +48,31 @@ describe("telebibz core", () => {
     expect(wizard.manager.get("1:2")).toMatchObject({ status: "completed", step: 3, values: { name: "Alice", age: 18 } });
   });
 
+  it("registers plugin middleware/routes and invokes update/stop hooks", async () => {
+    const { bot } = createTestBot();
+    const calls: string[] = [];
+    bot.usePlugin({
+      name: "test-plugin",
+      install: (api) => {
+        api.registerMiddleware(async (_ctx, next) => { calls.push("middleware"); await next(); });
+        api.registerRoute({ matcher: () => true, middleware: [async () => { calls.push("route"); }] });
+      },
+      onUpdate: () => { calls.push("update"); },
+      onStop: () => { calls.push("stop"); },
+    });
+    await bot.init();
+    await bot.handleUpdate(createMockUpdate({ update_id: 20, message: { ...createMockUpdate().message!, text: "plugin" } }));
+    await bot.stop();
+    expect(calls).toEqual(["update", "middleware", "route", "stop"]);
+  });
+
+  it("rejects unknown dynamic API method names while preserving raw fallback", async () => {
+    const { bot } = createTestBot();
+    expect(() => (bot.api.methods as unknown as Record<string, unknown>).sendMesage).toThrow(/Unknown Telegram API method/);
+    expect((bot.api.methods as unknown as Record<string, unknown>).then).toBeUndefined();
+    await expect(bot.api.raw("futureTelegramMethod", { value: true })).resolves.toBe(true);
+  });
+
   it("rejects invalid inline button with multiple actions", () => {
     expect(() => new InlineKeyboard().button({ text: "bad", url: "https://example.com", callback_data: "bad" })).toThrow();
   });

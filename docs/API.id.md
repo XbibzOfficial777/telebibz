@@ -4,7 +4,7 @@
 
 ![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
-Dokumen ini adalah referensi API untuk `@xbibzlibrary/telebibz@0.1.4`. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
+Dokumen ini adalah referensi API untuk rilis `@xbibzlibrary/telebibz` yang sedang dipublikasikan. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
 
 > **Status implementasi.** Dokumentasi ini menjelaskan kemampuan yang tersedia pada rilis saat ini. `JsonFileStorage`, storage Redis/SQL/Mongo berbasis driver, session/conversation berbasis Storage, cron lima field lengkap, `MenuController`, terminal status output branded, structured logging dengan redaction, validasi Web App, `PaymentsClient`, dan declaration `TelegramTypes` sudah tersedia. Core method map tetap khusus untuk inferensi request/result tertentu, sedangkan `api.raw()` tersedia untuk method Telegram berikutnya.
 
@@ -1239,8 +1239,8 @@ interface MenuItem {
   label: string;
   callbackData?: string;
   url?: string;
-  visible?: boolean | (() => boolean | Promise<boolean>);
-  permission?: string;
+  visible?: boolean | ((context: MenuContext, item: MenuItem) => boolean | Promise<boolean>);
+  permission?: string | ((context: MenuContext, item: MenuItem) => boolean | Promise<boolean>);
 }
 ```
 

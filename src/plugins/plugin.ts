@@ -28,7 +28,25 @@ export class PluginManager<Context> {
   private readonly plugins: Plugin<Context>[] = [];
   private readonly api: PluginApi<Context>;
   constructor(bot: unknown) {
-    this.api = { bot, services: new ServiceContainer(), registerMiddleware: () => undefined, registerRoute: () => undefined };
+    const host = bot as {
+      use?: (...middleware: unknown[]) => unknown;
+      router?: { route?: (matcher: unknown, ...middleware: unknown[]) => unknown };
+    };
+    this.api = {
+      bot,
+      services: new ServiceContainer(),
+      registerMiddleware: (middleware) => {
+        if (typeof middleware !== "function" || !host.use) throw new TypeError("Plugin middleware must be a function and the bot must support use().");
+        host.use(middleware);
+      },
+      registerRoute: (route) => {
+        if (typeof route === "function") { route(bot); return; }
+        if (!route || typeof route !== "object" || !host.router?.route) throw new TypeError("Plugin route must be a registration function or route descriptor.");
+        const descriptor = route as { matcher?: unknown; middleware?: unknown[] };
+        if (typeof descriptor.matcher !== "function" || !Array.isArray(descriptor.middleware) || descriptor.middleware.some((item) => typeof item !== "function")) throw new TypeError("Plugin route descriptor is invalid.");
+        host.router.route(descriptor.matcher, ...descriptor.middleware);
+      },
+    };
   }
   use(plugin: Plugin<Context>): this { if (this.plugins.some((existing) => existing.name === plugin.name)) throw new Error(`Plugin already registered: ${plugin.name}`); this.plugins.push(plugin); return this; }
   async setup(): Promise<void> { for (const plugin of this.plugins) { await plugin.install?.(this.api); await plugin.setup?.(this.api); } }

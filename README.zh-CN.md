@@ -44,7 +44,7 @@ bot.use(async (ctx, next) => {
 
 bot.command("help", (ctx) => ctx.reply("Bantuan tersedia."));
 bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order diterima."));
-bot.callback("profile:", (ctx) => ctx.answerCallbackQuery("Dibuka."));
+bot.callback("profile:*", (ctx) => ctx.answerCallbackQuery("Dibuka."));
 ```
 
 路由器支持命令、文本、正则、回调模式、自定义谓词、嵌套路由器、每条路由的中间件，以及路由优先级。
@@ -98,7 +98,7 @@ const handler = createWebhookHandler(bot, {
 
 ## 状态、队列、调度器和缓存
 
-该包提供带 TTL 和原子更新的 `MemoryStorage`、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`、持久化 approval storage、bot session、基于 Storage 的 conversation/form、基于 permission 的菜单、`MenuController` 分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和完整五字段 cron 的调度器。Redis、SQL 和 Mongo 适配器使用小型 driver interface，因此 core package 不需要 vendor runtime dependency。
+该包提供带 TTL 和原子更新的 `MemoryStorage`、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`、bot session、基于 Storage 的 conversation/form、基于 permission 的菜单、`MenuController` 分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和完整五字段 cron 的调度器。Redis、SQL 和 Mongo 适配器使用小型 driver interface，因此 core package 不需要 vendor runtime dependency。
 
 ## CLI
 
@@ -139,7 +139,7 @@ npm run release:check
 
 ## API 目标与限制
 
-方法列表会在 schema 更新时根据 Telegram Bot API 文档生成。检测到的官方方法都可以运行时访问，而专门的参数/结果推断主要集中在 core method map。完整的 Telegram object、union、enum 和 method declaration 可通过 `TelegramTypes` 使用。有关实现状态请参见 [FEATURE_MATRIX.md](FEATURE_MATRIX.md)，有关审批的详细信息请参见 [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md)。
+方法列表会在 schema 更新时根据 Telegram Bot API 文档生成。检测到的官方方法都可以运行时访问，而专门的参数/结果推断主要集中在 core method map。完整的 Telegram object、union、enum 和 method declaration 可通过 `TelegramTypes` 使用。有关实现状态请参见 [FEATURE_MATRIX.md](FEATURE_MATRIX.md)，完整 API 请参见 `docs/API.zh-CN.md`。
 
 ## 发布自动化
 

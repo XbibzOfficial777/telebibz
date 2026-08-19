@@ -48,7 +48,7 @@ bot.use(async (ctx, next) => {
 
 bot.command("help", (ctx) => ctx.reply("Help is available."));
 bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order received."));
-bot.callback("profile:", (ctx) => ctx.answerCallbackQuery("Opened."));
+bot.callback("profile:*", (ctx) => ctx.answerCallbackQuery("Opened."));
 ```
 
 The router supports commands, exact text, regular expressions, callback patterns, custom predicates, nested routers, per-route middleware, and route priority.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Router } from "../src/router/router.js";
+import { ConversationManager } from "../src/state/conversation.js";
+import { EventBus } from "../src/core/events.js";
 import { createMockCallbackUpdate, createMockUpdate, createMockContext, createTestBot } from "../src/testing.js";
 
 describe("callback context regressions", () => {
@@ -45,6 +47,14 @@ describe("router matching semantics", () => {
     expect(calls).toEqual(["first"]);
   });
 
+  it("supports callback prefix patterns only when the suffix is explicit", async () => {
+    const calls: string[] = [];
+    const router = new Router<TestContext>();
+    router.callback("menu:*", async () => { calls.push("matched"); });
+    await router.handle({ ...testContext(), message: undefined, callbackQuery: { data: "menu:open" } });
+    expect(calls).toEqual(["matched"]);
+  });
+
   it("supports explicit all-match mode for deliberate fan-out", async () => {
     const calls: string[] = [];
     const router = new Router<TestContext>({ matchMode: "all" });
@@ -67,6 +77,26 @@ describe("router matching semantics", () => {
     await parent.handle(testContext());
 
     expect(calls).toEqual(["child"]);
+  });
+});
+
+describe("conversation and event regressions", () => {
+  it("does not execute a completed conversation step again", async () => {
+    const manager = new ConversationManager();
+    let runs = 0;
+    const steps = [(flow: { complete: () => void }) => { runs += 1; flow.complete(); }];
+    await manager.run(testContext() as never, "chat:1", "profile", steps);
+    await manager.run(testContext() as never, "chat:1", "profile", steps);
+    expect(runs).toBe(1);
+  });
+
+  it("runs later EventBus listeners after an earlier listener fails", async () => {
+    const bus = new EventBus<{ event: { value: number } }>();
+    const calls: string[] = [];
+    bus.on("event", () => { calls.push("first"); throw new Error("listener failed"); });
+    bus.on("event", () => { calls.push("second"); });
+    await expect(bus.emit("event", { value: 1 })).rejects.toThrow("listener failed");
+    expect(calls).toEqual(["first", "second"]);
   });
 });
 

@@ -146,6 +146,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     await this.events.emit("bot:stopping", { bot: this });
     this.pollingAbort?.abort();
     this.pollingAbort = undefined;
+    await this.plugins.stop();
     await this.plugins.dispose();
     this.statusValue = "stopped";
     this.logger.info("bot.stopped");
@@ -189,6 +190,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     if (update.callback_query) await this.events.emit("callback", { data: update.callback_query.data ?? "", update });
     const pipeline = compose<Context<S>>([...this.middlewares, async (context) => this.router.handle(context)]);
     try {
+      await this.plugins.update(ctx);
       await pipeline(ctx);
       await this.session.set(key, ctx.session);
     } catch (error) {
@@ -210,7 +212,9 @@ export class Bot<S extends object = Record<string, unknown>> {
       ?? update.edited_business_message
       ?? update.guest_message
       ?? update.callback_query?.message;
-    return message?.chat?.id !== undefined ? `${message.chat.id}:${message.from?.id ?? "anonymous"}` : `update:${update.update_id}`;
+    if (message?.chat?.id !== undefined) return `${message.chat.id}:${message.from?.id ?? "anonymous"}`;
+    if (update.callback_query?.from?.id !== undefined) return `user:${update.callback_query.from.id}`;
+    return `update:${update.update_id}`;
   }
 
   private async waitForRetry(delayMs: number, signal: AbortSignal): Promise<boolean> {

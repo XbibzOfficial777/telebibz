@@ -1,4 +1,4 @@
-import type { CallbackQuery, Update } from "../api/types.js";
+import type { CallbackQuery, Message, Update } from "../api/types.js";
 
 export type LogLevel = "silent" | "error" | "warn" | "info" | "debug" | "trace";
 export type LogFormat = "pretty" | "json";
@@ -60,6 +60,14 @@ export function redact(value: unknown, keys: readonly string[] = defaultRedactKe
 function updateType(update: Update): string {
   if (update.callback_query) return "callback_query";
   if (update.inline_query) return "inline_query";
+  if (update.business_message) return "business_message";
+  if (update.edited_business_message) return "edited_business_message";
+  if (update.guest_message) return "guest_message";
+  if (update.edited_guest_message) return "edited_guest_message";
+  if (update.message_reaction) return "message_reaction";
+  if (update.message_reaction_count) return "message_reaction_count";
+  if (update.chat_boost) return "chat_boost";
+  if (update.removed_chat_boost) return "removed_chat_boost";
   if (update.message) return "message";
   if (update.edited_message) return "edited_message";
   if (update.channel_post) return "channel_post";
@@ -76,7 +84,7 @@ export interface UpdateSummary { updateId: number; type: string; chatId?: number
 
 export function summarizeUpdate(update: Update, includeContent = false): UpdateSummary {
   const callback: CallbackQuery | undefined = update.callback_query;
-  const message = update.message ?? update.edited_message ?? update.channel_post ?? update.edited_channel_post ?? update.business_message ?? update.edited_business_message ?? callback?.message;
+  const message = (update.message ?? update.edited_message ?? update.channel_post ?? update.edited_channel_post ?? update.business_message ?? update.edited_business_message ?? update.guest_message ?? update.edited_guest_message ?? callback?.message) as Message | undefined;
   const summary: UpdateSummary = { updateId: update.update_id, type: updateType(update) };
   if (message?.chat?.id !== undefined) summary.chatId = message.chat.id;
   if (message?.from?.id !== undefined) summary.fromUserId = message.from.id;

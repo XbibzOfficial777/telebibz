@@ -67,6 +67,7 @@ export class FetchTransport implements Transport {
 
     let attempt = 0;
     while (true) {
+      let responseStatus: number | undefined;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(new Error(`Request timed out after ${this.timeoutMs}ms`)), this.timeoutMs);
       const onAbort = () => controller.abort(signal?.reason);
@@ -79,17 +80,49 @@ export class FetchTransport implements Transport {
           body,
           signal: controller.signal,
         });
+        responseStatus = response.status;
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.length > 0 && !/json/i.test(contentType)) {
+          const bodyText = await response.text();
+          const error = new TelegramNetworkError(`HTTP ${response.status} ${response.statusText || "request failed"} returned a non-JSON response`, { method, payload, status: response.status, cause: bodyText.slice(0, 512) });
+          if (isRetryableStatus(response.status) && attempt < this.retries) {
+            await waitBeforeRetry(attempt, this.backoffMs, this.maxBackoffMs, this.jitter);
+            attempt += 1;
+            continue;
+          }
+          throw error;
+        }
         const data = await response.json() as TelegramResponse<T>;
+        if (!data.ok && isRetryableResponse(response.status, data) && attempt < this.retries) {
+          const retryAfterMs = data.parameters?.retry_after === undefined ? undefined : Math.max(0, data.parameters.retry_after * 1000);
+          await waitBeforeRetry(attempt, this.backoffMs, this.maxBackoffMs, this.jitter, retryAfterMs);
+          attempt += 1;
+          continue;
+        }
         return { status: response.status, headers: response.headers, data };
       } catch (error) {
         if (signal?.aborted) throw error;
+        if (error instanceof TelegramNetworkError && error.status !== undefined) {
+          if (isRetryableStatus(error.status) && attempt < this.retries) {
+            await waitBeforeRetry(attempt, this.backoffMs, this.maxBackoffMs, this.jitter);
+            attempt += 1;
+            continue;
+          }
+          throw error;
+        }
+        if (responseStatus !== undefined && error instanceof SyntaxError) {
+          const parseError = new TelegramNetworkError(`HTTP ${responseStatus} ${responseStatus >= 500 ? "server" : "request"} returned invalid JSON`, { method, payload, status: responseStatus, cause: error });
+          if (isRetryableStatus(responseStatus) && attempt < this.retries) {
+            await waitBeforeRetry(attempt, this.backoffMs, this.maxBackoffMs, this.jitter);
+            attempt += 1;
+            continue;
+          }
+          throw parseError;
+        }
         if (attempt >= this.retries || !isRetryableNetworkError(error)) {
           throw new TelegramNetworkError(error instanceof Error ? error.message : "Network request failed", { method, payload, cause: error });
         }
-        const exponential = Math.min(this.maxBackoffMs, this.backoffMs * 2 ** attempt);
-        const spread = exponential * this.jitter;
-        const delay = Math.max(0, exponential - spread + Math.random() * spread * 2);
-        await new Promise((resolveDelay) => setTimeout(resolveDelay, delay));
+        await waitBeforeRetry(attempt, this.backoffMs, this.maxBackoffMs, this.jitter);
         attempt += 1;
       } finally {
         clearTimeout(timeout);
@@ -97,6 +130,17 @@ export class FetchTransport implements Transport {
       }
     }
   }
+}
+
+function isRetryableStatus(status: number): boolean { return status >= 500 || status === 429; }
+
+function isRetryableResponse(status: number, data: TelegramResponse<unknown>): boolean { return isRetryableStatus(status) || data.error_code === 429; }
+
+async function waitBeforeRetry(attempt: number, backoffMs: number, maxBackoffMs: number, jitter: number, retryAfterMs?: number): Promise<void> {
+  const exponential = Math.min(maxBackoffMs, backoffMs * 2 ** attempt);
+  const spread = exponential * jitter;
+  const jittered = Math.max(0, exponential - spread + Math.random() * spread * 2);
+  await new Promise((resolveDelay) => setTimeout(resolveDelay, Math.max(jittered, retryAfterMs ?? 0)));
 }
 
 function isRetryableNetworkError(error: unknown): boolean {

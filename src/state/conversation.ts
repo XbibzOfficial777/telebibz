@@ -29,7 +29,14 @@ export class ConversationManager<S extends object = Record<string, unknown>> {
   start(key: string, name: string, values: Record<string, unknown> = {}): ConversationState {
     const state: ConversationState = { name, step: 0, values, status: "active", updatedAt: Date.now() };
     this.active.set(key, state);
-    void this.storage.set(key, state);
+    void this.storage.set(key, state).catch(() => undefined);
+    return state;
+  }
+
+  async startAsync(key: string, name: string, values: Record<string, unknown> = {}): Promise<ConversationState> {
+    const state: ConversationState = { name, step: 0, values, status: "active", updatedAt: Date.now() };
+    this.active.set(key, state);
+    await this.storage.set(key, state);
     return state;
   }
 
@@ -48,7 +55,7 @@ export class ConversationManager<S extends object = Record<string, unknown>> {
     if (!state) return false;
     state.status = "cancelled";
     state.updatedAt = Date.now();
-    void this.storage.set(key, state);
+    void this.storage.set(key, state).catch(() => undefined);
     return true;
   }
 
@@ -80,8 +87,10 @@ export class ConversationManager<S extends object = Record<string, unknown>> {
   }
 
   async run(ctx: Context<S>, key: string, name: string, steps: Array<(flow: ConversationFlow<S>) => void | Promise<void>>): Promise<ConversationState> {
-    const state = (await this.getAsync(key)) ?? this.start(key, name);
+    const existing = await this.getAsync(key);
+    const state = existing ?? await this.startAsync(key, name);
     if (state.name !== name) throw new Error(`Conversation ${key} belongs to ${state.name}, not ${name}`);
+    if (state.status !== "active") return state;
     const flow = new ConversationFlow(ctx, state);
     const step = steps[state.step];
     if (!step) state.status = "completed";

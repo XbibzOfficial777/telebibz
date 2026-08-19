@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Bot } from "../core/bot.js";
 import type { Update } from "../api/types.js";
 
@@ -7,7 +8,9 @@ export function createWebhookHandler<S extends object>(bot: Bot<S>, options: Web
   const maxBodyBytes = options.maxBodyBytes ?? 1_048_576;
   return async (request: Request): Promise<Response> => {
     if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: { allow: "POST" } });
-    if (options.secretToken && request.headers.get("x-telegram-bot-api-secret-token") !== options.secretToken) return new Response("Unauthorized", { status: 401 });
+    if (options.secretToken && !secureEqual(request.headers.get("x-telegram-bot-api-secret-token") ?? "", options.secretToken)) return new Response("Unauthorized", { status: 401 });
+    const contentType = request.headers.get("content-type") ?? "";
+    if (!/^application\/json(?:\s*;|\s*$)/i.test(contentType)) return new Response("Unsupported Media Type", { status: 415 });
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (contentLength > maxBodyBytes) return new Response("Payload Too Large", { status: 413 });
     try {
@@ -22,4 +25,10 @@ export function createWebhookHandler<S extends object>(bot: Bot<S>, options: Web
       return new Response("Internal Server Error", { status: 500 });
     }
   };
+}
+
+function secureEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }

@@ -41,6 +41,7 @@ export function validateWebAppInitData(initData: string, botToken: string, maxAg
   if (!botToken) throw new Error("botToken is required");
   if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds < 0) throw new RangeError("maxAgeSeconds must be non-negative");
   const parsed = parseWebAppInitData(initData);
+  if (!/^[0-9a-fA-F]{64}$/.test(parsed.hash)) throw new Error("Web App init data hash must be a 64-character hexadecimal string");
   const checkString = Object.entries(parsed.data).sort(([left], [right]) => left.localeCompare(right)).map(([key, value]) => `${key}=${value}`).join("\n");
   const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
   const expected = createHmac("sha256", secret).update(checkString).digest("hex");

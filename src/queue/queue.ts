@@ -35,7 +35,14 @@ export class TaskQueue<T = unknown> {
   get(id: string): Job<T> | undefined { const job = this.jobs.get(id); return job ? { ...job } : undefined; }
   cancel(id: string): boolean { const job = this.jobs.get(id); if (!job || ["completed", "failed", "cancelled"].includes(job.status)) return false; job.status = "cancelled"; this.controllers.get(id)?.abort(); return true; }
   async onIdle(): Promise<void> { while (this.pending.some((job) => job.status === "queued") || this.active) await sleep(10); }
-  async close(): Promise<void> { this.closed = true; this.draining = false; for (const id of this.controllers.keys()) this.cancel(id); for (const job of this.pending) if (job.status === "queued") job.status = "cancelled"; this.pending.length = 0; }
+  async close(): Promise<void> {
+    this.closed = true;
+    this.draining = false;
+    for (const id of this.controllers.keys()) this.cancel(id);
+    for (const job of this.pending) if (job.status === "queued") job.status = "cancelled";
+    this.pending.length = 0;
+    await this.onIdle();
+  }
 
   private async drain(): Promise<void> {
     if (this.draining || this.closed) return;

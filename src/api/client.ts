@@ -1,4 +1,4 @@
-import type { TelegramMethodName } from "../../generated/api.js";
+import { TELEGRAM_METHOD_NAMES, type TelegramMethodName } from "../../generated/api.js";
 import { TelegramError, telegramErrorFromResponse } from "./errors.js";
 import type { ApiCallArgs, ApiParams, ApiResult, TelegramResponse } from "./types.js";
 import type { Transport, TransportRequest } from "./transport.js";
@@ -14,7 +14,15 @@ export class ApiClient {
   constructor(options: ApiClientOptions) {
     this.transport = options.transport;
     this.hooks = options.hooks ?? {};
-    this.methods = new Proxy({}, { get: (_target, property: string) => typeof property === "string" ? (payload?: unknown) => this.request(property as TelegramMethodName, payload as never) : undefined }) as ApiMethods;
+    const knownMethods = new Set<string>(TELEGRAM_METHOD_NAMES);
+    this.methods = new Proxy({}, {
+      get: (_target, property: string | symbol) => {
+        if (typeof property !== "string") return undefined;
+        if (property === "then") return undefined;
+        if (!knownMethods.has(property)) throw new TypeError(`Unknown Telegram API method: ${property}`);
+        return (payload?: unknown) => this.request(property as TelegramMethodName, payload as never);
+      },
+    }) as ApiMethods;
   }
   async call<M extends TelegramMethodName>(method: M, ...args: ApiCallArgs<M>): Promise<ApiResult<M>> { return this.request<M>(method, args[0] as ApiParams<M> | undefined); }
   async request<M extends TelegramMethodName>(method: M, payload?: ApiParams<M>, signal?: AbortSignal): Promise<ApiResult<M>> {

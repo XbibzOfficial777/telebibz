@@ -44,7 +44,7 @@ bot.use(async (ctx, next) => {
 
 bot.command("help", (ctx) => ctx.reply("Bantuan tersedia."));
 bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order diterima."));
-bot.callback("profile:", (ctx) => ctx.answerCallbackQuery("Dibuka."));
+bot.callback("profile:*", (ctx) => ctx.answerCallbackQuery("Dibuka."));
 ```
 
 Router mendukung command, text, regex, pola callback, predikat kustom, router bersarang, middleware per rute, dan prioritas rute.
@@ -139,7 +139,7 @@ E2E Telegram nyata memerlukan `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_TEST_CHAT_ID`. 
 
 ## API target dan batasan
 
-Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui. Akses runtime tersedia untuk method resmi yang terdeteksi, sedangkan inferensi parameter/result khusus dipusatkan pada core method map. Full declaration Telegram untuk object, union, enum, dan method tersedia melalui `TelegramTypes`. Lihat [FEATURE_MATRIX.md](FEATURE_MATRIX.md) untuk status implementasi dan [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) untuk detail persetujuan.
+Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui. Akses runtime tersedia untuk method resmi yang terdeteksi, sedangkan inferensi parameter/result khusus dipusatkan pada core method map. Full declaration Telegram untuk object, union, enum, dan method tersedia melalui `TelegramTypes`. Lihat [FEATURE_MATRIX.md](FEATURE_MATRIX.md) untuk status implementasi dan `docs/API.id.md` untuk referensi API lengkap.
 
 ## Otomatisasi release
 
