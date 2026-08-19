@@ -88,7 +88,7 @@ export class ApprovalGate {
     };
     if (identity.bot.username !== undefined) record.botUsername = identity.bot.username;
     const ownerLabel = this.options.ownerLabel ?? "Dev Gantenggg";
-    const ownerIdLine = "Owner: Library developer";
+    const ownerIdLine = "Developer: telebibz library maintainer";
     const botLine = record.botUsername ? `Bot: @${record.botUsername} (ID: ${record.botId})` : `Bot ID: ${record.botId}`;
     const keyboard = new InlineKeyboard()
       .text("Izinkan", this.callbackData("approve", record))
@@ -110,7 +110,7 @@ export class ApprovalGate {
     const parsed = this.parseCallback(data);
     if (!parsed) return { handled: false };
     if (callback.from.id !== approvalRecipientId()) {
-      await this.api.methods.answerCallbackQuery({ callback_query_id: callback.id, text: "Hanya owner yang dapat mengambil keputusan.", show_alert: true });
+      await this.api.methods.answerCallbackQuery({ callback_query_id: callback.id, text: "Hanya developer library yang dapat mengambil keputusan.", show_alert: true });
       return { handled: true };
     }
     const record = await this.store.get(this.key(parsed.botId));
@@ -134,5 +134,5 @@ export class ApprovalGate {
   private key(botId: number): string { return `telebibz:approval:${botId}`; }
   private callbackData(action: "approve" | "deny", record: ApprovalRecord): string { return `telebibz:approval:${action}:${record.botId}:${record.nonce}`; }
   private parseCallback(data: string): { action: "approve" | "deny"; botId: number; nonce: string } | undefined { const match = /^telebibz:approval:(approve|deny):(\d+):([a-f0-9]{16})$/.exec(data); if (!match) return undefined; return { action: match[1] as "approve" | "deny", botId: Number(match[2]), nonce: match[3]! }; }
-  private async updateDecisionMessage(message: Message, record: ApprovalRecord, status: ApprovalStatus): Promise<void> { const statusText = status === "approved" ? "DIIZINKAN" : "TIDAK DIIZINKAN"; await this.api.methods.editMessageText({ chat_id: message.chat.id, message_id: message.message_id, text: `Permintaan pemakaian telebibz\nBot ID: ${record.botId}${record.botUsername ? `\nBot: @${record.botUsername}` : ""}\nStatus: ${statusText}\nDiputuskan oleh: ${record.decidedBy ?? "owner"}` }); }
+  private async updateDecisionMessage(message: Message, record: ApprovalRecord, status: ApprovalStatus): Promise<void> { const statusText = status === "approved" ? "DIIZINKAN" : "TIDAK DIIZINKAN"; await this.api.methods.editMessageText({ chat_id: message.chat.id, message_id: message.message_id, text: `Permintaan pemakaian telebibz\nBot ID: ${record.botId}${record.botUsername ? `\nBot: @${record.botUsername}` : ""}\nStatus: ${statusText}\nDiputuskan oleh developer: ${record.decidedBy ?? "authorized maintainer"}` }); }
 }
