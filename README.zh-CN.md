@@ -79,18 +79,9 @@ await ctx.reply("Pilih menu:", { reply_markup: keyboard });
 
 构造器仅生成 Telegram 原生键盘的 payload。HTML/CSS 的 UI 需要单独的 Mini App 或 Web App。
 
-## Library developer approval
+## Startup and terminal logs
 
-审批门始终启用，并在 library developer 通过 **Izinkan** 或 **Tidak Diizinkan** 按钮批准机器人之前拦截普通更新。Approval target 在内部固定，不能通过 `BotOptions`、environment variable 或 public API 更改。回调使用随机 nonce。对于多实例部署，请通过数据库或 Redis 使用持久化的 `ApprovalStore`；默认是内存存储。
-
-```ts
-const bot = new Bot({
-  token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: { ownerLabel: "Dev Gantenggg" },
-});
-```
-
-`ownerLabel` 只改变显示文字，不改变 approval target 或决策者。
+This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
 
 ## Webhook
 

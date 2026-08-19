@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
 
-**`@xbibzlibrary/telebibz`** is a full-scale Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, approval gates, CLI tooling, and testing utilities.
+**`@xbibzlibrary/telebibz`** is a full-scale Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
 
 ## Documentation languages
 
@@ -81,18 +81,17 @@ await ctx.reply("Choose an option:", { reply_markup: keyboard });
 
 Builders produce native Telegram keyboard payloads. HTML/CSS interfaces require a separate Mini App or Web App.
 
-## Developer approval gate
+## Colorful runtime logging
 
-The approval gate is always enabled. Before a bot can process regular updates or start polling, telebibz sends the branded notification to the library developer, who can choose **Izinkan** or **Tidak Diizinkan**. The developer approval target is fixed internally and cannot be changed through `BotOptions`, environment variables, or the public API. Callback data uses a random nonce, and only the fixed developer identity can decide. For multi-instance deployments, provide a persistent `ApprovalStore`; the default store is in memory.
+Runtime logging is enabled by default. The CLI prints a colored boxed attribution, an animated startup status on TTY terminals, and compact structured lines for lifecycle, API, polling, webhook, and update events. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: { ownerLabel: "Dev Gantenggg" },
+  logger: { level: "debug", format: "pretty", color: true },
 });
 ```
 
-`ownerLabel` changes only display text. It does not change the approval destination or authorized decision-maker.
 
 ## Webhook
 
@@ -109,13 +108,14 @@ const handler = createWebhookHandler(bot, {
 
 ## State, queue, scheduler, and cache
 
-The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent approval storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
+The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
 
 ## CLI
 
-Every `telebibz` CLI command starts with a colored Unicode branding box containing `Library Bot Telegram By @xbibzofficial`. The CLI never prints the fixed developer target.
+Every `telebibz` CLI command starts with a colored Unicode branding box containing `Library Bot Telegram By @xbibzofficial`. Startup animation automatically falls back to clean static output when stdout is not a TTY.
 
 ```bash
+npm start
 npx telebibz init my-bot
 npx telebibz doctor
 npx telebibz build
@@ -150,7 +150,7 @@ Real Telegram E2E tests require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_TEST_CHAT_ID`
 
 ## API targets and limitations
 
-The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, while specialized request/result inference remains concentrated on the core method map. The complete vendored Telegram object, union, enum, and method declarations are available through `TelegramTypes`. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) for approval details.
+The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, while specialized request/result inference remains concentrated on the core method map. The complete vendored Telegram object, union, enum, and method declarations are available through `TelegramTypes`. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [docs/API.md](docs/API.md) for the complete API reference.
 
 For every exported class, function, method, type, error, lifecycle hook, CLI command, and generated Telegram method, see the [complete English API reference](docs/API.md).
 

@@ -8,7 +8,6 @@ import { ConversationManager } from "../src/state/conversation.js";
 import { nextCronOccurrence, parseCronExpression, Scheduler } from "../src/queue/queue.js";
 import { createHmac } from "node:crypto";
 import { validateWebAppInitData } from "../src/telegram-features.js";
-import { buildApprovalNotification, buildBrandingBox } from "../src/branding/branding.js";
 import { buildTerminalBranding } from "../src/branding/terminal.js";
 import { createLogger, summarizeUpdate } from "../src/observability/logger.js";
 
@@ -141,30 +140,26 @@ describe("permission-aware menus", () => {
 
 
 describe("branding and observability", () => {
-  it("renders CLI branding without ANSI when color is disabled and hides the developer ID", () => {
+  it("renders terminal branding without approval wording", () => {
     const output = buildTerminalBranding({ color: false });
     expect(output).toContain("TELEBIBZ CLI");
     expect(output).toContain("Library Bot Telegram By @xbibzofficial");
-    expect(output).toContain("Approval gate: developer approval is required before the bot runs.");
-    expect(output).not.toContain("7377733784");
-    expect(output).not.toContain("\\u001b[");
+    expect(output).toContain("Runtime logs: colorful structured output.");
+    expect(output).not.toContain("approval");
+    expect(output).not.toContain("developer");
+    expect(output).not.toContain("\u001b[");
   });
 
-  it("renders the required colored attribution box and escaped approval notification", () => {
-    const box = buildBrandingBox();
-    expect(box).toContain("Library Bot Telegram By @xbibzofficial");
-    expect(box).toContain("🟦");
-    expect(box).toContain("🟪");
-
-    const notification = buildApprovalNotification({
-      ownerLabel: "<Owner>",
-      botLine: "bot<&>",
-      ownerIdLine: "Owner ID: <77>",
-    });
-    expect(notification).toContain("Haloo &lt;Owner&gt;, ada yang memakai library telebibz nihh");
-    expect(notification).toContain("&lt;Owner&gt;");
-    expect(notification).toContain("bot&lt;&amp;&gt;");
-    expect(notification).toContain("Library Bot Telegram By @xbibzofficial");
+  it("formats logger output with colored level and structured context", () => {
+    const chunks: string[] = [];
+    const stream = { isTTY: true, write: (chunk: string): boolean => { chunks.push(chunk); return true; } } as unknown as NodeJS.WriteStream;
+    const logger = createLogger({ level: "debug", color: true, stream });
+    logger.info("message.received", { chatId: 44, text: "hello" });
+    const output = chunks.join("");
+    expect(output).toContain("INFO ");
+    expect(output).toContain("message.received");
+    expect(output).toContain("\u001b[");
+    expect(output).toContain('"chatId":44');
   });
 
   it("redacts sensitive logger fields and summarizes updates without content by default", () => {

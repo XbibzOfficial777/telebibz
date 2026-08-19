@@ -6,7 +6,7 @@
 
 Dokumen ini adalah referensi API untuk `@xbibzlibrary/telebibz@0.1.4`. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
 
-> **Status implementasi.** Dokumentasi ini menjelaskan kemampuan yang tersedia pada rilis saat ini. `JsonFileStorage`, storage Redis/SQL/Mongo berbasis driver, session/conversation berbasis Storage, cron lima field lengkap, `MenuController`, approval message branded, structured logging dengan redaction, validasi Web App, `PaymentsClient`, dan declaration `TelegramTypes` sudah tersedia. Core method map tetap khusus untuk inferensi request/result tertentu, sedangkan `api.raw()` tersedia untuk method Telegram berikutnya.
+> **Status implementasi.** Dokumentasi ini menjelaskan kemampuan yang tersedia pada rilis saat ini. `JsonFileStorage`, storage Redis/SQL/Mongo berbasis driver, session/conversation berbasis Storage, cron lima field lengkap, `MenuController`, terminal status output branded, structured logging dengan redaction, validasi Web App, `PaymentsClient`, dan declaration `TelegramTypes` sudah tersedia. Core method map tetap khusus untuk inferensi request/result tertentu, sedangkan `api.raw()` tersedia untuk method Telegram berikutnya.
 
 ## Instalasi dan import
 
@@ -51,7 +51,6 @@ Subpath exports yang tersedia adalah sebagai berikut.
 type BotStatus =
   | "created"
   | "initialized"
-  | "awaiting-approval"
   | "starting"
   | "running"
   | "stopping"
@@ -74,7 +73,6 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Filter update Telegram. |
 | `polling.retryDelayMs` | `number` | `500` | Delay awal ketika polling gagal. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Batas maksimum delay reconnect. |
-| `approval` | `ApprovalOptions` | `{}` | Hanya label, cooldown, dan storage; target developer dikunci internal. |
 
 ### Konstruktor `Bot`
 
@@ -84,7 +82,7 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-Jika argumen berupa string, string tersebut dianggap sebagai token. Konstruktor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan developer approval gate yang selalu aktif. Konstruktor langsung memancarkan event `bot:created` secara asinkron.
+Jika argumen berupa string, string tersebut dianggap sebagai token. Konstruktor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan structured runtime logging yang selalu aktif. Konstruktor langsung memancarkan event `bot:created` secara asinkron.
 
 Konstruktor melempar `Error` jika token kosong atau tidak sesuai pola token Telegram.
 
@@ -98,7 +96,6 @@ Konstruktor melempar `Error` jika token kosong atau tidak sesuai pola token Tele
 | `plugins` | `PluginManager<Context<S>>` | Manajer lifecycle plugin. |
 | `session` | `Storage<string, S>` | Session bot; dapat memakai adapter persistent. |
 | `services` | `Record<string, unknown>` | Salinan service yang diberikan saat konstruktor. |
-| `approval` | `ApprovalGate \| undefined` | Approval gate jika `approval` dikonfigurasi. |
 | `token` | `string` | Token bot yang dipakai client. |
 | `status` | `BotStatus` | Status lifecycle terkini. |
 | `botInfo` | `User \| undefined` | Hasil `getMe()` terakhir yang tersimpan. |
@@ -157,9 +154,7 @@ Mendaftarkan plugin. Nama plugin harus unik.
 init(): Promise<this>
 ```
 
-Memanggil `getMe()`, menyimpan informasi bot, meminta approval developer, lalu menjalankan lifecycle plugin `setup()` dan `start()` hanya setelah disetujui.
-
-Jika approval belum diberikan, method mengubah status menjadi `"awaiting-approval"`, mengirim notifikasi ke pemilik melalui `ApprovalGate`, dan mengembalikan bot tanpa mengaktifkan status `initialized`. Panggilan berikutnya tetap dapat dipakai setelah pemilik memberikan persetujuan.
+Memanggil `getMe()`, menyimpan informasi bot, menginisialisasi plugin, dan mengembalikan bot yang siap untuk polling atau pemrosesan update manual.
 
 `init()` idempoten ketika status sudah `initialized` atau `running`.
 
@@ -257,8 +252,6 @@ handleUpdate(update: Update): Promise<void>
 ```
 
 Memproses satu update secara manual. Method menentukan kunci session dari `chat.id` dan `from.id`, membuat `Context`, memancarkan event `update` dan `message`, menjalankan middleware lalu router, dan menyimpan session setelah pipeline selesai.
-
-Jika approval aktif dan bot belum diizinkan, update biasa dihentikan. Callback approval tetap diteruskan ke `ApprovalGate.handleCallback()`.
 
 Error pipeline mengubah status bot menjadi `error`, memancarkan `bot:error`, lalu dilempar kembali.
 
@@ -1268,89 +1261,9 @@ new Menu(id: string): Menu
 
 ---
 
-## 12. Gerbang persetujuan
+## 12. Logging Terminal
 
-Gerbang persetujuan selalu mengirim notifikasi branded kepada developer library ketika bot pertama kali memakai telebibz. Target chat dan pengambil keputusan dikunci secara internal; keduanya bukan bagian dari konfigurasi publik dan tidak dicetak pada notifikasi. Pesan menyertakan bot ID/username serta tombol `Izinkan` dan `Tidak Diizinkan`.
-
-### `ApprovalOptions`
-
-| Properti | Tipe | Default | Deskripsi |
-|---|---|---:|---|
-| `ownerLabel` | `string` | `Dev Gantenggg` | Hanya label tampilan; tidak dapat mengubah target developer. |
-| `notificationCooldownMs` | `number` | `600000` | Cooldown notifikasi pending. |
-| `store` | `ApprovalStore` | `MemoryApprovalStore` | Penyimpanan approval custom. |
-
-### Tipe persetujuan
-
-```ts
-type ApprovalStatus = "pending" | "approved" | "denied";
-
-interface ApprovalRecord {
-  key: string;
-  botId: number;
-  botUsername?: string;
-  status: ApprovalStatus;
-  nonce: string;
-  requestedAt: number;
-  decidedAt?: number;
-  decidedBy?: number;
-  notificationMessageId?: number;
-}
-
-interface ApprovalIdentity {
-  bot: User;
-}
-
-interface ApprovalCheck {
-  allowed: boolean;
-  status: ApprovalStatus;
-  record?: ApprovalRecord;
-}
-```
-
-### `ApprovalStore`
-
-```ts
-interface ApprovalStore {
-  get(key: string): Promise<ApprovalRecord | undefined>;
-  set(key: string, record: ApprovalRecord): Promise<void>;
-  delete?(key: string): Promise<boolean>;
-}
-```
-
-### `MemoryApprovalStore`
-
-```ts
-new MemoryApprovalStore(): MemoryApprovalStore
-```
-
-Penyimpanan in-memory yang mengembalikan salinan record saat `get` dan `set`.
-
-### `ApprovalGate`
-
-```ts
-new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
-```
-
-| Method | Signature | Deskripsi |
-|---|---|---|
-| `check` | `check(identity): Promise<ApprovalCheck>` | Mengembalikan approved jika record berstatus approved; mengirim request baru jika belum ada atau cooldown habis. |
-| `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | Memvalidasi nonce dan owner, lalu melakukan approve/deny. Callback yang tidak valid atau bukan approval dikembalikan sebagai `handled: false`. |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True hanya jika record approval developer tetap berstatus approved. |
-| `revoke` | `revoke(botId): Promise<boolean>` | Menghapus record jika store mendukung delete. |
-
-Callback hanya dapat diputuskan oleh identitas developer internal; owner ID dari caller tidak digunakan oleh API produksi. Nonce acak 16 karakter heksadesimal mencegah callback lama digunakan kembali. ID developer tidak dicetak pada terminal atau notifikasi Telegram. Callback kadaluarsa menghasilkan alert kedaluwarsa.
-
-```ts
-const bot = new Bot({
-  token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: { ownerLabel: "Dev Gantenggg" },
-});
-
-// Target approval dikunci internal; object ini tidak dapat mengubahnya.
-```
-
----
+This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
 
 ## 13. Utilitas Teks
 
@@ -1750,7 +1663,6 @@ Semua adapter mengimplementasikan kontrak `Storage<K, V>` yang sama. Package int
 | `RedisStorage<V>` | `new RedisStorage(client, prefix?)` | Storage Redis melalui `RedisLikeClient`, termasuk TTL dan namespace. |
 | `SqlStorage<V>` | `new SqlStorage(driver)` | Storage SQL melalui `SqlStorageDriver` milik aplikasi. |
 | `MongoStorage<V>` | `new MongoStorage(collection)` | Storage Mongo melalui `MongoStorageCollection` milik aplikasi. |
-| `StorageApprovalStore` | `new StorageApprovalStore(storage)` | Record approval persistent dari `Storage<string, ApprovalRecord>` apa pun. |
 
 `BotOptions.session` menerima `Storage<string, S>`, sehingga session dapat memakai adapter apa pun. `ConversationManager` menerima abstraction yang sama dan menyediakan `getAsync()`, `cancelAsync()`, serta `clearExpiredAsync()` untuk state conversation durable.
 
@@ -1773,7 +1685,7 @@ const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
 
 ### Namespace deklarasi Telegram lengkap
 
-Package memvendorkan declaration Telegram berlisensi MIT dan mengeksposnya sebagai type-only export melalui `TelegramTypes`, serta alias seperti `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, dan `TelegramApiMethods`. Approval notification memakai kotak Unicode berwarna dengan attribution `Library Bot Telegram By @xbibzofficial`. `Logger` menghasilkan JSON terstruktur dengan level, redaction, ringkasan update, dan opt-in untuk isi pesan user/callback. Declaration ini mencakup surface object, union, enum, dan method tanpa runtime dependency tambahan. Map method inti telebibz tetap khusus untuk method yang memiliki pemetaan parameter/result langsung.
+Package memvendorkan declaration Telegram berlisensi MIT dan mengeksposnya sebagai type-only export melalui `TelegramTypes`, serta alias seperti `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, dan `TelegramApiMethods`. CLI memakai kotak Unicode berwarna dengan attribution `Library Bot Telegram By @xbibzofficial`. `Logger` menghasilkan output terminal atau JSON terstruktur dengan level, redaction, ringkasan update, dan opt-in untuk isi pesan user/callback. Declaration ini mencakup surface object, union, enum, dan method tanpa runtime dependency tambahan. Map method inti telebibz tetap khusus untuk method yang memiliki pemetaan parameter/result langsung.
 
 ---
 
@@ -1783,7 +1695,7 @@ Perpustakaan menargetkan Node.js `>=20`, menggunakan ESM sebagai module utama, s
 
 Daftar method yang dihasilkan API dan peta method API bukanlah hal yang sama. `TelegramMethodName` mencakup 184 nama runtime, tetapi `TelegramMethodMap` hanya memiliki parameter/hasil yang bertipe khusus untuk subset yang tercantum pada bagian API client. Untuk method lain, gunakan `api.raw()` atau tambahkan deklarasi tipe di sisi aplikasi.
 
-State persetujuan dan primitive in-memory lainnya hilang saat proses dimulai ulang kecuali aplikasi menyediakan adapter persistent. `BotOptions.session` menerima kontrak generic `Storage<string, S>`, dan `ApprovalGate` dapat memakai `StorageApprovalStore` atau `ApprovalStore` kustom.
+State session dan primitive in-memory lainnya hilang saat proses dimulai ulang kecuali aplikasi menyediakan adapter persistent. `BotOptions.session` menerima kontrak generic `Storage<string, S>`.
 
 ---
 

@@ -6,7 +6,7 @@
 
 本文件是 `@xbibzlibrary/telebibz@0.1.4` 的 API 参考。此处描述的所有签名和行为均映射自该包导出的 TypeScript 源代码。如果某个 Telegram 类型尚未有特定的参数/结果映射，该包仍通过动态 API 提供运行时访问，但其参数类型仍为通用类型。
 
-> **实现状态。** 本文档说明当前版本中可用的功能。`JsonFileStorage`、基于 driver 的 Redis/SQL/Mongo storage、基于 Storage 的 session/conversation、完整五字段 cron、`MenuController`、带 branding 的 approval message、带 redaction 的 structured logging、Web App 验证、`PaymentsClient` 和 `TelegramTypes` declaration 均已提供。core method map 仍主要为特定 request/result inference 提供类型，未来 Telegram method 可通过 `api.raw()` 访问。
+> **实现状态。** 本文档说明当前版本中可用的功能。`JsonFileStorage`、基于 driver 的 Redis/SQL/Mongo storage、基于 Storage 的 session/conversation、完整五字段 cron、`MenuController`、带 branding 的 terminal status output、带 redaction 的 structured logging、Web App 验证、`PaymentsClient` 和 `TelegramTypes` declaration 均已提供。core method map 仍主要为特定 request/result inference 提供类型，未来 Telegram method 可通过 `api.raw()` 访问。
 
 ## 安装与导入
 
@@ -51,7 +51,6 @@ const { Bot, InlineKeyboard } = require("@xbibzlibrary/telebibz");
 type BotStatus =
   | "created"
   | "initialized"
-  | "awaiting-approval"
   | "starting"
   | "running"
   | "stopping"
@@ -74,7 +73,6 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram 更新过滤器。 |
 | `polling.retryDelayMs` | `number` | `500` | 轮询失败时的初始延迟（毫秒）。 |
 | `polling.maxRetryDelayMs` | `number` | `30000` | 重连延迟的最大值（毫秒）。 |
-| `approval` | `ApprovalOptions` | `{}` | 仅用于 label、cooldown 和 storage；developer target 在内部固定。 |
 
 ### `Bot` constructor
 
@@ -84,7 +82,7 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-Jika argumen berupa string, string tersebut dianggap sebagai token. Constructor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan always-on developer approval gate. Constructor langsung memancarkan event `bot:created` secara asynchronous.
+Jika argumen berupa string, string tersebut dianggap sebagai token. Constructor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan structured runtime logging. Constructor langsung memancarkan event `bot:created` secara asynchronous.
 
 Constructor melempar `Error` jika token kosong atau tidak sesuai pola token Telegram.
 
@@ -98,7 +96,6 @@ Constructor melempar `Error` jika token kosong atau tidak sesuai pola token Tele
 | `plugins` | `PluginManager<Context<S>>` | 插件的生命周期管理器。 |
 | `session` | `Storage<string, S>` | bot 的会话存储，可使用持久化适配器。 |
 | `services` | `Record<string, unknown>` | 构造函数提供的 service 的拷贝。 |
-| `approval` | `ApprovalGate \| undefined` | 如果配置了 `approval` 则为 Approval gate。 |
 | `token` | `string` | 客户端使用的 bot token。 |
 | `status` | `BotStatus` | 当前生命周期状态。 |
 | `botInfo` | `User \| undefined` | 最近一次 `getMe()` 的结果。 |
@@ -157,9 +154,7 @@ usePlugin(plugin: Plugin<Context<S>>): this
 init(): Promise<this>
 ```
 
-调用 `getMe()`，保存 bot 信息，请求 developer approval，然后仅在批准后运行插件生命周期的 `setup()` 和 `start()`。
-
-若尚未获得批准，方法会将状态置为 `"awaiting-approval"`，通过 `ApprovalGate` 向 owner 发送通知，并返回 bot 而不设置为 `initialized`。在 owner 批准后后续调用仍可使用。
+调用 `getMe()`，保存 bot 信息，初始化插件，并返回可用于 polling 或手动处理 update 的 bot。
 
 `init()` 在状态已为 `initialized` 或 `running` 时是幂等的。
 
@@ -257,8 +252,6 @@ handleUpdate(update: Update): Promise<void>
 ```
 
 手动处理单个 update。该方法根据 `chat.id` 和 `from.id` 确定会话 key，创建 `Context`，触发 `update` 和 `message` 事件，执行 middleware 然后路由器，并在流水线完成后保存会话。
-
-若启用了 approval 且 bot 尚未被允许，普通 update 会被阻止。approval 的 callback 仍会转发到 `ApprovalGate.handleCallback()`。
 
 流水线错误会将 bot 状态置为 `error`，触发 `bot:error`，然后重新抛出错误。
 
@@ -1262,89 +1255,9 @@ new Menu(id: string): Menu
 
 ---
 
-## 12. 审批门
+## 12. Terminal Logging
 
-Approval gate 始终在机器人首次使用 telebibz 时向 library developer 发送 branded notification。目标 chat 和决策者在内部固定，不属于 public configuration，也不会显示在 notification 中。消息包含 bot ID/用户名，并提供 `Izinkan` 和 `Tidak Diizinkan` 按钮。
-
-### `ApprovalOptions`
-
-| 属性 | 类型 | 默认 | 描述 |
-|---|---|---:|---|
-| `ownerLabel` | `string` | `Dev Gantenggg` | 仅显示 label，不能改变 developer target。 |
-| `notificationCooldownMs` | `number` | `600000` | 等待通知的冷却时间（毫秒）。 |
-| `store` | `ApprovalStore` | `MemoryApprovalStore` | 自定义 approval 存储。 |
-
-### 审批类型
-
-```ts
-type ApprovalStatus = "pending" | "approved" | "denied";
-
-interface ApprovalRecord {
-  key: string;
-  botId: number;
-  botUsername?: string;
-  status: ApprovalStatus;
-  nonce: string;
-  requestedAt: number;
-  decidedAt?: number;
-  decidedBy?: number;
-  notificationMessageId?: number;
-}
-
-interface ApprovalIdentity {
-  bot: User;
-}
-
-interface ApprovalCheck {
-  allowed: boolean;
-  status: ApprovalStatus;
-  record?: ApprovalRecord;
-}
-```
-
-### `ApprovalStore`
-
-```ts
-interface ApprovalStore {
-  get(key: string): Promise<ApprovalRecord | undefined>;
-  set(key: string, record: ApprovalRecord): Promise<void>;
-  delete?(key: string): Promise<boolean>;
-}
-```
-
-### `MemoryApprovalStore`
-
-```ts
-new MemoryApprovalStore(): MemoryApprovalStore
-```
-
-基于内存的存储，在 `get` 和 `set` 时返回 record 的副本。
-
-### `ApprovalGate`
-
-```ts
-new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
-```
-
-| 方法 | 签名 | 描述 |
-|---|---|---|
-| `check` | `check(identity): Promise<ApprovalCheck>` | 若记录已批准则返回 approved；若不存在记录或冷却期已过则发送新的请求。 |
-| `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | 验证 nonce 和 owner，然后批准/拒绝。非审批回调返回 `handled: false`。 |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | 仅当固定 developer approval record 为 approved 时返回 True。 |
-| `revoke` | `revoke(botId): Promise<boolean>` | 如果 store 支持 delete，则删除记录。 |
-
-回调只能由内部固定的 developer identity 决定；生产 API 不使用 caller 提供的 owner ID。随机的 16 个十六进制字符 nonce 可以防止旧的回调被重用。developer ID 不会显示在 terminal 或 Telegram notification 中。过时的回调会产生过期提醒。
-
-```ts
-const bot = new Bot({
-  token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: { ownerLabel: "Dev Gantenggg" },
-});
-
-// Approval target is fixed internally and cannot be changed through this object.
-```
-
----
+This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
 
 ## 13. 文本工具
 
@@ -1744,7 +1657,6 @@ CLI 使用的环境变量是 `TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_WEBHOOK_SECRET`�
 | `RedisStorage<V>` | `new RedisStorage(client, prefix?)` | 通过 `RedisLikeClient` 使用 Redis storage，包含 TTL 和 namespace。 |
 | `SqlStorage<V>` | `new SqlStorage(driver)` | 通过应用提供的 `SqlStorageDriver` 使用 SQL storage。 |
 | `MongoStorage<V>` | `new MongoStorage(collection)` | 通过应用提供的 `MongoStorageCollection` 使用 Mongo storage。 |
-| `StorageApprovalStore` | `new StorageApprovalStore(storage)` | 使用任意 `Storage<string, ApprovalRecord>` 持久化 owner approval record。 |
 
 `BotOptions.session` 接受 `Storage<string, S>`，因此 session 可以使用任意适配器。`ConversationManager` 接受相同的 storage abstraction，并提供 `getAsync()`、`cancelAsync()` 和 `clearExpiredAsync()` 来持久化 conversation state。
 
@@ -1767,7 +1679,7 @@ const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
 
 ### 完整 Telegram declaration namespace
 
-Package 内置 MIT 许可的 Telegram declaration，并通过 type-only export 暴露 `TelegramTypes`，同时提供 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 和 `TelegramApiMethods` 等 alias。Approval notification 使用带颜色的 Unicode box，并包含 attribution `Library Bot Telegram By @xbibzofficial`。`Logger` 输出带 level、redaction、update summary 的结构化 JSON，并支持 opt-in 记录 user message/callback content。这些 declaration 覆盖完整的 object、union、enum 和 method surface，不增加 runtime dependency。telebibz core method map 仍专门为具有直接参数/结果映射的 method 提供类型。
+Package 内置 MIT 许可的 Telegram declaration，并通过 type-only export 暴露 `TelegramTypes`，同时提供 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 和 `TelegramApiMethods` 等 alias。CLI 使用带颜色的 Unicode box，并包含 attribution `Library Bot Telegram By @xbibzofficial`。`Logger` 输出带 level、redaction、update summary 的 terminal 或 JSON 结构化日志，并支持 opt-in 记录 user message/callback content。这些 declaration 覆盖完整的 object、union、enum 和 method surface，不增加 runtime dependency。telebibz core method map 仍专门为具有直接参数/结果映射的 method 提供类型。
 
 ---
 
@@ -1777,7 +1689,7 @@ Library menargetkan Node.js `>=20`，使用 ESM 作为主要模块，并提供 C
 
 API 生成的方法列表（generated method list）和 API 方法映射（API method map）并不相同。`TelegramMethodName` 包含 184 个运行时名称，但 `TelegramMethodMap` 仅对 API 客户端部分列出的子集提供了带类型的参数/结果。对于其他方法，使用 `api.raw()` 或在应用端添加类型声明。
 
-Approval 状态和其他内存 primitive 会在进程重启时丢失，除非应用提供持久化适配器。`BotOptions.session` 接受 generic `Storage<string, S>` contract，`ApprovalGate` 可以使用 `StorageApprovalStore` 或自定义 `ApprovalStore`。
+Session 状态和其他内存 primitive 会在进程重启时丢失，除非应用提供持久化适配器。`BotOptions.session` 接受 generic `Storage<string, S>` contract。
 
 ---
 

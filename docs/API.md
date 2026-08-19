@@ -5,7 +5,7 @@
 
 This document is the API reference for `@xbibzlibrary/telebibz@0.1.4`. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
 
-> **Implementation status.** This documentation describes the capabilities available in the current release. `JsonFileStorage`, driver-based Redis/SQL/Mongo storage, storage-backed sessions/conversations, full five-field cron, `MenuController`, branded approval messages, structured redacted logging, Web App validation, PaymentsClient, and vendored `TelegramTypes` declarations are included. The core method map remains specialized for selected request/result inference, while `api.raw()` remains available for future Telegram methods.
+> **Implementation status.** This documentation describes the capabilities available in the current release. `JsonFileStorage`, driver-based Redis/SQL/Mongo storage, storage-backed sessions/conversations, full five-field cron, `MenuController`, terminal branding, structured redacted logging, Web App validation, PaymentsClient, and vendored `TelegramTypes` declarations are included. The core method map remains specialized for selected request/result inference, while `api.raw()` remains available for future Telegram methods.
 
 ## Installation and import
 
@@ -50,7 +50,6 @@ The available subpath exports are as follows.
 type BotStatus =
   | "created"
   | "initialized"
-  | "awaiting-approval"
   | "starting"
   | "running"
   | "stopping"
@@ -73,7 +72,6 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram update filters. |
 | `polling.retryDelayMs` | `number` | `500` | Initial delay when polling fails. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Maximum reconnect delay. |
-| `approval` | `ApprovalOptions` | `{}` | Optional label, cooldown, and approval storage only; the developer approval target is fixed internally. |
 
 ### Constructor `Bot`
 
@@ -83,7 +81,7 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-If the argument is a string, it is treated as the token. The constructor creates `ApiClient`, router, event bus, plugin manager, session storage, and an always-on developer approval gate. The constructor emits the `bot:created` event asynchronously.
+If the argument is a string, it is treated as the token. The constructor creates `ApiClient`, router, event bus, plugin manager, session storage, and structured runtime logging. The constructor emits the `bot:created` event asynchronously.
 
 The constructor throws `Error` if the token is empty or does not match the Telegram token pattern.
 
@@ -97,7 +95,6 @@ The constructor throws `Error` if the token is empty or does not match the Teleg
 | `plugins` | `PluginManager<Context<S>>` | Plugin lifecycle manager. |
 | `session` | `Storage<string, S>` | Bot session; any persistent adapter may be used. |
 | `services` | `Record<string, unknown>` | A copy of services provided to the constructor. |
-| `approval` | `ApprovalGate \| undefined` | Approval gate if `approval` is configured. |
 | `token` | `string` | Bot token used by the client. |
 | `status` | `BotStatus` | Current lifecycle status. |
 | `botInfo` | `User \| undefined` | Last stored result of `getMe()`. |
@@ -156,9 +153,7 @@ Registers a plugin. Plugin names must be unique.
 init(): Promise<this>
 ```
 
-Calls `getMe()`, stores the bot information, requests developer approval, then runs plugin lifecycle `setup()` and `start()` only after approval.
-
-If approval has not been granted, the method sets the status to `"awaiting-approval"`, notifies the owner via the `ApprovalGate`, and returns the bot without marking it as `initialized`. Subsequent calls can be used after the owner grants approval.
+Calls `getMe()`, stores the bot information, initializes plugins, and returns an initialized bot ready for polling or manual update handling.
 
 `init()` is idempotent when the status is already `initialized` or `running`.
 
@@ -256,8 +251,6 @@ handleUpdate(update: Update): Promise<void>
 ```
 
 Processes a single update manually. The method determines the session key from `chat.id` and `from.id`, creates a `Context`, emits `update` and `message` events, runs middleware then the router, and saves the session after the pipeline completes.
-
-If approval is active and the bot has not been approved, normal updates are stopped. Approval callbacks are still forwarded to `ApprovalGate.handleCallback()`.
 
 Pipeline errors set the bot status to `error`, emit `bot:error`, and then rethrow the error.
 
@@ -1267,86 +1260,20 @@ new Menu(id: string): Menu
 
 ---
 
-## 12. Approval Gate
+## 12. Terminal Logging
 
-The always-on approval gate sends the branded notification to the library developer when a bot uses telebibz for the first time. The target chat and authorized decision-maker are fixed internally and are not part of the public configuration or notification output. The message includes the bot ID/username and provides `Izinkan` and `Tidak Diizinkan` buttons.
-
-### `ApprovalOptions`
-
-| Property | Type | Default | Description |
-|---|---|---:|---|
-| `ownerLabel` | `string` | `Dev Gantenggg` | Display label only; it cannot change the target developer. |
-| `notificationCooldownMs` | `number` | `600000` | Pending notification cooldown. |
-| `store` | `ApprovalStore` | `MemoryApprovalStore` | Custom approval storage. |
-
-### Approval types
-
-```ts
-type ApprovalStatus = "pending" | "approved" | "denied";
-
-interface ApprovalRecord {
-  key: string;
-  botId: number;
-  botUsername?: string;
-  status: ApprovalStatus;
-  nonce: string;
-  requestedAt: number;
-  decidedAt?: number;
-  decidedBy?: number;
-  notificationMessageId?: number;
-}
-
-interface ApprovalIdentity {
-  bot: User;
-}
-
-interface ApprovalCheck {
-  allowed: boolean;
-  status: ApprovalStatus;
-  record?: ApprovalRecord;
-}
-```
-
-### `ApprovalStore`
-
-```ts
-interface ApprovalStore {
-  get(key: string): Promise<ApprovalRecord | undefined>;
-  set(key: string, record: ApprovalRecord): Promise<void>;
-  delete?(key: string): Promise<boolean>;
-}
-```
-
-### `MemoryApprovalStore`
-
-```ts
-new MemoryApprovalStore(): MemoryApprovalStore
-```
-
-In-memory storage that returns a copy of the record on `get` and `set`.
-
-### `ApprovalGate`
-
-```ts
-new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
-```
-
-| Method | Signature | Description |
-|---|---|---|
-| `check` | `check(identity): Promise<ApprovalCheck>` | Returns approved if the record status is approved; sends a new request if none exists or the cooldown has expired. |
-| `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | Validates the nonce and owner, then performs approve/deny. Invalid callbacks or non-approval callbacks are returned as `handled: false`. |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True only if the fixed developer approval record is approved. |
-| `revoke` | `revoke(botId): Promise<boolean>` | Deletes the record if the store supports delete. |
-
-Callbacks can only be decided by the fixed internal developer identity; caller-supplied owner IDs are ignored by the production API. A random 16-character hexadecimal nonce prevents old callbacks from being reused. The developer ID is not included in terminal or Telegram notification output. Expired callbacks produce an expiration alert.
+The CLI prints a colored Unicode attribution box and an animated startup status when attached to a TTY. The default logger emits compact, readable terminal lines with colored levels and structured context. Use `format: "json"` for machine ingestion, `includeUpdateContent: true` when message text or callback data is explicitly required, and a custom `sink` for application monitoring.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: { ownerLabel: "Dev Gantenggg" },
+  logger: {
+    level: "debug",
+    format: "pretty",
+    color: true,
+    includeUpdateContent: false,
+  },
 });
-
-// The approval target is fixed internally; it cannot be changed through this object.
 ```
 
 ---
@@ -1750,7 +1677,6 @@ All storage adapters implement the same `Storage<K, V>` contract. The core packa
 | `RedisStorage<V>` | `new RedisStorage(client, prefix?)` | Redis-backed storage through `RedisLikeClient`, including TTL and namespace operations. |
 | `SqlStorage<V>` | `new SqlStorage(driver)` | SQL-backed storage through an application-owned `SqlStorageDriver`. |
 | `MongoStorage<V>` | `new MongoStorage(collection)` | Mongo collection-backed storage through an application-owned `MongoStorageCollection`. |
-| `StorageApprovalStore` | `new StorageApprovalStore(storage)` | Persistent owner-approval records backed by any `Storage<string, ApprovalRecord>`. |
 
 `BotOptions.session` accepts `Storage<string, S>`, so sessions can use any adapter. `ConversationManager` accepts the same storage abstraction and exposes `getAsync()`, `cancelAsync()`, and `clearExpiredAsync()` for durable conversation state.
 
@@ -1773,7 +1699,7 @@ const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
 
 ### Complete Telegram declaration namespace
 
-The package vendors MIT-licensed Telegram declarations and exposes them as type-only exports through `TelegramTypes`, plus aliases such as `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, and `TelegramApiMethods`. Approval notifications use a colored Unicode box and the attribution `Library Bot Telegram By @xbibzofficial`. `Logger` emits structured JSON entries with configurable levels, redaction, update summaries, and opt-in user message/callback content. These declarations cover the complete object, union, enum, and method declaration surface without adding a runtime dependency. Core telebibz method maps remain specialized for the methods with direct request/result mappings.
+The package vendors MIT-licensed Telegram declarations and exposes them as type-only exports through `TelegramTypes`, plus aliases such as `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, and `TelegramApiMethods`. The CLI uses a colored Unicode box with the attribution `Library Bot Telegram By @xbibzofficial`. `Logger` emits structured terminal or JSON entries with configurable levels, redaction, update summaries, and opt-in user message/callback content. These declarations cover the complete object, union, enum, and method declaration surface without adding a runtime dependency. Core telebibz method maps remain specialized for the methods with direct request/result mappings.
 
 ---
 ## 19. Compatibility and limitations to be aware of
@@ -1782,7 +1708,7 @@ The library targets Node.js `>=20`, uses ESM as the primary module, and also pro
 
 The list of generated API methods and the API method map are not the same. `TelegramMethodName` includes 184 runtime names, but `TelegramMethodMap` only has specially-typed parameters/results for the subset listed in the API client section. For other methods, use `api.raw()` or add a type declaration on the application side.
 
-Approval state and other in-memory primitives are lost when the process restarts unless the application provides a persistent adapter. `BotOptions.session` accepts the generic `Storage<string, S>` contract, and `ApprovalGate` can use `StorageApprovalStore` or any custom `ApprovalStore`.
+Session state and other in-memory primitives are lost when the process restarts unless the application provides a persistent adapter. `BotOptions.session` accepts the generic `Storage<string, S>` contract.
 
 ---
 

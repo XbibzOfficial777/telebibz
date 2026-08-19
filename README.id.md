@@ -79,18 +79,9 @@ await ctx.reply("Pilih menu:", { reply_markup: keyboard });
 
 Builder hanya menghasilkan payload keyboard native Telegram. UI HTML/CSS memerlukan Mini App atau Web App terpisah.
 
-## Approval developer library
+## Startup dan log terminal
 
-Gerbang persetujuan selalu aktif dan menahan pembaruan biasa sampai developer library menyetujui bot melalui tombol **Izinkan** atau **Tidak Diizinkan**. Target approval dikunci internal dan tidak dapat diganti melalui `BotOptions`, environment variable, atau public API. Callback menggunakan nonce acak. Untuk deployment multi-instance, gunakan `ApprovalStore` persisten melalui database atau Redis; default-nya adalah memory store.
-
-```ts
-const bot = new Bot({
-  token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: { ownerLabel: "Dev Gantenggg" },
-});
-```
-
-`ownerLabel` hanya mengubah teks tampilan, bukan target approval atau pengambil keputusan.
+This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
 
 ## Webhook
 
@@ -107,7 +98,7 @@ const handler = createWebhookHandler(bot, {
 
 ## State, queue, scheduler, dan cache
 
-Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent approval storage, session bot, conversation dan form berbasis Storage, menu berbasis permission, pagination `MenuController`, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan cron lima field lengkap. Adapter Redis, SQL, dan Mongo memakai driver kecil sehingga core package tetap tanpa runtime dependency vendor.
+Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, session bot, conversation dan form berbasis Storage, menu berbasis permission, pagination `MenuController`, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan cron lima field lengkap. Adapter Redis, SQL, dan Mongo memakai driver kecil sehingga core package tetap tanpa runtime dependency vendor.
 
 ## CLI
 

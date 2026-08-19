@@ -47,7 +47,7 @@ export function buildTerminalBranding(options: TerminalBrandingOptions = {}): st
     color(line(title), ANSI.blue),
     color(line(TERMINAL_BRAND_TEXT), ANSI.magenta),
     color(`╚${horizontal}╝`, ANSI.cyan),
-    color("Approval gate: developer approval is required before the bot runs.", ANSI.dim),
+    color("Runtime logs: colorful structured output.", ANSI.dim),
   ].join("\n");
 }
 
