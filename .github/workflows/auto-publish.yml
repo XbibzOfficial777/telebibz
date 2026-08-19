@@ -101,6 +101,11 @@ jobs:
             exit 1
           fi
 
+      - name: Publish package
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Commit version and create tag
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -113,11 +118,6 @@ jobs:
           git tag -a "v$RELEASE_VERSION" -m "Release v$RELEASE_VERSION"
           git push origin HEAD:main
           git push origin "v$RELEASE_VERSION"
-
-      - name: Publish package
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub release
         env:
