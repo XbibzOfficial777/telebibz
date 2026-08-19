@@ -1,6 +1,6 @@
 # GitHub-to-npm Release Automation
 
-Repository ini menggunakan GitHub Actions untuk menjaga source GitHub dan package npm tetap sinkron melalui satu jalur release yang tervalidasi.
+Repository ini menggunakan GitHub Actions untuk menjaga source GitHub dan package npm tetap sinkron melalui satu jalur release yang tervalidasi. Repository source tetap private; karena itu workflow menggunakan npm publish tanpa provenance, sesuai batasan registry npm untuk source private.
 
 ## Alur otomatis
 
@@ -14,7 +14,7 @@ Setiap push ke branch `main` menjalankan workflow `.github/workflows/auto-publis
 | Verification | Menjalankan typecheck, type-level tests, lint, runtime tests, build ESM/CommonJS, security audit, dan release check. |
 | Immutable guard | Menolak publish jika versi target sudah ada di npm. |
 | Git sync | Commit otomatis `chore(release): vX.Y.Z [skip release]`, membuat annotated tag `vX.Y.Z`, lalu push commit dan tag ke GitHub. |
-| npm publish | Menerbitkan package public dengan npm provenance menggunakan `NPM_TOKEN`. |
+| npm publish | Menerbitkan package public menggunakan `NPM_TOKEN`; provenance dinonaktifkan karena npm menolak provenance dari source repository private. |
 | GitHub Release | Membuat GitHub Release dengan generated notes. |
 
 Push commit version otomatis tidak memicu release kedua karena mengandung `[skip release]`. Workflow menggunakan concurrency sehingga release berjalan satu per satu.

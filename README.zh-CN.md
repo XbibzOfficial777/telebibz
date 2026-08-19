@@ -147,7 +147,7 @@ npm run release:check
 
 ## 发布自动化
 
-GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，使用 provenance 发布 npm package，然后创建 GitHub Release。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md)。
+GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，发布 npm package，然后创建 GitHub Release。由于 source repository 是 private，workflow 使用 `--provenance=false`，符合 npm 对 private source 的限制。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md)。
 
 ## 安全
 

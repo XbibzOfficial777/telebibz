@@ -147,7 +147,7 @@ Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui
 
 ## Otomatisasi release
 
-Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates, memilih patch version yang belum dipakai, membuat commit dan tag, menerbitkan package ke npm dengan provenance, lalu membuat GitHub Release. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
+Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates, memilih patch version yang belum dipakai, membuat commit dan tag, menerbitkan package ke npm, lalu membuat GitHub Release. Karena source repository bersifat private, workflow menggunakan `--provenance=false`, sesuai batasan npm untuk source private. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
 
 ## Keamanan
 

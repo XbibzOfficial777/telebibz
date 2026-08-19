@@ -6,9 +6,9 @@ The published artifact is scoped as `@xbibzlibrary/telebibz`. npm package versio
 
 ## Hardening controls
 
-Every release must pass strict TypeScript typechecking, type-level tests, lint, runtime tests, build for ESM and CommonJS, dependency audit, and `release:check`. The release checker rejects an incorrect scope, private package status, missing public publish configuration, missing provenance, install lifecycle scripts, credential patterns in tracked release content, and incomplete tarball contents.
+Every release must pass strict TypeScript typechecking, type-level tests, lint, runtime tests, build for ESM and CommonJS, dependency audit, and `release:check`. The release checker rejects an incorrect scope, private package status, missing public publish configuration, install lifecycle scripts, credential patterns in tracked release content, and incomplete tarball contents. npm provenance is required when the source repository is public; npm rejects provenance for private source repositories, so the current private-repository workflow explicitly uses `--provenance=false`.
 
-The package uses npm provenance configuration and a protected GitHub Actions release workflow. The publish token must be stored only as a repository secret or temporary `NPM_TOKEN` environment variable with the smallest possible scope. Tokens must never be committed, placed in `.npmrc` inside the repository, or included in archives.
+The package uses a protected GitHub Actions release workflow. The publish token must be stored only as a repository secret or temporary `NPM_TOKEN` environment variable with the smallest possible scope. Tokens must never be committed, placed in `.npmrc` inside the repository, or included in archives.
 
 ## Release verification
 
