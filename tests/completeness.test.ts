@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { JsonFileStorage, MemoryStorage, MongoStorage, RedisStorage, SqlStorage } from "../src/storage/storage.js";
 import { Menu, MenuController } from "../src/state/menu.js";
-import { ConversationManager } from "../src/state/conversation.js";
+import { ConversationManager, Wizard } from "../src/state/conversation.js";
+import type { Context } from "../src/context/context.js";
 import { nextCronOccurrence, parseCronExpression, Scheduler } from "../src/queue/queue.js";
 import { createHmac } from "node:crypto";
 import { validateWebAppInitData } from "../src/telegram-features.js";
@@ -70,6 +71,20 @@ describe("persistent conversation state", () => {
     first.start("chat:1", "checkout", { cart: ["item"] });
     const second = new ConversationManager(storage);
     await expect(second.getAsync("chat:1")).resolves.toMatchObject({ name: "checkout", values: { cart: ["item"] } });
+  });
+
+  it("keeps wizard continuation state across name and age answers", async () => {
+    const wizard = new Wizard();
+    wizard
+      .step({ id: "name", run: (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); } })
+      .step({ id: "age", run: (flow) => { const raw = flow.ctx.message?.text?.trim() ?? ""; const age = Number(raw); if (!Number.isInteger(age)) throw new Error("Age must be an integer"); flow.set("age", age); flow.next(); } });
+    const context = (text: string) => ({ message: { text } } as unknown as Context);
+
+    const afterName = await wizard.run(context("Alice"), "chat:registration");
+    expect(afterName).toMatchObject({ step: 1, values: { name: "Alice" }, status: "active" });
+    const afterAge = await wizard.run(context("18"), "chat:registration");
+    expect(afterAge).toMatchObject({ step: 2, values: { name: "Alice", age: 18 }, status: "completed" });
+    expect((await wizard.manager.getAsync("chat:registration"))?.status).toBe("completed");
   });
 });
 

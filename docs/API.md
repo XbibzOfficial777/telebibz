@@ -147,6 +147,24 @@ usePlugin(plugin: Plugin<Context<S>>): this
 
 Registers a plugin. Plugin names must be unique.
 
+### `bot.useWizard(wizard, options?)`
+
+```ts
+useWizard(wizard: Wizard<S>, options?: { cancelCommand?: string }): this
+```
+
+Installs conversation middleware for a `Wizard`. Once an application starts the wizard with `wizard.run(ctx)`, subsequent text messages from the same chat/user are automatically routed to the active step until the wizard is completed or cancelled. The default conversation key is `${chat.id}:${from.id}`; `/cancel` cancels the active wizard by default.
+
+```ts
+const wizard = new Wizard()
+  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("Siapa nama kamu?"); } })
+  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("Berapa umur kamu?"); } })
+  .step({ id: "age", run: (flow) => { const age = Number(flow.ctx.message?.text?.trim()); if (!Number.isInteger(age)) return; flow.set("age", age); flow.next(); } });
+
+bot.useWizard(wizard);
+bot.command("start", (ctx) => wizard.run(ctx));
+```
+
 ### `bot.init()`
 
 ```ts
@@ -1140,8 +1158,9 @@ new Wizard<S>()
 | Method/property | Description |
 |---|---|
 | `step(definition)` | Adds a step and returns the wizard. `optional` is stored in the definition but not specially handled by the runner. |
-| `run(ctx, key, manager?)` | Runs the wizard steps via `ConversationManager` with the name `"wizard"`. |
+| `run(ctx, key?, manager?)` | Runs the active wizard step. If `key` is omitted, it uses `${chat.id}:${from.id}` and reuses the Wizard's default manager across updates. |
 | `steps` | Read-only list of steps. |
+| `manager` | Reusable `ConversationManager<S>` for `bot.useWizard()` or explicit state inspection. |
 
 ### Forms
 

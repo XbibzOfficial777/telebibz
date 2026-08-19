@@ -3,6 +3,10 @@ import { MemoryStorage, type Storage } from "../storage/storage.js";
 
 export interface ConversationState { name: string; step: number; values: Record<string, unknown>; status: "active" | "completed" | "cancelled"; updatedAt: number }
 
+export function conversationKeyFromContext<S extends object>(ctx: Context<S>): string {
+  return ctx.chat?.id !== undefined ? `${ctx.chat.id}:${ctx.from?.id ?? "anonymous"}` : `update:${ctx.update.update_id}`;
+}
+
 export class ConversationFlow<S extends object = Record<string, unknown>> {
   constructor(readonly ctx: Context<S>, readonly state: ConversationState) {}
   get values(): Record<string, unknown> { return this.state.values; }
@@ -81,7 +85,10 @@ export class ConversationManager<S extends object = Record<string, unknown>> {
     const flow = new ConversationFlow(ctx, state);
     const step = steps[state.step];
     if (!step) state.status = "completed";
-    else await step(flow);
+    else {
+      await step(flow);
+      if (state.step >= steps.length) state.status = "completed";
+    }
     state.updatedAt = Date.now();
     await this.storage.set(key, state);
     this.active.set(key, state);
@@ -92,7 +99,23 @@ export class ConversationManager<S extends object = Record<string, unknown>> {
 export interface WizardStep<S extends object = Record<string, unknown>> { id: string; run: (flow: ConversationFlow<S>) => void | Promise<void>; optional?: boolean }
 export class Wizard<S extends object = Record<string, unknown>> {
   private readonly stepsList: WizardStep<S>[] = [];
+  private readonly defaultManager: ConversationManager<S>;
+
+  constructor(manager?: ConversationManager<S>) {
+    this.defaultManager = manager ?? new ConversationManager<S>();
+  }
+
   step(step: WizardStep<S>): this { this.stepsList.push(step); return this; }
-  async run(ctx: Context<S>, key: string, manager = new ConversationManager<S>()): Promise<ConversationState> { return manager.run(ctx, key, "wizard", this.stepsList.map((step) => step.run)); }
+
+  /**
+   * Runs the active step for a conversation key. The default manager belongs to
+   * this Wizard instance and is intentionally reused across updates; passing a
+   * manager is useful when the application owns persistent storage explicitly.
+   */
+  async run(ctx: Context<S>, key = conversationKeyFromContext(ctx), manager?: ConversationManager<S>): Promise<ConversationState> {
+    return (manager ?? this.defaultManager).run(ctx, key, "wizard", this.stepsList.map((step) => step.run));
+  }
+
   get steps(): readonly WizardStep<S>[] { return this.stepsList; }
+  get manager(): ConversationManager<S> { return this.defaultManager; }
 }

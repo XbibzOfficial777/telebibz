@@ -93,6 +93,26 @@ const bot = new Bot({
 ```
 
 
+## Wizards and multi-step conversations
+
+Use `Wizard` with `bot.useWizard()` so every subsequent text reply from the same chat/user is routed to the active step automatically. The key is generated from the Telegram chat and sender; no manual key is required.
+
+```ts
+import { Bot, Wizard } from "@xbibzlibrary/telebibz";
+
+const wizard = new Wizard()
+  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("Siapa nama kamu?"); } })
+  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("Berapa umur kamu?"); } })
+  .step({ id: "age", run: (flow) => { const age = Number(flow.ctx.message?.text?.trim()); if (!Number.isInteger(age)) return; flow.set("age", age); flow.next(); } });
+
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+bot.useWizard(wizard);
+bot.command("start", (ctx) => wizard.run(ctx));
+await bot.start();
+```
+
+`Wizard` keeps its default `ConversationManager` across updates and marks the conversation completed immediately after the final step. Use `/cancel` to cancel an active wizard.
+
 ## Webhook
 
 ```ts

@@ -9,6 +9,7 @@ import { MemoryStorage, type Storage } from "../storage/storage.js";
 import { PluginManager, type Plugin } from "../plugins/plugin.js";
 import { createLogger, Logger, type LoggerOptions, summarizeUpdate } from "../observability/logger.js";
 import { printTerminalBranding, startTerminalAnimation } from "../branding/terminal.js";
+import { conversationKeyFromContext, type Wizard } from "../state/conversation.js";
 
 export type BotStatus = "created" | "initialized" | "starting" | "running" | "stopping" | "stopped" | "error";
 export type BotContext<S extends object = Record<string, unknown>> = Context<S>;
@@ -83,6 +84,28 @@ export class Bot<S extends object = Record<string, unknown>> {
   onRegex(expression: RegExp, handler: Middleware<Context<S>>): this { this.router.regex(expression, handler); return this; }
   usePlugin(plugin: Plugin<Context<S>>): this { this.plugins.use(plugin); return this; }
 
+  /**
+   * Routes subsequent messages to the active Wizard step for the same chat/user.
+   * The application starts the wizard once with `wizard.run(ctx, key)`; this
+   * middleware keeps routing replies until the wizard is completed or cancelled.
+   */
+  useWizard(wizard: Wizard<S>, options: { cancelCommand?: string } = {}): this {
+    const cancelCommand = options.cancelCommand ?? "/cancel";
+    this.use(async (ctx, next) => {
+      const message = ctx.message;
+      const key = conversationKeyFromContext(ctx);
+      const state = await wizard.manager.getAsync(key);
+      if (!message?.text || state?.status !== "active") { await next(); return; }
+      if (message.text.trim() === cancelCommand) {
+        wizard.manager.cancel(key);
+        await ctx.reply("Conversation cancelled.");
+        return;
+      }
+      await wizard.run(ctx, key);
+    });
+    return this;
+  }
+
   async init(): Promise<this> {
     if (this.statusValue === "initialized" || this.statusValue === "running") return this;
     this.logger.info("bot.initializing");
@@ -150,7 +173,7 @@ export class Bot<S extends object = Record<string, unknown>> {
       ?? update.edited_business_message
       ?? update.guest_message
       ?? update.callback_query?.message;
-    const key = message?.chat?.id !== undefined ? `${message.chat.id}:${message.from?.id ?? "anonymous"}` : `update:${update.update_id}`;
+    const key = this.conversationKey(update);
     const session = await this.session.get(key) ?? ({} as S);
     if (!this.me) await this.init();
     if (!this.me) return;
@@ -176,6 +199,18 @@ export class Bot<S extends object = Record<string, unknown>> {
       await this.events.emit("bot:error", { bot: this, error });
       throw error;
     }
+  }
+
+  private conversationKey(update: Update): string {
+    const message = update.message
+      ?? update.edited_message
+      ?? update.channel_post
+      ?? update.edited_channel_post
+      ?? update.business_message
+      ?? update.edited_business_message
+      ?? update.guest_message
+      ?? update.callback_query?.message;
+    return message?.chat?.id !== undefined ? `${message.chat.id}:${message.from?.id ?? "anonymous"}` : `update:${update.update_id}`;
   }
 
   private async waitForRetry(delayMs: number, signal: AbortSignal): Promise<boolean> {
