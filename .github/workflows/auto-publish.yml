@@ -1,0 +1,126 @@
+name: Auto publish to npm
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: auto-publish-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    runs-on: ubuntu-latest
+    environment: npm-release
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Determine next patch version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          current=$(node -p "require('./package.json').version")
+          latest=$(npm view @xbibzlibrary/telebibz version --registry=https://registry.npmjs.org 2>/dev/null || true)
+          if [[ -z "$latest" ]]; then
+            latest="0.0.0"
+          fi
+          export CURRENT_VERSION="$current"
+          export LATEST_VERSION="$latest"
+          next=$(node <<'NODE'
+          const current = process.env.CURRENT_VERSION;
+          const latest = process.env.LATEST_VERSION;
+          const parse = (value) => {
+            const match = /^(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(value);
+            if (!match) throw new Error(`Invalid semver: ${value}`);
+            return match.slice(1).map(Number);
+          };
+          const [currentMajor, currentMinor, currentPatch] = parse(current);
+          const [latestMajor, latestMinor, latestPatch] = parse(latest);
+          const currentNumber = currentMajor * 1_000_000 + currentMinor * 1_000 + currentPatch;
+          const latestNumber = latestMajor * 1_000_000 + latestMinor * 1_000 + latestPatch;
+          const base = Math.max(currentNumber, latestNumber);
+          const major = Math.floor(base / 1_000_000);
+          const minor = Math.floor((base % 1_000_000) / 1_000);
+          const patch = base % 1_000 + 1;
+          process.stdout.write(`${major}.${minor}.${patch}`);
+          NODE
+          )
+          npm version "$next" --no-git-tag-version
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $next (source: $current, npm latest: $latest)"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Type-level tests
+        run: npm run test:types
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Runtime tests
+        run: npm test
+
+      - name: Build ESM and CommonJS
+        run: npm run build
+
+      - name: Security audit
+        run: npm run security
+
+      - name: Release check
+        run: npm run release:check
+
+      - name: Verify version is not already published
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "@xbibzlibrary/telebibz@$RELEASE_VERSION" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "Version $RELEASE_VERSION already exists on npm; refusing to overwrite immutable release."
+            exit 1
+          fi
+
+      - name: Commit version and create tag
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(release): v$RELEASE_VERSION [skip release]"
+          git tag -a "v$RELEASE_VERSION" -m "Release v$RELEASE_VERSION"
+          git push origin HEAD:main
+          git push origin "v$RELEASE_VERSION"
+
+      - name: Publish package
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "v$RELEASE_VERSION" --generate-notes --title "telebibz v$RELEASE_VERSION"

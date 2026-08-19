@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-cjs/
+*.tgz
+.npmrc
+.env
+.env.*
+!.env.example
+coverage/
+.DS_Store

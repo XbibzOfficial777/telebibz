@@ -1,0 +1,88 @@
+{
+  "name": "@xbibzlibrary/telebibz",
+  "version": "0.1.2",
+  "description": "Production-grade, strongly typed Telegram Bot API SDK and framework for Node.js and TypeScript.",
+  "type": "module",
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/XbibzOfficial777/telebibz.git"
+  },
+  "homepage": "https://github.com/XbibzOfficial777/telebibz#readme",
+  "bugs": {
+    "url": "https://github.com/XbibzOfficial777/telebibz/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "generate": "node scripts/generate-api.mjs",
+    "update:telegram": "node scripts/fetch-telegram-api.mjs && npm run generate",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/create-cjs-package.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit && eslint scripts/*.mjs bin/*.mjs --no-error-on-unmatched-pattern",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration/**/*.test.ts",
+    "test:e2e": "vitest run tests/e2e",
+    "test:types": "tsc -p tests/tsconfig.json --noEmit",
+    "benchmark": "tsx tests/benchmark.ts",
+    "package:check": "npm run build && npm pack --dry-run",
+    "security": "npm audit --audit-level=high --package-lock-only",
+    "release:check": "node scripts/release-check.mjs",
+    "doctor": "tsx src/cli.ts doctor",
+    "dev": "tsx examples/minimal.ts",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run test:types && npm run lint && npm test && npm run build && npm run security && npm run release:check"
+  },
+  "bin": {
+    "telebibz": "./bin/telebibz.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist-cjs/src/index.js"
+    },
+    "./api": {
+      "types": "./dist/src/api/index.d.ts",
+      "import": "./dist/src/api/index.js",
+      "require": "./dist-cjs/src/api/index.js"
+    },
+    "./keyboard": {
+      "types": "./dist/src/keyboard/index.d.ts",
+      "import": "./dist/src/keyboard/index.js",
+      "require": "./dist-cjs/src/keyboard/index.js"
+    },
+    "./testing": {
+      "types": "./dist/src/testing.d.ts",
+      "import": "./dist/src/testing.js",
+      "require": "./dist-cjs/src/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "dist-cjs",
+    "bin",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "APPROVAL_FEATURE.md",
+    "RELEASE_POLICY.md",
+    "assets",
+    "docs"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.11"
+  }
+}

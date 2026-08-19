@@ -1,0 +1,66 @@
+# GitHub-to-npm Release Automation
+
+Repository ini menggunakan GitHub Actions untuk menjaga source GitHub dan package npm tetap sinkron melalui satu jalur release yang tervalidasi.
+
+## Alur otomatis
+
+Setiap push ke branch `main` menjalankan workflow `.github/workflows/auto-publish.yml`, kecuali commit tersebut memuat marker `[skip release]`.
+
+| Tahap | Perilaku |
+|---|---|
+| Checkout | Mengambil seluruh history agar tag dapat dibuat dengan benar. |
+| Install | Menjalankan `npm ci --ignore-scripts`. |
+| Version | Membaca versi dari `package.json`, membaca versi latest npm, lalu memilih patch version berikutnya yang lebih tinggi dari keduanya. |
+| Verification | Menjalankan typecheck, type-level tests, lint, runtime tests, build ESM/CommonJS, security audit, dan release check. |
+| Immutable guard | Menolak publish jika versi target sudah ada di npm. |
+| Git sync | Commit otomatis `chore(release): vX.Y.Z [skip release]`, membuat annotated tag `vX.Y.Z`, lalu push commit dan tag ke GitHub. |
+| npm publish | Menerbitkan package public dengan npm provenance menggunakan `NPM_TOKEN`. |
+| GitHub Release | Membuat GitHub Release dengan generated notes. |
+
+Push commit version otomatis tidak memicu release kedua karena mengandung `[skip release]`. Workflow menggunakan concurrency sehingga release berjalan satu per satu.
+
+## Secret yang wajib tersedia
+
+Buka repository GitHub, kemudian masuk ke **Settings → Secrets and variables → Actions** dan tambahkan repository secret:
+
+```text
+NPM_TOKEN=${NPM_TOKEN}
+```
+
+Jika memakai GitHub Environment bernama `npm-release`, secret dapat disimpan sebagai environment secret dan environment tersebut dapat diberi required reviewers untuk approval manual sebelum publish.
+
+Jangan menyimpan token di repository, `.npmrc`, source code, issue, commit, atau workflow. Token npm yang pernah ditempelkan di chat harus dicabut dan diganti dengan granular token baru.
+
+## Aturan penggunaan
+
+Perubahan source biasa dapat dipush ke `main`; workflow akan menghasilkan patch release baru setelah seluruh quality gates lulus. Karena versi npm immutable, workflow tidak pernah menimpa versi yang telah ada.
+
+Untuk perubahan besar, ubah `package.json` ke major/minor version yang diinginkan sebelum push. Workflow tetap memastikan hasil akhir lebih tinggi daripada versi npm yang sudah terbit, lalu menaikkan patch dari versi tertinggi tersebut.
+
+Untuk perubahan dokumentasi atau perubahan internal yang tidak boleh menerbitkan npm, gunakan commit message yang memuat marker berikut:
+
+```text
+docs: update API reference [skip release]
+```
+
+Untuk memicu workflow secara manual, gunakan **Actions → Auto publish to npm → Run workflow**. Manual trigger tetap menjalankan versioning dan semua gate yang sama.
+
+## Verifikasi lokal
+
+Sebelum push, jalankan:
+
+```bash
+npm run typecheck
+npm run test:types
+npm run lint
+npm test
+npm run build
+npm run security
+npm run release:check
+```
+
+Setelah workflow selesai, verifikasi:
+
+```bash
+npm view @xbibzlibrary/telebibz version dist.integrity dist.tarball
+```

@@ -1,0 +1,12 @@
+import { Bot } from "../dist/src/index.js";
+const token = process.env.TELEGRAM_BOT_TOKEN;
+if (!token) throw new Error("TELEGRAM_BOT_TOKEN is required");
+const bot = new Bot({ token, polling: { timeout: 1, limit: 10, allowedUpdates: [], retryDelayMs: 100, maxRetryDelayMs: 500 } });
+const started = new Promise((resolve) => bot.events.once("bot:started", resolve));
+const launch = bot.launch({ mode: "polling", timeout: 1, allowedUpdates: [] });
+await started;
+if (bot.status !== "running") throw new Error(`Expected running, got ${bot.status}`);
+setTimeout(() => { void bot.stop(); }, 3_000);
+await launch;
+if (bot.status !== "stopped") throw new Error(`Expected stopped, got ${bot.status}`);
+console.log(JSON.stringify({ status: "PASS", lifecycle: bot.status }));
