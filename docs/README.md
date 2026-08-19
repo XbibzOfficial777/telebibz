@@ -16,14 +16,14 @@ The API references are organized by lifecycle: bot startup and shutdown, API cli
 |---|---|
 | Getting started | Available in all three README files |
 | Complete API reference | Available in English, Indonesian, and Simplified Chinese |
-| Bot lifecycle, polling, webhook | Core implementation and tests available |
-| API client and generated method list | Available; object type generation remains partial |
-| Router, middleware, context | Available and tested |
-| Keyboard, callback, menus, pagination | Keyboard/callback core available; advanced menu/pagination remains partial |
-| Sessions, conversations, wizards, forms | Memory session and conversation/form primitives available; advanced integration remains partial |
-| Storage, cache, queue, scheduler | In-memory primitives available; distributed adapters are not included |
+| Bot lifecycle, polling, webhook | Core implementation, per-update error isolation, reconnect backoff, and tests available |
+| API client and generated method list | Available; full vendored Telegram declarations are exposed through `TelegramTypes` |
+| Router, middleware, context | Available and tested; first-match is default, all-match is explicit |
+| Keyboard, callback, menus, pagination | Keyboard/callback core, permission menus, MenuController, and pagination available |
+| Sessions, conversations, wizards, forms | Storage-backed session/conversation primitives and forms available; scene orchestration remains application-owned |
+| Storage, cache, queue, scheduler | Memory, JSON file, Redis, SQL, Mongo driver adapters, cache, queue, and full five-field cron available |
 | Plugins, services, observability | Lifecycle/plugin/service hooks available |
-| Mini Apps, payments, business features | Raw API access available; high-level subsystems are not complete |
+| Mini Apps, payments, business features | Web App signature validation and PaymentsClient wrappers available; UI is application-owned |
 | Testing and security | Unit, integration, type-level, gated E2E, CI, and security policy available |
 | Deployment and migration | Release automation is documented in `RELEASE_AUTOMATION.md` |
 

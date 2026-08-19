@@ -112,7 +112,7 @@ const handler = createWebhookHandler(bot, {
 
 ## 状态、队列、调度器和缓存
 
-该包提供带 TTL 和原子更新的 `MemoryStorage`、context 上的 session、会话/表单原语、菜单/分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和简单 cron 的调度器。Redis、SQL、MongoDB 适配器和队列服务的适配器需由应用程序或可选包提供。
+该包提供带 TTL 和原子更新的 `MemoryStorage`、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`、持久化 approval storage、bot session、基于 Storage 的 conversation/form、基于 permission 的菜单、`MenuController` 分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和完整五字段 cron 的调度器。Redis、SQL 和 Mongo 适配器使用小型 driver interface，因此 core package 不需要 vendor runtime dependency。
 
 ## CLI
 
@@ -137,9 +137,13 @@ npm run release:check
 
 真实的 Telegram E2E 需要 `TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_TEST_CHAT_ID`。没有凭证时，E2E 将被跳过且不计为通过。
 
+## Web App 和支付
+
+`validateWebAppInitData()` 会验证 Telegram Web App 的 signature 和 expiration。`PaymentsClient` 提供 invoice link、invoice、pre-checkout answer、Web App query answer、Stars transactions 和 Stars refunds 的 wrapper。使用 `TelegramTypes` 以及 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 等 alias 来访问完整的 vendored Telegram declaration surface。
+
 ## API 目标与限制
 
-方法列表根据 Telegram Bot API 文档在 schema 更新时生成。对检测到的官方方法提供方法访问，但并非所有对象、联合类型、枚举和可选适配器都具有完整的高级类型定义。有关实现状态请参见 [FEATURE_MATRIX.md](FEATURE_MATRIX.md)，有关审批的详细信息请参见 [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md)。
+方法列表会在 schema 更新时根据 Telegram Bot API 文档生成。检测到的官方方法都可以运行时访问，而专门的参数/结果推断主要集中在 core method map。完整的 Telegram object、union、enum 和 method declaration 可通过 `TelegramTypes` 使用。有关实现状态请参见 [FEATURE_MATRIX.md](FEATURE_MATRIX.md)，有关审批的详细信息请参见 [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md)。
 
 ## 发布自动化
 

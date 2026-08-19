@@ -5,37 +5,37 @@ Status memiliki arti: `IMPLEMENTED` berarti implementasi dan test lokal tersedia
 | Feature | Native API | telebibz Abstraction | Implementation | Unit Test | Integration Test | E2E Test | Status |
 |---|---|---|---|---|---|---|---|
 | Generated Telegram method names | Official Bot API headings | `TELEGRAM_METHOD_NAMES`, dynamic API methods | `generated/api.ts`, generator | Yes | No | No | IMPLEMENTED |
-| Strong types for core methods | Official Bot API core subset | `TelegramMethodMap`, `ApiParams`, `ApiResult` | `src/api/types.ts` | Yes | No | Partial | PARTIAL |
+| Strong types for core methods | Official Bot API core subset | `TelegramMethodMap`, `ApiParams`, `ApiResult`, `TelegramTypes` | `src/api/types.ts`, `src/api/telegram.ts`, vendored declarations | Yes | No | Partial | IMPLEMENTED |
 | Unknown/future raw methods | Any Bot API method | `api.raw`, `api.call` | `src/api/client.ts` | Yes | No | No | IMPLEMENTED |
 | JSON transport | HTTPS Bot API | `FetchTransport` | `src/api/transport.ts` | Yes | No | Blocked without token | IMPLEMENTED |
 | Multipart upload | Bot API InputFile | Blob/Uint8Array/path support | `src/api/transport.ts` | Partial | No | Blocked without token | PARTIAL |
 | Telegram error parsing | Response error fields | typed error classes | `src/api/errors.ts` | Yes | No | No | IMPLEMENTED |
 | Bot lifecycle | Bot operations | init/start/stop/restart/health | `src/core/bot.ts` | Yes | Yes | Blocked without token | IMPLEMENTED |
-| Long polling | getUpdates | offset/retry/backoff/shutdown | `src/core/bot.ts` | Partial | No | Blocked without token | PARTIAL |
+| Long polling | getUpdates | offset/retry/backoff/shutdown, per-update error isolation, abortable reconnect | `src/core/bot.ts` | Yes | Yes | Blocked without token | IMPLEMENTED |
 | Webhook | setWebhook/update POST | Request/Response handler and secret | `src/webhook/handler.ts` | Yes | Yes | Blocked without deployed endpoint | IMPLEMENTED |
-| Context | Update/Message/CallbackQuery | typed getters and helpers | `src/context/context.ts` | Yes | Yes | Partial | PARTIAL |
+| Context | Update/Message/CallbackQuery | typed getters, callback message fallback, reply/edit/delete helpers | `src/context/context.ts` | Yes | Yes | Partial | IMPLEMENTED |
 | Router | Update fields | command/text/regex/callback/chat/predicate/nesting | `src/router/router.ts` | Yes | Yes | No | IMPLEMENTED |
 | Middleware | Update processing | async composition and error propagation | `src/middleware/compose.ts` | Yes | Yes | No | IMPLEMENTED |
 | Commands | Telegram commands | command matcher and registration | `src/core/bot.ts` | Yes | Yes | Partial | IMPLEMENTED |
 | Callback framework | callback query | exact/prefix/regex matching | `src/core/bot.ts` | Yes | Yes | Partial | IMPLEMENTED |
 | Inline keyboards | InlineKeyboardMarkup | validated builder | `src/keyboard/index.ts` | Yes | No | Partial | IMPLEMENTED |
-| Reply keyboards | ReplyKeyboardMarkup | builder primitives | `src/keyboard/index.ts` | Partial | No | No | PARTIAL |
-| Session/state | Application concern | memory session and context state | `src/storage/storage.ts`, `bot.ts` | Yes | Yes | No | PARTIAL |
+| Reply keyboards | ReplyKeyboardMarkup | validated builder primitives and native payloads | `src/keyboard/index.ts` | Yes | No | No | IMPLEMENTED |
+| Session/state | Application concern | generic Storage session, JSON/Redis/SQL/Mongo adapters, context state | `src/storage/storage.ts`, `bot.ts` | Yes | Yes | No | IMPLEMENTED |
 | Storage abstraction | Application concern | generic Storage and memory adapter | `src/storage/storage.ts` | Yes | No | No | IMPLEMENTED |
-| Cache | Application concern | TTL memory cache and namespace | `src/cache/cache.ts` | Partial | No | No | IMPLEMENTED |
-| Rate limiter | Telegram flood control | token bucket primitive | `src/cache/cache.ts` | Partial | No | No | PARTIAL |
+| Cache | Application concern | generic storage-backed TTL cache and namespace | `src/cache/cache.ts`, `src/storage/storage.ts` | Yes | No | No | IMPLEMENTED |
+| Rate limiter | Telegram flood control | validated token bucket primitive with reset/retry metadata | `src/cache/cache.ts` | Yes | No | No | IMPLEMENTED |
 | Queue | Background work | retry/backoff/concurrency/priority/delay | `src/queue/queue.ts` | Yes | No | No | IMPLEMENTED |
-| Scheduler | Background work | interval/one-shot/simple cron | `src/queue/queue.ts` | Partial | No | No | PARTIAL |
+| Scheduler | Background work | interval/one-shot/full five-field cron, reschedule, error hook | `src/queue/queue.ts` | Yes | No | No | IMPLEMENTED |
 | Plugin system | Application concern | lifecycle and service container | `src/plugins/plugin.ts` | Partial | No | No | PARTIAL |
 | Owner approval gate | Application concern | pending/approved/denied, owner notification, signed callback, owner-only decision | `src/approval/approval.ts`, `BotOptions.approval` | Yes | Yes | No | IMPLEMENTED |
 | CLI | Developer tooling | init/doctor/generate/build/test/inspect | `src/cli.ts`, `bin` | Partial | No | No | PARTIAL |
 | Message splitting/formatting | Telegram limits | splitMessage, MarkdownV2/HTML helpers | `src/utils/text.ts` | Yes | No | No | PARTIAL |
 | Real Telegram E2E | Telegram API | gated tests | `tests/e2e`, deep runners | Yes | Yes | PASS with provided credentials | IMPLEMENTED |
-| Full generated object types | Official schema | all classes/unions/options | generator currently method-name focused | No | No | No | NOT_AVAILABLE |
-| Conversations/scenes/wizard/forms | Framework feature | planned | not implemented | No | No | No | NOT_AVAILABLE |
-| Redis/SQL/Mongo adapters | External stores | planned optional packages | not implemented | No | No | No | NOT_AVAILABLE |
-| Mini App UI SDK | Web App | planned optional package | not implemented | No | No | No | NOT_AVAILABLE |
-| Payments orchestration | Bot API payments | raw API only | no high-level subsystem | No | No | Blocked | NOT_AVAILABLE |
+| Full generated object types | Official schema | vendored `TelegramTypes` object/union/enum/method declarations plus specialized core map | `src/api/telegram.ts`, `src/api/telegram-types/` | Yes | No | No | IMPLEMENTED |
+| Conversations/scenes/wizard/forms | Framework feature | ConversationManager/Wizard/Form with Storage integration; scene orchestration remains application-owned | `src/state/conversation.ts`, `src/state/forms.ts` | Yes | No | No | PARTIAL |
+| Redis/SQL/Mongo adapters | External stores | driver-based storage adapters without vendor runtime dependencies | `src/storage/storage.ts` | Yes | No | No | IMPLEMENTED |
+| Mini App UI SDK | Web App | signed init-data parser/validator and Web App query wrapper | `src/telegram-features.ts` | Yes | No | No | PARTIAL |
+| Payments orchestration | Bot API payments | invoice, pre-checkout, Web App query, Stars, refund wrapper | `src/telegram-features.ts` | Yes | No | Blocked | PARTIAL |
 
 ## Production gate status
 
@@ -51,5 +51,5 @@ Status memiliki arti: `IMPLEMENTED` berarti implementasi dan test lokal tersedia
 | Lint | PASS |
 | npm pack verification | PASS (`npm run package:check`, clean tarball install) |
 | npm audit | PASS on clean dependency tree (`found 0 vulnerabilities`) |
-| Full requested feature scope | PARTIAL: high-level schema/adapters/subsystems remain incomplete |
-| Production readiness | PARTIAL, not PASS: requested full scope remains incomplete despite real Telegram E2E passing |
+| Full requested feature scope | PARTIAL: high-level Mini App UI, advanced scenes, and specialized method maps remain bounded |
+| Production readiness | PARTIAL: core runtime and persistence are hardened; vendor driver integration and optional high-level UI/scenes remain application-owned |

@@ -66,7 +66,7 @@ type BotStatus =
 | `apiBaseUrl` | `string` | `https://api.telegram.org` | Telegram API base URL. Trailing `/` is removed automatically. |
 | `transport` | `Transport` | `FetchTransport` | Custom transport for mocks, proxies, or other implementations. |
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, and fetch implementation. |
-| `session` | `MemoryStorage<string, S>` | new storage | Session storage keyed by chat/user. |
+| `session` | `Storage<string, S>` | new storage | Session storage keyed by chat/user; any storage adapter may be used. |
 | `services` | `Record<string, unknown>` | `{}` | Dependencies/services available via `ctx.services`. |
 | `polling.timeout` | `number` | `30` | Long-poll timeout in seconds for `getUpdates`. |
 | `polling.limit` | `number` | `100` | Maximum number of updates per polling request. |
@@ -95,7 +95,7 @@ The constructor throws `Error` if the token is empty or does not match the Teleg
 | `router` | `Router<Context<S>>` | Bot's main router. |
 | `events` | `EventBus<EventMap>` | Event bus for lifecycle, updates, API, webhook, and polling. |
 | `plugins` | `PluginManager<Context<S>>` | Plugin lifecycle manager. |
-| `session` | `MemoryStorage<string, S>` | Bot in-memory session. |
+| `session` | `Storage<string, S>` | Bot session; any persistent adapter may be used. |
 | `services` | `Record<string, unknown>` | A copy of services provided to the constructor. |
 | `approval` | `ApprovalGate \| undefined` | Approval gate if `approval` is configured. |
 | `token` | `string` | Bot token used by the client. |
@@ -1728,7 +1728,7 @@ Environment variables used by the CLI are `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEB
 
 The package exports the most commonly used data types directly.
 
-| Tipe | Isi penting |
+| Type | Important contents |
 |---|---|
 | `User` | ID, bot flag, name, username, language, and capability flags. |
 | `Chat` | ID, type, title/username/name, forum/direct message indicators. |
@@ -1744,13 +1744,52 @@ The package exports the most commonly used data types directly.
 
 ---
 
-## 18. Compatibility and limitations to be aware of
+## 18. Persistence, full cron, menus, and complete Telegram declarations
+
+### Persistent storage adapters
+
+All storage adapters implement the same `Storage<K, V>` contract. The core package remains free of vendor runtime dependencies; Redis, SQL, and Mongo adapters receive a small driver interface supplied by the application or its chosen vendor client.
+
+| Class | Constructor | Purpose |
+|---|---|---|
+| `MemoryStorage<K, V>` | `new MemoryStorage()` | Fast in-memory storage with TTL and per-key atomic `update()`. |
+| `JsonFileStorage<V>` | `new JsonFileStorage(filePath)` | Atomic JSON-file persistence for single-process deployments. |
+| `RedisStorage<V>` | `new RedisStorage(client, prefix?)` | Redis-backed storage through `RedisLikeClient`, including TTL and namespace operations. |
+| `SqlStorage<V>` | `new SqlStorage(driver)` | SQL-backed storage through an application-owned `SqlStorageDriver`. |
+| `MongoStorage<V>` | `new MongoStorage(collection)` | Mongo collection-backed storage through an application-owned `MongoStorageCollection`. |
+| `StorageApprovalStore` | `new StorageApprovalStore(storage)` | Persistent owner-approval records backed by any `Storage<string, ApprovalRecord>`. |
+
+`BotOptions.session` accepts `Storage<string, S>`, so sessions can use any adapter. `ConversationManager` accepts the same storage abstraction and exposes `getAsync()`, `cancelAsync()`, and `clearExpiredAsync()` for durable conversation state.
+
+```ts
+const session = new JsonFileStorage<Record<string, unknown>>("./data/sessions.json");
+const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
+```
+
+### Full five-field cron
+
+`parseCronExpression()` supports the standard five fields `minute hour day-of-month month day-of-week`, including wildcards, lists, ranges, and steps such as `*/15 9-17 1,15 * 1-5`. `nextCronOccurrence()` calculates the next local occurrence. `Scheduler.cron()` schedules one-shot timers and reschedules after each execution; task failures are delivered to `Scheduler({ onError })` instead of becoming unhandled promise rejections.
+
+### Router matching mode
+
+`new Router()` is **first-match by default**. This prevents accidental double replies. Use `new Router({ matchMode: "all" })` only when intentional fan-out is required. RegExp matchers reset `lastIndex` before testing, so global or sticky expressions are safe to reuse.
+
+### MenuController and permissions
+
+`Menu` supports permission-aware items, asynchronous visibility and permission predicates, breadcrumbs, and multi-column layouts. `MenuController` adds stateful page rendering and callback dispatch for `select`, `page`, `noop`, and foreign callback data.
+
+### Complete Telegram declaration namespace
+
+The package vendors MIT-licensed Telegram declarations and exposes them as type-only exports through `TelegramTypes`, plus aliases such as `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, and `TelegramApiMethods`. These declarations cover the complete object, union, enum, and method declaration surface without adding a runtime dependency. Core telebibz method maps remain specialized for the methods with direct request/result mappings.
+
+---
+## 19. Compatibility and limitations to be aware of
 
 The library targets Node.js `>=20`, uses ESM as the primary module, and also provides a CommonJS build. Webhooks require a runtime that provides Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, and `AbortController`; modern Node.js provides these natively.
 
 The list of generated API methods and the API method map are not the same. `TelegramMethodName` includes 184 runtime names, but `TelegramMethodMap` only has specially-typed parameters/results for the subset listed in the API client section. For other methods, use `api.raw()` or add a type declaration on the application side.
 
-Approval state and all primitive memory will be lost when the process restarts unless the application provides a more persistent store/session adapter. `BotOptions.session` is currently typed as `MemoryStorage`, whereas `ApprovalGate` accepts a custom `ApprovalStore`.
+Approval state and other in-memory primitives are lost when the process restarts unless the application provides a persistent adapter. `BotOptions.session` accepts the generic `Storage<string, S>` contract, and `ApprovalGate` can use `StorageApprovalStore` or any custom `ApprovalStore`.
 
 ---
 

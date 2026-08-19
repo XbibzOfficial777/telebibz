@@ -7,6 +7,7 @@ export type EventMap = {
   "bot:stopped": { bot: unknown };
   "bot:error": { bot: unknown; error: unknown };
   update: { update: unknown };
+  "update:error": { update: unknown; error: unknown };
   message: { message: unknown };
   command: { name: string; update: unknown };
   callback: { data: string; update: unknown };

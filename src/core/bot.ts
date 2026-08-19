@@ -3,9 +3,9 @@ import { FetchTransport, type FetchTransportOptions, type Transport } from "../a
 import type { BotCommand, BotCommandScope, ChatId, Update, User } from "../api/types.js";
 import { Context } from "../context/context.js";
 import { compose, type Middleware } from "../middleware/compose.js";
-import { Router } from "../router/router.js";
+import { Router, type RouterOptions } from "../router/router.js";
 import { EventBus, type EventMap } from "./events.js";
-import { MemoryStorage } from "../storage/storage.js";
+import { MemoryStorage, type Storage } from "../storage/storage.js";
 import { PluginManager, type Plugin } from "../plugins/plugin.js";
 import { ApprovalGate, type ApprovalOptions } from "../approval/approval.js";
 
@@ -17,20 +17,21 @@ export interface BotOptions<S extends object = Record<string, unknown>> {
   apiBaseUrl?: string;
   transport?: Transport;
   transportOptions?: Omit<FetchTransportOptions, "baseUrl">;
-  session?: MemoryStorage<string, S>;
+  session?: Storage<string, S>;
   services?: Record<string, unknown>;
   polling?: { timeout?: number; limit?: number; allowedUpdates?: string[]; retryDelayMs?: number; maxRetryDelayMs?: number };
   approval?: ApprovalOptions;
+  router?: RouterOptions;
 }
 
 export interface HealthStatus { status: BotStatus; apiReachable: boolean; bot?: User; checkedAt: string; error?: string }
 
 export class Bot<S extends object = Record<string, unknown>> {
   readonly api: ApiClient;
-  readonly router = new Router<Context<S>>();
+  readonly router: Router<Context<S>>;
   readonly events = new EventBus<EventMap>();
   readonly plugins: PluginManager<Context<S>>;
-  readonly session: MemoryStorage<string, S>;
+  readonly session: Storage<string, S>;
   readonly services: Record<string, unknown>;
   readonly approval: ApprovalGate | undefined;
   readonly token: string;
@@ -45,6 +46,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     const config = typeof options === "string" ? { token: options } : options;
     if (!config.token || !/^\d+:[\w-]+$/.test(config.token)) throw new Error("A valid Telegram bot token is required.");
     this.token = config.token;
+    this.router = new Router<Context<S>>(config.router);
     this.session = config.session ?? new MemoryStorage<string, S>();
     this.services = { ...(config.services ?? {}) };
     const transport = config.transport ?? new FetchTransport({ baseUrl: `${config.apiBaseUrl ?? "https://api.telegram.org"}/bot${config.token}`, ...(config.transportOptions ?? {}) });
@@ -129,7 +131,14 @@ export class Bot<S extends object = Record<string, unknown>> {
   async deleteCommands(scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("deleteMyCommands", { scope, language_code: languageCode } as never) as Promise<true>; }
 
   async handleUpdate(update: Update): Promise<void> {
-    const message = update.message ?? update.edited_message ?? update.channel_post ?? update.edited_channel_post ?? update.business_message ?? update.guest_message;
+    const message = update.message
+      ?? update.edited_message
+      ?? update.channel_post
+      ?? update.edited_channel_post
+      ?? update.business_message
+      ?? update.edited_business_message
+      ?? update.guest_message
+      ?? update.callback_query?.message;
     const key = message?.chat?.id !== undefined ? `${message.chat.id}:${message.from?.id ?? "anonymous"}` : `update:${update.update_id}`;
     const session = await this.session.get(key) ?? ({} as S);
     if (this.approval && this.me && !(await this.approval.isAllowed(this.me.id))) {
@@ -138,16 +147,41 @@ export class Bot<S extends object = Record<string, unknown>> {
     }
     const ctx = new Context<S>({ update, api: this.api, session, services: this.services });
     await this.events.emit("update", { update });
-    if (message) await this.events.emit("message", { message });
+    if (message) {
+      await this.events.emit("message", { message });
+      if (message.text?.startsWith("/")) {
+        const command = message.text.slice(1).split(/[\s@]/, 1)[0] ?? "";
+        await this.events.emit("command", { name: command, update });
+      }
+    }
+    if (update.callback_query) await this.events.emit("callback", { data: update.callback_query.data ?? "", update });
     const pipeline = compose<Context<S>>([...this.middlewares, async (context) => this.router.handle(context)]);
     try {
       await pipeline(ctx);
       await this.session.set(key, ctx.session);
     } catch (error) {
-      this.statusValue = "error";
+      // A handler failure belongs to this update. It must remain observable and reject
+      // direct handleUpdate() callers, but it must not poison the polling lifecycle.
+      await this.events.emit("update:error", { update, error });
       await this.events.emit("bot:error", { bot: this, error });
       throw error;
     }
+  }
+
+  private async waitForRetry(delayMs: number, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return false;
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(true);
+      }, delayMs);
+      const onAbort = () => {
+        clearTimeout(timer);
+        signal.removeEventListener("abort", onAbort);
+        resolve(false);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
   }
 
   private async poll(timeout: number, allowedUpdates: string[], signal: AbortSignal): Promise<void> {
@@ -158,12 +192,18 @@ export class Bot<S extends object = Record<string, unknown>> {
         delay = this.pollingOptions.retryDelayMs;
         for (const update of updates) {
           this.offset = Math.max(this.offset, update.update_id + 1);
-          await this.handleUpdate(update);
+          try {
+            await this.handleUpdate(update);
+          } catch {
+            // The update has already advanced the offset. Continue with the rest of
+            // the batch instead of reconnecting or replaying a failed handler.
+          }
         }
       } catch (error) {
         if (signal.aborted) break;
-        await this.events.emit("polling:reconnect", { error, attempt: Math.ceil(delay / this.pollingOptions.retryDelayMs) });
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        const attempt = Math.max(1, Math.round(Math.log2(delay / this.pollingOptions.retryDelayMs) + 1));
+        await this.events.emit("polling:reconnect", { error, attempt });
+        if (!(await this.waitForRetry(delay, signal))) break;
         delay = Math.min(this.pollingOptions.maxRetryDelayMs, delay * 2);
       }
     }

@@ -114,7 +114,7 @@ const handler = createWebhookHandler(bot, {
 
 ## State, queue, scheduler, and cache
 
-The package provides `MemoryStorage` with TTL and serialized per-key updates, bot sessions, conversation and form primitives, menus and pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and simple cron expressions. Redis, SQL, MongoDB, and vendor queue adapters must be supplied by the application or optional packages.
+The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent approval storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
 
 ## CLI
 
@@ -139,9 +139,13 @@ npm run release:check
 
 Real Telegram E2E tests require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_TEST_CHAT_ID`. Without credentials, E2E tests are skipped and are not counted as passing.
 
+## Web Apps and payments
+
+`validateWebAppInitData()` verifies Telegram Web App signatures and expiration. `PaymentsClient` provides wrappers for invoice links, invoices, pre-checkout answers, Web App query answers, Stars transactions, and Stars refunds. Use `TelegramTypes` and aliases such as `TelegramUser`, `TelegramMessage`, and `TelegramUpdate` for the vendored full Telegram declaration surface.
+
 ## API targets and limitations
 
-The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, but not every object, union, enum, or optional adapter has complete advanced typing. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) for approval details.
+The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, while specialized request/result inference remains concentrated on the core method map. The complete vendored Telegram object, union, enum, and method declarations are available through `TelegramTypes`. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) for approval details.
 
 For every exported class, function, method, type, error, lifecycle hook, CLI command, and generated Telegram method, see the [complete English API reference](docs/API.md).
 

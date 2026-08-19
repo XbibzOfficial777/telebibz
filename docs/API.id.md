@@ -67,7 +67,7 @@ type BotStatus =
 | `apiBaseUrl` | `string` | `https://api.telegram.org` | Base URL API Telegram. Akhiran `/` dihapus secara otomatis. |
 | `transport` | `Transport` | `FetchTransport` | Transport kustom untuk mock, proxy, atau implementasi lain. |
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, dan fetch implementation. |
-| `session` | `MemoryStorage<string, S>` | storage baru | Penyimpanan session berdasarkan kunci chat/user. |
+| `session` | `Storage<string, S>` | storage baru | Penyimpanan session berdasarkan kunci chat/user; dapat memakai adapter persistent. |
 | `services` | `Record<string, unknown>` | `{}` | Dependency/service yang tersedia melalui `ctx.services`. |
 | `polling.timeout` | `number` | `30` | Long-poll timeout dalam detik untuk `getUpdates`. |
 | `polling.limit` | `number` | `100` | Jumlah maksimum update per request polling. |
@@ -96,7 +96,7 @@ Konstruktor melempar `Error` jika token kosong atau tidak sesuai pola token Tele
 | `router` | `Router<Context<S>>` | Router utama bot. |
 | `events` | `EventBus<EventMap>` | Event bus untuk lifecycle, update, API, webhook, dan polling. |
 | `plugins` | `PluginManager<Context<S>>` | Manajer lifecycle plugin. |
-| `session` | `MemoryStorage<string, S>` | Session in-memory bot. |
+| `session` | `Storage<string, S>` | Session bot; dapat memakai adapter persistent. |
 | `services` | `Record<string, unknown>` | Salinan service yang diberikan saat konstruktor. |
 | `approval` | `ApprovalGate \| undefined` | Approval gate jika `approval` dikonfigurasi. |
 | `token` | `string` | Token bot yang dipakai client. |
@@ -1744,13 +1744,53 @@ Paket mengekspor tipe data yang paling sering digunakan secara langsung.
 
 ---
 
-## 18. Kompatibilitas dan batasan yang perlu diketahui
+## 18. Persistence, cron lengkap, menu, dan deklarasi Telegram lengkap
+
+### Adapter storage persistent
+
+Semua adapter mengimplementasikan kontrak `Storage<K, V>` yang sama. Package inti tetap tidak memiliki runtime dependency vendor; adapter Redis, SQL, dan Mongo menerima driver kecil yang disediakan aplikasi atau client vendor pilihan aplikasi.
+
+| Class | Konstruktor | Tujuan |
+|---|---|---|
+| `MemoryStorage<K, V>` | `new MemoryStorage()` | Storage in-memory cepat dengan TTL dan `update()` atomik per key. |
+| `JsonFileStorage<V>` | `new JsonFileStorage(filePath)` | Persistensi JSON atomik untuk deployment single-process. |
+| `RedisStorage<V>` | `new RedisStorage(client, prefix?)` | Storage Redis melalui `RedisLikeClient`, termasuk TTL dan namespace. |
+| `SqlStorage<V>` | `new SqlStorage(driver)` | Storage SQL melalui `SqlStorageDriver` milik aplikasi. |
+| `MongoStorage<V>` | `new MongoStorage(collection)` | Storage Mongo melalui `MongoStorageCollection` milik aplikasi. |
+| `StorageApprovalStore` | `new StorageApprovalStore(storage)` | Record approval persistent dari `Storage<string, ApprovalRecord>` apa pun. |
+
+`BotOptions.session` menerima `Storage<string, S>`, sehingga session dapat memakai adapter apa pun. `ConversationManager` menerima abstraction yang sama dan menyediakan `getAsync()`, `cancelAsync()`, serta `clearExpiredAsync()` untuk state conversation durable.
+
+```ts
+const session = new JsonFileStorage<Record<string, unknown>>("./data/sessions.json");
+const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
+```
+
+### Cron lima field lengkap
+
+`parseCronExpression()` mendukung lima field standar `minute hour day-of-month month day-of-week`, termasuk wildcard, list, range, dan step seperti `*/15 9-17 1,15 * 1-5`. `nextCronOccurrence()` menghitung occurrence lokal berikutnya. `Scheduler.cron()` memakai timer one-shot dan menjadwalkan ulang setelah setiap eksekusi; kegagalan task dikirim ke `Scheduler({ onError })`, bukan menjadi unhandled promise rejection.
+
+### Mode matching router
+
+`new Router()` menggunakan **first-match secara default** untuk mencegah double reply. Gunakan `new Router({ matchMode: "all" })` hanya untuk fan-out yang disengaja. Matcher RegExp mereset `lastIndex`, sehingga expression global atau sticky dapat digunakan ulang dengan aman.
+
+### MenuController dan permission
+
+`Menu` mendukung item berbasis permission, predicate visibility/permission asynchronous, breadcrumb, dan layout multi-kolom. `MenuController` menambahkan render halaman stateful dan dispatch callback untuk `select`, `page`, `noop`, serta callback asing.
+
+### Namespace deklarasi Telegram lengkap
+
+Package memvendorkan declaration Telegram berlisensi MIT dan mengeksposnya sebagai type-only export melalui `TelegramTypes`, serta alias seperti `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, dan `TelegramApiMethods`. Declaration ini mencakup surface object, union, enum, dan method tanpa runtime dependency tambahan. Map method inti telebibz tetap khusus untuk method yang memiliki pemetaan parameter/result langsung.
+
+---
+
+## 19. Kompatibilitas dan batasan yang perlu diketahui
 
 Perpustakaan menargetkan Node.js `>=20`, menggunakan ESM sebagai module utama, serta menyediakan build CommonJS. Webhook membutuhkan runtime yang menyediakan Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, dan `AbortController`; Node.js modern menyediakannya secara native.
 
 Daftar method yang dihasilkan API dan peta method API bukanlah hal yang sama. `TelegramMethodName` mencakup 184 nama runtime, tetapi `TelegramMethodMap` hanya memiliki parameter/hasil yang bertipe khusus untuk subset yang tercantum pada bagian API client. Untuk method lain, gunakan `api.raw()` atau tambahkan deklarasi tipe di sisi aplikasi.
 
-State persetujuan (approval state) dan semua memori primitif akan hilang saat proses dimulai ulang kecuali aplikasi menyediakan store/session adapter yang lebih tahan lama. `BotOptions.session` saat ini bertipe `MemoryStorage`, sedangkan `ApprovalGate` menerima `ApprovalStore` kustom.
+State persetujuan dan primitive in-memory lainnya hilang saat proses dimulai ulang kecuali aplikasi menyediakan adapter persistent. `BotOptions.session` menerima kontrak generic `Storage<string, S>`, dan `ApprovalGate` dapat memakai `StorageApprovalStore` atau `ApprovalStore` kustom.
 
 ---
 

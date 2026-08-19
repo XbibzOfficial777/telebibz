@@ -112,7 +112,7 @@ const handler = createWebhookHandler(bot, {
 
 ## State, queue, scheduler, dan cache
 
-Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, session pada context, primitif percakapan/formulir, menu/pagination, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan simple cron. Adapter Redis, SQL, MongoDB, dan queue vendor harus disediakan oleh aplikasi atau paket opsional.
+Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent approval storage, session bot, conversation dan form berbasis Storage, menu berbasis permission, pagination `MenuController`, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan cron lima field lengkap. Adapter Redis, SQL, dan Mongo memakai driver kecil sehingga core package tetap tanpa runtime dependency vendor.
 
 ## CLI
 
@@ -137,9 +137,13 @@ npm run release:check
 
 E2E Telegram nyata memerlukan `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_TEST_CHAT_ID`. Tanpa kredensial, E2E akan dilewati dan tidak dihitung sebagai lulus.
 
+## Web App dan pembayaran
+
+`validateWebAppInitData()` memverifikasi signature dan expiration Telegram Web App. `PaymentsClient` menyediakan wrapper invoice link, invoice, jawaban pre-checkout, jawaban Web App query, transaksi Stars, dan refund Stars. Gunakan `TelegramTypes` serta alias seperti `TelegramUser`, `TelegramMessage`, dan `TelegramUpdate` untuk full Telegram declaration surface yang divendor.
+
 ## API target dan batasan
 
-Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui. Akses method tersedia untuk method resmi yang terdeteksi, tetapi tidak semua object, union, enum, dan optional adapter memiliki pengetikan tingkat lanjut penuh. Lihat [FEATURE_MATRIX.md](FEATURE_MATRIX.md) untuk status implementasi dan [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) untuk detail persetujuan.
+Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui. Akses runtime tersedia untuk method resmi yang terdeteksi, sedangkan inferensi parameter/result khusus dipusatkan pada core method map. Full declaration Telegram untuk object, union, enum, dan method tersedia melalui `TelegramTypes`. Lihat [FEATURE_MATRIX.md](FEATURE_MATRIX.md) untuk status implementasi dan [APPROVAL_FEATURE.md](APPROVAL_FEATURE.md) untuk detail persetujuan.
 
 ## Otomatisasi release
 

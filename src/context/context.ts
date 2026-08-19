@@ -23,9 +23,32 @@ export class Context<S extends object = Record<string, unknown>> {
     this.services = options.services;
   }
 
-  get message(): Message | undefined { return this.update.message ?? this.update.edited_message ?? this.update.channel_post ?? this.update.edited_channel_post ?? this.update.business_message ?? this.update.edited_business_message ?? this.update.guest_message; }
-  get chat(): Chat | undefined { return this.message?.chat; }
-  get from(): User | undefined { return this.message?.from ?? this.callbackQuery?.from ?? this.inlineQuery?.from; }
+  get message(): Message | undefined {
+    return this.update.message
+      ?? this.update.edited_message
+      ?? this.update.channel_post
+      ?? this.update.edited_channel_post
+      ?? this.update.business_message
+      ?? this.update.edited_business_message
+      ?? this.update.guest_message
+      ?? this.callbackQuery?.message;
+  }
+  get chat(): Chat | undefined {
+    return this.message?.chat
+      ?? this.update.chat_member?.chat
+      ?? this.update.my_chat_member?.chat
+      ?? this.update.chat_join_request?.chat
+      ?? this.pollAnswer?.voter_chat;
+  }
+  get from(): User | undefined {
+    return this.message?.from
+      ?? this.callbackQuery?.from
+      ?? this.inlineQuery?.from
+      ?? this.update.chat_member?.from
+      ?? this.update.my_chat_member?.from
+      ?? this.update.chat_join_request?.from
+      ?? this.pollAnswer?.user;
+  }
   get sender(): User | undefined { return this.from; }
   get callbackQuery() { return this.update.callback_query; }
   get inlineQuery() { return this.update.inline_query; }

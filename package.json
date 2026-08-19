@@ -23,7 +23,7 @@
   "scripts": {
     "generate": "node scripts/generate-api.mjs",
     "update:telegram": "node scripts/fetch-telegram-api.mjs && npm run generate",
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/create-cjs-package.mjs",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/create-cjs-package.mjs && node scripts/copy-telegram-types.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit && eslint scripts/*.mjs bin/*.mjs --no-error-on-unmatched-pattern",
     "test": "vitest run",

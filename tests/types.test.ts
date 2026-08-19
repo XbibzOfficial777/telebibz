@@ -1,6 +1,13 @@
-import { Bot, InlineKeyboard, type Message, type Update } from "../src/index.js";
+import { Bot, InlineKeyboard, type Message, type Update, type Storage, MemoryStorage, type TelegramUser, type TelegramMessage, type TelegramUpdate } from "../src/index.js";
 
-const bot = new Bot("123456:TEST_TOKEN");
+const session: Storage<string, { count: number }> = new MemoryStorage<string, { count: number }>();
+const bot = new Bot<{ count: number }>({ token: "123456:TEST_TOKEN", session });
+const fullUser: TelegramUser = {} as TelegramUser;
+const fullMessage: TelegramMessage = {} as TelegramMessage;
+const fullUpdate: TelegramUpdate = {} as TelegramUpdate;
+void fullUser;
+void fullMessage;
+void fullUpdate;
 bot.command("start", async (ctx) => {
   const message: Message | undefined = ctx.message;
   const update: Update = ctx.update;

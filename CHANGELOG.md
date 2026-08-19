@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Callback-query contexts now resolve `message` and `chat` from `callback_query.message`, so `ctx.reply()`, `ctx.edit()`, and `ctx.delete()` work for button callbacks.
+- Router matching is first-match by default; explicit `matchMode: "all"` preserves deliberate fan-out without accidental double replies.
+- Polling isolates handler failures per update, continues the remainder of a batch, emits `update:error`, and uses abortable reconnect backoff.
+- Regex matchers reset `lastIndex` before reuse.
+
+### Added
+
+- JSON-file, Redis, SQL-driver, Mongo-driver, and persistent approval storage adapters.
+- Storage-backed conversations, full five-field cron parsing, scheduler error hooks, permission-aware menus, `MenuController`, Web App init-data validation, PaymentsClient, and vendored Telegram declarations.
+- Callback-update test fixtures and expanded failure-path/regression coverage.
+
 ## 0.1.2 — 2026-08-19
 
 ### Changed
@@ -32,4 +47,4 @@
 
 ### Known limitations
 
-The full object/type schema generator, conversations/scenes/wizard/forms, distributed adapters, Mini App UI SDK, high-level payments subsystem, and authenticated Telegram E2E verification are not complete in this release. See `FEATURE_MATRIX.md`.
+The generated method list has runtime coverage for official method names, while specialized request/result inference remains concentrated on the core method map; full Telegram declarations are available through `TelegramTypes`. Scene orchestration and a full Mini App UI layer remain application-owned. Redis, SQL, and Mongo adapters require the application to provide the corresponding vendor driver interface. See `FEATURE_MATRIX.md`.

@@ -1,6 +1,8 @@
 import type { Context } from "../context/context.js";
+import { MemoryStorage, type Storage } from "../storage/storage.js";
 
 export interface ConversationState { name: string; step: number; values: Record<string, unknown>; status: "active" | "completed" | "cancelled"; updatedAt: number }
+
 export class ConversationFlow<S extends object = Record<string, unknown>> {
   constructor(readonly ctx: Context<S>, readonly state: ConversationState) {}
   get values(): Record<string, unknown> { return this.state.values; }
@@ -14,11 +16,77 @@ export class ConversationFlow<S extends object = Record<string, unknown>> {
 
 export class ConversationManager<S extends object = Record<string, unknown>> {
   private readonly active = new Map<string, ConversationState>();
-  start(key: string, name: string, values: Record<string, unknown> = {}): ConversationState { const state: ConversationState = { name, step: 0, values, status: "active", updatedAt: Date.now() }; this.active.set(key, state); return state; }
+  readonly storage: Storage<string, ConversationState>;
+
+  constructor(storage: Storage<string, ConversationState> = new MemoryStorage<string, ConversationState>()) {
+    this.storage = storage;
+  }
+
+  start(key: string, name: string, values: Record<string, unknown> = {}): ConversationState {
+    const state: ConversationState = { name, step: 0, values, status: "active", updatedAt: Date.now() };
+    this.active.set(key, state);
+    void this.storage.set(key, state);
+    return state;
+  }
+
   get(key: string): ConversationState | undefined { return this.active.get(key); }
-  cancel(key: string): boolean { const state = this.active.get(key); if (!state) return false; state.status = "cancelled"; state.updatedAt = Date.now(); return true; }
-  clearExpired(maxAgeMs: number): number { const threshold = Date.now() - maxAgeMs; let removed = 0; for (const [key, state] of this.active) if (state.updatedAt < threshold) { this.active.delete(key); removed += 1; } return removed; }
-  async run(ctx: Context<S>, key: string, name: string, steps: Array<(flow: ConversationFlow<S>) => void | Promise<void>>): Promise<ConversationState> { const state = this.active.get(key) ?? this.start(key, name); const flow = new ConversationFlow(ctx, state); const step = steps[state.step]; if (!step) { state.status = "completed"; return state; } await step(flow); return state; }
+
+  async getAsync(key: string): Promise<ConversationState | undefined> {
+    const cached = this.active.get(key);
+    if (cached) return cached;
+    const stored = await this.storage.get(key);
+    if (stored) this.active.set(key, stored);
+    return stored;
+  }
+
+  cancel(key: string): boolean {
+    const state = this.active.get(key);
+    if (!state) return false;
+    state.status = "cancelled";
+    state.updatedAt = Date.now();
+    void this.storage.set(key, state);
+    return true;
+  }
+
+  async cancelAsync(key: string): Promise<boolean> {
+    const state = await this.getAsync(key);
+    if (!state) return false;
+    state.status = "cancelled";
+    state.updatedAt = Date.now();
+    await this.storage.set(key, state);
+    return true;
+  }
+
+  clearExpired(maxAgeMs: number): number {
+    if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0) throw new RangeError("maxAgeMs must be non-negative");
+    const threshold = Date.now() - maxAgeMs;
+    let removed = 0;
+    for (const [key, state] of this.active) if (state.updatedAt < threshold) { this.active.delete(key); void this.storage.delete(key); removed += 1; }
+    return removed;
+  }
+
+  async clearExpiredAsync(maxAgeMs: number): Promise<number> {
+    if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0) throw new RangeError("maxAgeMs must be non-negative");
+    const threshold = Date.now() - maxAgeMs;
+    let removed = 0;
+    for await (const [key, state] of this.storage.entries()) {
+      if (state.updatedAt < threshold) { await this.storage.delete(key); this.active.delete(key); removed += 1; }
+    }
+    return removed;
+  }
+
+  async run(ctx: Context<S>, key: string, name: string, steps: Array<(flow: ConversationFlow<S>) => void | Promise<void>>): Promise<ConversationState> {
+    const state = (await this.getAsync(key)) ?? this.start(key, name);
+    if (state.name !== name) throw new Error(`Conversation ${key} belongs to ${state.name}, not ${name}`);
+    const flow = new ConversationFlow(ctx, state);
+    const step = steps[state.step];
+    if (!step) state.status = "completed";
+    else await step(flow);
+    state.updatedAt = Date.now();
+    await this.storage.set(key, state);
+    this.active.set(key, state);
+    return state;
+  }
 }
 
 export interface WizardStep<S extends object = Record<string, unknown>> { id: string; run: (flow: ConversationFlow<S>) => void | Promise<void>; optional?: boolean }

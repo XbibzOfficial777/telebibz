@@ -52,6 +52,13 @@ export class MemoryApprovalStore implements ApprovalStore {
   async delete(key: string): Promise<boolean> { return this.records.delete(key); }
 }
 
+export class StorageApprovalStore implements ApprovalStore {
+  constructor(private readonly storage: Storage<string, ApprovalRecord>) {}
+  get(key: string): Promise<ApprovalRecord | undefined> { return this.storage.get(key); }
+  set(key: string, record: ApprovalRecord): Promise<void> { return this.storage.set(key, record); }
+  delete(key: string): Promise<boolean> { return this.storage.delete(key); }
+}
+
 export class ApprovalGate {
   private readonly store: ApprovalStore;
   private readonly cooldownMs: number;

@@ -67,7 +67,7 @@ type BotStatus =
 | `apiBaseUrl` | `string` | `https://api.telegram.org` | Telegram API 的基础 URL。结尾的 `/` 会被自动移除。 |
 | `transport` | `Transport` | `FetchTransport` | 用于 mock、proxy 或其他实现的自定义 transport。 |
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | 超时、重试、退避、jitter、headers 和 fetch 实现。 |
-| `session` | `MemoryStorage<string, S>` | 新的存储 | 基于 chat/user key 的会话存储。 |
+| `session` | `Storage<string, S>` | 新的存储 | 基于 chat/user key 的会话存储，可使用持久化适配器。 |
 | `services` | `Record<string, unknown>` | `{}` | 通过 `ctx.services` 可用的依赖/服务。 |
 | `polling.timeout` | `number` | `30` | 用于 `getUpdates` 的长轮询超时（秒）。 |
 | `polling.limit` | `number` | `100` | 每次轮询请求的最大 update 数量。 |
@@ -96,7 +96,7 @@ Constructor melempar `Error` jika token kosong atau tidak sesuai pola token Tele
 | `router` | `Router<Context<S>>` | bot 的主路由器。 |
 | `events` | `EventBus<EventMap>` | 生命周期、update、API、webhook 和 polling 的事件总线。 |
 | `plugins` | `PluginManager<Context<S>>` | 插件的生命周期管理器。 |
-| `session` | `MemoryStorage<string, S>` | bot 的内存会话存储。 |
+| `session` | `Storage<string, S>` | bot 的会话存储，可使用持久化适配器。 |
 | `services` | `Record<string, unknown>` | 构造函数提供的 service 的拷贝。 |
 | `approval` | `ApprovalGate \| undefined` | 如果配置了 `approval` 则为 Approval gate。 |
 | `token` | `string` | 客户端使用的 bot token。 |
@@ -1722,7 +1722,7 @@ CLI 使用的环境变量是 `TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_WEBHOOK_SECRET`�
 
 该包直接导出最常用的数据类型。
 
-| Tipe | Isi penting |
+| Type | 重要内容 |
 |---|---|
 | `User` | ID、机器人标志、姓名、用户名、语言和能力标志。 |
 | `Chat` | ID、类型、标题/用户名/名称、论坛/私信 标志。 |
@@ -1738,13 +1738,53 @@ CLI 使用的环境变量是 `TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_WEBHOOK_SECRET`�
 
 ---
 
-## 18. 兼容性和需要注意的限制
+## 18. 持久化、完整 cron、菜单和完整 Telegram 声明
+
+### 持久化 storage 适配器
+
+所有适配器都实现相同的 `Storage<K, V>` contract。核心 package 不包含 vendor runtime dependency；Redis、SQL 和 Mongo 适配器接收由应用或所选 vendor client 提供的小型 driver interface。
+
+| Class | 构造函数 | 用途 |
+|---|---|---|
+| `MemoryStorage<K, V>` | `new MemoryStorage()` | 带 TTL 和按 key 原子 `update()` 的快速内存 storage。 |
+| `JsonFileStorage<V>` | `new JsonFileStorage(filePath)` | 适用于单进程部署的原子 JSON 文件持久化。 |
+| `RedisStorage<V>` | `new RedisStorage(client, prefix?)` | 通过 `RedisLikeClient` 使用 Redis storage，包含 TTL 和 namespace。 |
+| `SqlStorage<V>` | `new SqlStorage(driver)` | 通过应用提供的 `SqlStorageDriver` 使用 SQL storage。 |
+| `MongoStorage<V>` | `new MongoStorage(collection)` | 通过应用提供的 `MongoStorageCollection` 使用 Mongo storage。 |
+| `StorageApprovalStore` | `new StorageApprovalStore(storage)` | 使用任意 `Storage<string, ApprovalRecord>` 持久化 owner approval record。 |
+
+`BotOptions.session` 接受 `Storage<string, S>`，因此 session 可以使用任意适配器。`ConversationManager` 接受相同的 storage abstraction，并提供 `getAsync()`、`cancelAsync()` 和 `clearExpiredAsync()` 来持久化 conversation state。
+
+```ts
+const session = new JsonFileStorage<Record<string, unknown>>("./data/sessions.json");
+const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
+```
+
+### 完整五字段 cron
+
+`parseCronExpression()` 支持标准五字段 `minute hour day-of-month month day-of-week`，包括 wildcard、list、range 和 step，例如 `*/15 9-17 1,15 * 1-5`。`nextCronOccurrence()` 计算下一个本地 occurrence。`Scheduler.cron()` 使用 one-shot timer，并在每次执行后重新调度；任务错误会交给 `Scheduler({ onError })`，不会成为未处理的 promise rejection。
+
+### Router matching mode
+
+`new Router()` 默认使用 **first-match**，防止意外的 double reply。只有在确实需要 fan-out 时才使用 `new Router({ matchMode: "all" })`。RegExp matcher 在测试前会重置 `lastIndex`，因此 global 或 sticky expression 可以安全复用。
+
+### MenuController 和 permission
+
+`Menu` 支持基于 permission 的 item、异步 visibility/permission predicate、breadcrumb 和多列布局。`MenuController` 增加 stateful page rendering，以及对 `select`、`page`、`noop` 和外部 callback data 的 dispatch。
+
+### 完整 Telegram declaration namespace
+
+Package 内置 MIT 许可的 Telegram declaration，并通过 type-only export 暴露 `TelegramTypes`，同时提供 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 和 `TelegramApiMethods` 等 alias。这些 declaration 覆盖完整的 object、union、enum 和 method surface，不增加 runtime dependency。telebibz core method map 仍专门为具有直接参数/结果映射的 method 提供类型。
+
+---
+
+## 19. 兼容性和需要注意的限制
 
 Library menargetkan Node.js `>=20`，使用 ESM 作为主要模块，并提供 CommonJS 构建。Webhook 需要运行时提供 Web `Request`、`Response`、`Headers`、`FormData`、`Blob` 和 `AbortController`；现代 Node.js 原生提供了这些。
 
 API 生成的方法列表（generated method list）和 API 方法映射（API method map）并不相同。`TelegramMethodName` 包含 184 个运行时名称，但 `TelegramMethodMap` 仅对 API 客户端部分列出的子集提供了带类型的参数/结果。对于其他方法，使用 `api.raw()` 或在应用端添加类型声明。
 
-Approval 状态和所有原生内存将在进程重启时丢失，除非应用提供更持久的 store/session 适配器。`BotOptions.session` 当前类型为 `MemoryStorage`，而 `ApprovalGate` 接受自定义的 `ApprovalStore`。
+Approval 状态和其他内存 primitive 会在进程重启时丢失，除非应用提供持久化适配器。`BotOptions.session` 接受 generic `Storage<string, S>` contract，`ApprovalGate` 可以使用 `StorageApprovalStore` 或自定义 `ApprovalStore`。
 
 ---
 
