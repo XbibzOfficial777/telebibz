@@ -8,6 +8,7 @@ import { EventBus, type EventMap } from "./events.js";
 import { MemoryStorage, type Storage } from "../storage/storage.js";
 import { PluginManager, type Plugin } from "../plugins/plugin.js";
 import { ApprovalGate, type ApprovalOptions } from "../approval/approval.js";
+import { createLogger, Logger, type LoggerOptions, summarizeUpdate } from "../observability/logger.js";
 
 export type BotStatus = "created" | "initialized" | "awaiting-approval" | "starting" | "running" | "stopping" | "stopped" | "error";
 export type BotContext<S extends object = Record<string, unknown>> = Context<S>;
@@ -22,6 +23,7 @@ export interface BotOptions<S extends object = Record<string, unknown>> {
   polling?: { timeout?: number; limit?: number; allowedUpdates?: string[]; retryDelayMs?: number; maxRetryDelayMs?: number };
   approval?: ApprovalOptions;
   router?: RouterOptions;
+  logger?: Logger | LoggerOptions;
 }
 
 export interface HealthStatus { status: BotStatus; apiReachable: boolean; bot?: User; checkedAt: string; error?: string }
@@ -35,6 +37,7 @@ export class Bot<S extends object = Record<string, unknown>> {
   readonly services: Record<string, unknown>;
   readonly approval: ApprovalGate | undefined;
   readonly token: string;
+  readonly logger: Logger;
   private readonly middlewares: Middleware<Context<S>>[] = [];
   private readonly pollingOptions: Required<NonNullable<BotOptions<S>["polling"]>>;
   private statusValue: BotStatus = "created";
@@ -46,6 +49,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     const config = typeof options === "string" ? { token: options } : options;
     if (!config.token || !/^\d+:[\w-]+$/.test(config.token)) throw new Error("A valid Telegram bot token is required.");
     this.token = config.token;
+    this.logger = config.logger instanceof Logger ? config.logger : createLogger(config.logger);
     this.router = new Router<Context<S>>(config.router);
     this.session = config.session ?? new MemoryStorage<string, S>();
     this.services = { ...(config.services ?? {}) };
@@ -53,9 +57,9 @@ export class Bot<S extends object = Record<string, unknown>> {
     this.api = new ApiClient({
       transport,
       hooks: {
-        onRequest: (context) => this.events.emit("api:request", { method: context.method, payload: context.payload }),
-        onResponse: (context) => this.events.emit("api:response", { method: context.method, durationMs: context.durationMs ?? 0, response: context.response }),
-        onError: (context) => this.events.emit("api:error", { method: context.method, durationMs: context.durationMs ?? 0, error: context.error }),
+        onRequest: (context) => { this.logger.trace("api.request", { method: context.method, payload: context.payload }); return this.events.emit("api:request", { method: context.method, payload: context.payload }); },
+        onResponse: (context) => { this.logger.debug("api.response", { method: context.method, durationMs: context.durationMs ?? 0, ok: context.response?.ok }); return this.events.emit("api:response", { method: context.method, durationMs: context.durationMs ?? 0, response: context.response }); },
+        onError: (context) => { this.logger.error("api.error", { method: context.method, durationMs: context.durationMs ?? 0, error: context.error }); return this.events.emit("api:error", { method: context.method, durationMs: context.durationMs ?? 0, error: context.error }); },
       },
     });
     this.plugins = new PluginManager<Context<S>>(this);
@@ -67,6 +71,7 @@ export class Bot<S extends object = Record<string, unknown>> {
       retryDelayMs: config.polling?.retryDelayMs ?? 500,
       maxRetryDelayMs: config.polling?.maxRetryDelayMs ?? 30_000,
     };
+    this.logger.info("bot.created", { status: this.statusValue });
     void this.events.emit("bot:created", { bot: this });
   }
 
@@ -82,12 +87,14 @@ export class Bot<S extends object = Record<string, unknown>> {
 
   async init(): Promise<this> {
     if (this.statusValue === "initialized" || this.statusValue === "running") return this;
+    this.logger.info("bot.initializing");
     this.me = await this.api.methods.getMe();
     if (this.approval) {
       const approval = await this.approval.check({ bot: this.me });
-      if (!approval.allowed) { this.statusValue = "awaiting-approval"; return this; }
+      if (!approval.allowed) { this.statusValue = "awaiting-approval"; this.logger.warn("approval.pending", { botId: this.me.id, status: approval.status }); return this; }
     }
     this.statusValue = "initialized";
+    this.logger.info("bot.initialized", { botId: this.me.id, username: this.me.username });
     await this.events.emit("bot:initialized", { bot: this });
     await this.plugins.setup();
     await this.plugins.start();
@@ -101,6 +108,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     await this.init();
     if (this.statusValue === "running") return;
     this.statusValue = "starting";
+    this.logger.info("bot.starting", { mode: options.mode });
     await this.events.emit("bot:starting", { bot: this });
     this.pollingAbort = new AbortController();
     this.statusValue = "running";
@@ -116,6 +124,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     this.pollingAbort = undefined;
     await this.plugins.dispose();
     this.statusValue = "stopped";
+    this.logger.info("bot.stopped");
     await this.events.emit("bot:stopped", { bot: this });
   }
 
@@ -131,6 +140,7 @@ export class Bot<S extends object = Record<string, unknown>> {
   async deleteCommands(scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("deleteMyCommands", { scope, language_code: languageCode } as never) as Promise<true>; }
 
   async handleUpdate(update: Update): Promise<void> {
+    this.logger.debug("update.received", { update: summarizeUpdate(update, this.logger.includeUpdateContent) });
     const message = update.message
       ?? update.edited_message
       ?? update.channel_post
@@ -162,6 +172,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     } catch (error) {
       // A handler failure belongs to this update. It must remain observable and reject
       // direct handleUpdate() callers, but it must not poison the polling lifecycle.
+      this.logger.error("update.handler_error", { update: summarizeUpdate(update, this.logger.includeUpdateContent), error });
       await this.events.emit("update:error", { update, error });
       await this.events.emit("bot:error", { bot: this, error });
       throw error;
@@ -202,6 +213,7 @@ export class Bot<S extends object = Record<string, unknown>> {
       } catch (error) {
         if (signal.aborted) break;
         const attempt = Math.max(1, Math.round(Math.log2(delay / this.pollingOptions.retryDelayMs) + 1));
+        this.logger.warn("polling.reconnect", { attempt, delayMs: delay, error });
         await this.events.emit("polling:reconnect", { error, attempt });
         if (!(await this.waitForRetry(delay, signal))) break;
         delay = Math.min(this.pollingOptions.maxRetryDelayMs, delay * 2);

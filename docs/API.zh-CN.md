@@ -2,11 +2,11 @@
 
 [English](API.md) · [Bahasa Indonesia](API.id.md) · **简体中文**
 
-![telebibz 概览](../assets/telebibz-readme-preview.png)
+![telebibz 概览](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
 
-本文件是 `@xbibzlibrary/telebibz@0.1.2` 的 API 参考。此处描述的所有签名和行为均映射自该包导出的 TypeScript 源代码。如果某个 Telegram 类型尚未有特定的参数/结果映射，该包仍通过动态 API 提供运行时访问，但其参数类型仍为通用类型。
+本文件是 `@xbibzlibrary/telebibz@0.1.4` 的 API 参考。此处描述的所有签名和行为均映射自该包导出的 TypeScript 源代码。如果某个 Telegram 类型尚未有特定的参数/结果映射，该包仍通过动态 API 提供运行时访问，但其参数类型仍为通用类型。
 
-> **实现状态。** 本文档说明了当前发布版本中实际可用的功能。`MemoryStorage`、`MemoryCache`、`TaskQueue` 和 `Scheduler` 是内存原语；分布式适配器、外部持久化，以及针对整个 Telegram Bot API 的完整模式类型尚未包含在本次发布中。
+> **实现状态。** 本文档说明当前版本中可用的功能。`JsonFileStorage`、基于 driver 的 Redis/SQL/Mongo storage、基于 Storage 的 session/conversation、完整五字段 cron、`MenuController`、带 branding 的 approval message、带 redaction 的 structured logging、Web App 验证、`PaymentsClient` 和 `TelegramTypes` declaration 均已提供。core method map 仍主要为特定 request/result inference 提供类型，未来 Telegram method 可通过 `api.raw()` 访问。
 
 ## 安装与导入
 
@@ -1774,7 +1774,7 @@ const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
 
 ### 完整 Telegram declaration namespace
 
-Package 内置 MIT 许可的 Telegram declaration，并通过 type-only export 暴露 `TelegramTypes`，同时提供 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 和 `TelegramApiMethods` 等 alias。这些 declaration 覆盖完整的 object、union、enum 和 method surface，不增加 runtime dependency。telebibz core method map 仍专门为具有直接参数/结果映射的 method 提供类型。
+Package 内置 MIT 许可的 Telegram declaration，并通过 type-only export 暴露 `TelegramTypes`，同时提供 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 和 `TelegramApiMethods` 等 alias。Approval notification 使用带颜色的 Unicode box，并包含 attribution `Library Bot Telegram By @xbibzofficial`。`Logger` 输出带 level、redaction、update summary 的结构化 JSON，并支持 opt-in 记录 user message/callback content。这些 declaration 覆盖完整的 object、union、enum 和 method surface，不增加 runtime dependency。telebibz core method map 仍专门为具有直接参数/结果映射的 method 提供类型。
 
 ---
 

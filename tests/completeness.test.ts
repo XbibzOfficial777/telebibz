@@ -8,6 +8,8 @@ import { ConversationManager } from "../src/state/conversation.js";
 import { nextCronOccurrence, parseCronExpression, Scheduler } from "../src/queue/queue.js";
 import { createHmac } from "node:crypto";
 import { validateWebAppInitData } from "../src/telegram-features.js";
+import { buildApprovalNotification, buildBrandingBox } from "../src/branding/branding.js";
+import { createLogger, summarizeUpdate } from "../src/observability/logger.js";
 
 const temporaryDirectories: string[] = [];
 afterEach(async () => { while (temporaryDirectories.length) await rm(temporaryDirectories.pop()!, { recursive: true, force: true }); });
@@ -133,5 +135,44 @@ describe("permission-aware menus", () => {
     const next = await controller.handle("items:page:1", { userId: 42 });
     expect(next?.type).toBe("page");
     expect(controller.page).toBe(1);
+  });
+});
+
+
+describe("branding and observability", () => {
+  it("renders the required colored attribution box and escaped approval notification", () => {
+    const box = buildBrandingBox();
+    expect(box).toContain("Library Bot Telegram By @xbibzofficial");
+    expect(box).toContain("🟦");
+    expect(box).toContain("🟪");
+
+    const notification = buildApprovalNotification({
+      ownerLabel: "<Owner>",
+      botLine: "bot<&>",
+      ownerIdLine: "Owner ID: <77>",
+    });
+    expect(notification).toContain("Haloo &lt;Owner&gt;, ada yang memakai library telebibz nihh");
+    expect(notification).toContain("&lt;Owner&gt;");
+    expect(notification).toContain("bot&lt;&amp;&gt;");
+    expect(notification).toContain("Library Bot Telegram By @xbibzofficial");
+  });
+
+  it("redacts sensitive logger fields and summarizes updates without content by default", () => {
+    const entries: Array<{ context?: Record<string, unknown> }> = [];
+    const logger = createLogger({ level: "debug", sink: (entry) => entries.push(entry) });
+    logger.info("credentials loaded", { token: "secret-token", password: "secret-password", nested: { apiKey: "secret-key" } });
+    expect(entries[0]?.context).toMatchObject({ token: "[REDACTED]", password: "[REDACTED]", nested: { apiKey: "[REDACTED]" } });
+
+    const summary = summarizeUpdate({
+      update_id: 901,
+      message: {
+        message_id: 3,
+        chat: { id: 44, type: "private" },
+        from: { id: 55, is_bot: false, first_name: "User" },
+        text: "do not log by default",
+      },
+    });
+    expect(summary).toEqual({ updateId: 901, type: "message", chatId: 44, fromUserId: 55, messageId: 3 });
+    expect(summary).not.toHaveProperty("text");
   });
 });

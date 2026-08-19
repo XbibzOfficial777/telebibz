@@ -8,7 +8,7 @@ The default documentation language is **English**. Translated README and API ref
 | Bahasa Indonesia | [`README.id.md`](../README.id.md) | [`API.id.md`](API.id.md) |
 | 简体中文 | [`README.zh-CN.md`](../README.zh-CN.md) | [`API.zh-CN.md`](API.zh-CN.md) |
 
-![telebibz overview](../assets/telebibz-readme-preview.png)
+![telebibz overview](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
 
 The API references are organized by lifecycle: bot startup and shutdown, API client and transport, update routing, middleware and context, state/session, interaction UI, background work, deployment, testing, and migration boundaries.
 

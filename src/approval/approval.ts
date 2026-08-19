@@ -3,6 +3,7 @@ import type { ApiClient } from "../api/client.js";
 import type { ChatId, CallbackQuery, Message, User } from "../api/types.js";
 import type { Storage } from "../storage/storage.js";
 import { InlineKeyboard } from "../keyboard/index.js";
+import { buildApprovalNotification } from "../branding/branding.js";
 
 export type ApprovalStatus = "pending" | "approved" | "denied";
 
@@ -93,7 +94,8 @@ export class ApprovalGate {
       .build();
     const message = await this.api.methods.sendMessage({
       chat_id: this.options.ownerChatId,
-      text: `Haloo ${ownerLabel}, ada yang memakai library telebibz nihh\n\n${botLine}\n${ownerIdLine}\nStatus: menunggu izin owner.`,
+      text: buildApprovalNotification({ ownerLabel, botLine, ownerIdLine }),
+      parse_mode: "HTML",
       reply_markup: keyboard,
     });
     record.notificationMessageId = message.message_id;

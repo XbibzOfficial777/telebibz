@@ -1,6 +1,6 @@
 # telebibz
 
-![telebibz logo](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@0.1.2/assets/telebibz-logo.png)
+![telebibz logo](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-logo.png)
 
 [![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
 
@@ -12,7 +12,7 @@
 
 Complete API references: [English](docs/API.md) · [Indonesia](docs/API.id.md) · [中文](docs/API.zh-CN.md)
 
-![telebibz overview](assets/telebibz-readme-preview.png)
+![telebibz overview](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
 
 ## Installation
 

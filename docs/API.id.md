@@ -2,11 +2,11 @@
 
 [English](API.md) · **Bahasa Indonesia** · [简体中文](API.zh-CN.md)
 
-![telebibz overview](../assets/telebibz-readme-preview.png)
+![telebibz overview](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
 
-Dokumen ini adalah referensi API untuk `@xbibzlibrary/telebibz@0.1.2`. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
+Dokumen ini adalah referensi API untuk `@xbibzlibrary/telebibz@0.1.4`. Seluruh signature dan perilaku yang dijelaskan di sini dipetakan dari source TypeScript yang diekspor package. Jika suatu tipe Telegram belum memiliki pemetaan parameter/result khusus, package tetap menyediakan akses runtime melalui API dinamis, tetapi tipe parameternya masih generik.
 
-> **Status implementasi.** Dokumentasi ini menjelaskan kemampuan yang benar-benar tersedia pada rilis saat ini. `MemoryStorage`, `MemoryCache`, `TaskQueue`, dan `Scheduler` adalah primitif in-memory; adapter terdistribusi, persistensi eksternal, dan pengetikan skema penuh untuk seluruh Telegram Bot API belum termasuk dalam rilis ini.
+> **Status implementasi.** Dokumentasi ini menjelaskan kemampuan yang tersedia pada rilis saat ini. `JsonFileStorage`, storage Redis/SQL/Mongo berbasis driver, session/conversation berbasis Storage, cron lima field lengkap, `MenuController`, approval message branded, structured logging dengan redaction, validasi Web App, `PaymentsClient`, dan declaration `TelegramTypes` sudah tersedia. Core method map tetap khusus untuk inferensi request/result tertentu, sedangkan `api.raw()` tersedia untuk method Telegram berikutnya.
 
 ## Instalasi dan import
 
@@ -1780,7 +1780,7 @@ const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
 
 ### Namespace deklarasi Telegram lengkap
 
-Package memvendorkan declaration Telegram berlisensi MIT dan mengeksposnya sebagai type-only export melalui `TelegramTypes`, serta alias seperti `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, dan `TelegramApiMethods`. Declaration ini mencakup surface object, union, enum, dan method tanpa runtime dependency tambahan. Map method inti telebibz tetap khusus untuk method yang memiliki pemetaan parameter/result langsung.
+Package memvendorkan declaration Telegram berlisensi MIT dan mengeksposnya sebagai type-only export melalui `TelegramTypes`, serta alias seperti `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, dan `TelegramApiMethods`. Approval notification memakai kotak Unicode berwarna dengan attribution `Library Bot Telegram By @xbibzofficial`. `Logger` menghasilkan JSON terstruktur dengan level, redaction, ringkasan update, dan opt-in untuk isi pesan user/callback. Declaration ini mencakup surface object, union, enum, dan method tanpa runtime dependency tambahan. Map method inti telebibz tetap khusus untuk method yang memiliki pemetaan parameter/result langsung.
 
 ---
 

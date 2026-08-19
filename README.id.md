@@ -1,6 +1,6 @@
 # telebibz
 
-![telebibz logo](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@0.1.2/assets/telebibz-logo.png)
+![telebibz logo](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-logo.png)
 
 **`@xbibzlibrary/telebibz`** adalah SDK dan framework Telegram Bot untuk Node.js dan TypeScript. Paket ini menyediakan API client, polling, router, middleware, context, keyboard builder, state/session, webhook handler, queue, scheduler, cache, plugin lifecycle, CLI, dan utilitas pengujian.
 
@@ -8,7 +8,7 @@
 
 Referensi API lengkap: [English](docs/API.md) · **Indonesia** · [中文](docs/API.zh-CN.md)
 
-![overview telebibz](assets/telebibz-readme-preview.png)
+![overview telebibz](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
 
 ## Instalasi
 

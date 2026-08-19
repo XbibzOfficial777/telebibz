@@ -1,11 +1,11 @@
 # telebibz API Reference — English
 [English](API.md) · [Bahasa Indonesia](API.id.md) · [简体中文](API.zh-CN.md)
 
-![telebibz overview](../assets/telebibz-readme-preview.png)
+![telebibz overview](https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets/telebibz-readme-preview.png)
 
-This document is the API reference for `@xbibzlibrary/telebibz@0.1.2`. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
+This document is the API reference for `@xbibzlibrary/telebibz@0.1.4`. All signatures and behaviors described here are mapped from the package's exported TypeScript source. If a Telegram type does not have a specific parameter/result mapping, the package still provides runtime access via a dynamic API, but the parameter types remain generic.
 
-> **Implementation status.** This documentation describes the capabilities that are actually available in the current release. `MemoryStorage`, `MemoryCache`, `TaskQueue`, and `Scheduler` are in-memory primitives; distributed adapters, external persistence, and full schema typing for the entire Telegram Bot API are not included in this release.
+> **Implementation status.** This documentation describes the capabilities available in the current release. `JsonFileStorage`, driver-based Redis/SQL/Mongo storage, storage-backed sessions/conversations, full five-field cron, `MenuController`, branded approval messages, structured redacted logging, Web App validation, PaymentsClient, and vendored `TelegramTypes` declarations are included. The core method map remains specialized for selected request/result inference, while `api.raw()` remains available for future Telegram methods.
 
 ## Installation and import
 
@@ -1780,7 +1780,7 @@ const bot = new Bot({ token: process.env.TELEGRAM_BOT_TOKEN!, session });
 
 ### Complete Telegram declaration namespace
 
-The package vendors MIT-licensed Telegram declarations and exposes them as type-only exports through `TelegramTypes`, plus aliases such as `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, and `TelegramApiMethods`. These declarations cover the complete object, union, enum, and method declaration surface without adding a runtime dependency. Core telebibz method maps remain specialized for the methods with direct request/result mappings.
+The package vendors MIT-licensed Telegram declarations and exposes them as type-only exports through `TelegramTypes`, plus aliases such as `TelegramUser`, `TelegramMessage`, `TelegramUpdate`, and `TelegramApiMethods`. Approval notifications use a colored Unicode box and the attribution `Library Bot Telegram By @xbibzofficial`. `Logger` emits structured JSON entries with configurable levels, redaction, update summaries, and opt-in user message/callback content. These declarations cover the complete object, union, enum, and method declaration surface without adding a runtime dependency. Core telebibz method maps remain specialized for the methods with direct request/result mappings.
 
 ---
 ## 19. Compatibility and limitations to be aware of
