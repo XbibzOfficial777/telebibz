@@ -36,6 +36,7 @@
     "security": "npm audit --audit-level=high --package-lock-only",
     "release:check": "node scripts/release-check.mjs",
     "doctor": "tsx src/cli.ts doctor",
+    "start": "tsx src/cli.ts start",
     "dev": "tsx examples/minimal.ts",
     "prepack": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run test:types && npm run lint && npm test && npm run build && npm run security && npm run release:check"

@@ -73,7 +73,7 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram update filters. |
 | `polling.retryDelayMs` | `number` | `500` | Initial delay when polling fails. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Maximum reconnect delay. |
-| `approval` | `ApprovalOptions` | disabled | Enable approval gate for the owner. |
+| `approval` | `ApprovalOptions` | `{}` | Optional label, cooldown, and approval storage only; the developer approval target is fixed internally. |
 
 ### Constructor `Bot`
 
@@ -83,7 +83,7 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-If the argument is a string, it is treated as the token. The constructor creates `ApiClient`, router, event bus, plugin manager, session storage, and approval gate if configured. The constructor emits the `bot:created` event asynchronously.
+If the argument is a string, it is treated as the token. The constructor creates `ApiClient`, router, event bus, plugin manager, session storage, and an always-on developer approval gate. The constructor emits the `bot:created` event asynchronously.
 
 The constructor throws `Error` if the token is empty or does not match the Telegram token pattern.
 
@@ -156,7 +156,7 @@ Registers a plugin. Plugin names must be unique.
 init(): Promise<this>
 ```
 
-Calls `getMe()`, stores the bot information, processes the approval gate if active, then runs plugin lifecycle `setup()` and `start()`.
+Calls `getMe()`, stores the bot information, requests developer approval, then runs plugin lifecycle `setup()` and `start()` only after approval.
 
 If approval has not been granted, the method sets the status to `"awaiting-approval"`, notifies the owner via the `ApprovalGate`, and returns the bot without marking it as `initialized`. Subsequent calls can be used after the owner grants approval.
 
@@ -1269,16 +1269,13 @@ new Menu(id: string): Menu
 
 ## 12. Approval Gate
 
-The approval gate sends a notification to the owner when a bot uses the library for the first time. The default message uses the label `Dev Gantenggg`, includes the bot ID/username and owner ID, and provides `Izinkan` and `Tidak Diizinkan` buttons.
+The always-on approval gate sends the branded notification to the library developer when a bot uses telebibz for the first time. The target chat and authorized decision-maker are fixed internally and are not part of the public configuration or notification output. The message includes the bot ID/username and provides `Izinkan` and `Tidak Diizinkan` buttons.
 
 ### `ApprovalOptions`
 
 | Property | Type | Default | Description |
 |---|---|---:|---|
-| `ownerChatId` | `ChatId` | wajib | Destination chat for notifications. |
-| `ownerUserId` | `number` | wajib | User ID allowed to press the buttons. |
-| `ownerLabel` | `string` | `Dev Gantenggg` | Label on the notification. |
-| `requireApproval` | `boolean` | `true` | `false` disables the gate. |
+| `ownerLabel` | `string` | `Dev Gantenggg` | Display label only; it cannot change the target developer. |
 | `notificationCooldownMs` | `number` | `600000` | Pending notification cooldown. |
 | `store` | `ApprovalStore` | `MemoryApprovalStore` | Custom approval storage. |
 
@@ -1291,7 +1288,6 @@ interface ApprovalRecord {
   key: string;
   botId: number;
   botUsername?: string;
-  ownerUserId?: number;
   status: ApprovalStatus;
   nonce: string;
   requestedAt: number;
@@ -1302,12 +1298,11 @@ interface ApprovalRecord {
 
 interface ApprovalIdentity {
   bot: User;
-  configuredOwnerUserId?: number;
 }
 
 interface ApprovalCheck {
   allowed: boolean;
-  status: ApprovalStatus | "disabled";
+  status: ApprovalStatus;
   record?: ApprovalRecord;
 }
 ```
@@ -1340,20 +1335,18 @@ new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
 |---|---|---|
 | `check` | `check(identity): Promise<ApprovalCheck>` | Returns approved if the record status is approved; sends a new request if none exists or the cooldown has expired. |
 | `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | Validates the nonce and owner, then performs approve/deny. Invalid callbacks or non-approval callbacks are returned as `handled: false`. |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True if approved or the gate is disabled. |
+| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True only if the fixed developer approval record is approved. |
 | `revoke` | `revoke(botId): Promise<boolean>` | Deletes the record if the store supports delete. |
 
-Callbacks can only be decided by the configured `ownerUserId`. A random 16-character hexadecimal nonce prevents old callbacks from being reused. Expired callbacks produce an expiration alert.
+Callbacks can only be decided by the fixed internal developer identity; caller-supplied owner IDs are ignored by the production API. A random 16-character hexadecimal nonce prevents old callbacks from being reused. The developer ID is not included in terminal or Telegram notification output. Expired callbacks produce an expiration alert.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: {
-    ownerChatId: 7377733784,
-    ownerUserId: 7377733784,
-    ownerLabel: "Dev Gantenggg",
-  },
+  approval: { ownerLabel: "Dev Gantenggg" },
 });
+
+// The approval target is fixed internally; it cannot be changed through this object.
 ```
 
 ---

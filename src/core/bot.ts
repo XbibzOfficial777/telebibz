@@ -9,6 +9,7 @@ import { MemoryStorage, type Storage } from "../storage/storage.js";
 import { PluginManager, type Plugin } from "../plugins/plugin.js";
 import { ApprovalGate, type ApprovalOptions } from "../approval/approval.js";
 import { createLogger, Logger, type LoggerOptions, summarizeUpdate } from "../observability/logger.js";
+import { printTerminalBranding, startTerminalAnimation } from "../branding/terminal.js";
 
 export type BotStatus = "created" | "initialized" | "awaiting-approval" | "starting" | "running" | "stopping" | "stopped" | "error";
 export type BotContext<S extends object = Record<string, unknown>> = Context<S>;
@@ -35,7 +36,7 @@ export class Bot<S extends object = Record<string, unknown>> {
   readonly plugins: PluginManager<Context<S>>;
   readonly session: Storage<string, S>;
   readonly services: Record<string, unknown>;
-  readonly approval: ApprovalGate | undefined;
+  readonly approval: ApprovalGate;
   readonly token: string;
   readonly logger: Logger;
   private readonly middlewares: Middleware<Context<S>>[] = [];
@@ -49,6 +50,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     const config = typeof options === "string" ? { token: options } : options;
     if (!config.token || !/^\d+:[\w-]+$/.test(config.token)) throw new Error("A valid Telegram bot token is required.");
     this.token = config.token;
+    printTerminalBranding();
     this.logger = config.logger instanceof Logger ? config.logger : createLogger(config.logger);
     this.router = new Router<Context<S>>(config.router);
     this.session = config.session ?? new MemoryStorage<string, S>();
@@ -63,7 +65,7 @@ export class Bot<S extends object = Record<string, unknown>> {
       },
     });
     this.plugins = new PluginManager<Context<S>>(this);
-    this.approval = config.approval ? new ApprovalGate(this.api, config.approval) : undefined;
+    this.approval = new ApprovalGate(this.api, config.approval);
     this.pollingOptions = {
       timeout: config.polling?.timeout ?? 30,
       limit: config.polling?.limit ?? 100,
@@ -88,17 +90,27 @@ export class Bot<S extends object = Record<string, unknown>> {
   async init(): Promise<this> {
     if (this.statusValue === "initialized" || this.statusValue === "running") return this;
     this.logger.info("bot.initializing");
-    this.me = await this.api.methods.getMe();
-    if (this.approval) {
+    const animation = startTerminalAnimation("Connecting to Telegram and requesting developer approval");
+    try {
+      this.me = await this.api.methods.getMe();
       const approval = await this.approval.check({ bot: this.me });
-      if (!approval.allowed) { this.statusValue = "awaiting-approval"; this.logger.warn("approval.pending", { botId: this.me.id, status: approval.status }); return this; }
+      if (!approval.allowed) {
+        this.statusValue = "awaiting-approval";
+        this.logger.warn("approval.pending", { botId: this.me.id, status: approval.status });
+        animation.stop("Approval request sent; waiting for developer decision");
+        return this;
+      }
+      this.statusValue = "initialized";
+      this.logger.info("bot.initialized", { botId: this.me.id, username: this.me.username });
+      await this.events.emit("bot:initialized", { bot: this });
+      await this.plugins.setup();
+      await this.plugins.start();
+      animation.stop("Developer approval confirmed; bot is ready");
+      return this;
+    } catch (error) {
+      animation.stop("Error: bot could not initialize");
+      throw error;
     }
-    this.statusValue = "initialized";
-    this.logger.info("bot.initialized", { botId: this.me.id, username: this.me.username });
-    await this.events.emit("bot:initialized", { bot: this });
-    await this.plugins.setup();
-    await this.plugins.start();
-    return this;
   }
 
   async start(): Promise<void> { await this.launch({ mode: "polling" }); }
@@ -106,6 +118,7 @@ export class Bot<S extends object = Record<string, unknown>> {
   async launch(options: { mode: "polling"; timeout?: number; allowedUpdates?: string[] } = { mode: "polling" }): Promise<void> {
     if (options.mode !== "polling") throw new Error("Use createWebhookHandler() for webhook mode.");
     await this.init();
+    if (this.statusValue === "awaiting-approval") return;
     if (this.statusValue === "running") return;
     this.statusValue = "starting";
     this.logger.info("bot.starting", { mode: options.mode });
@@ -151,7 +164,8 @@ export class Bot<S extends object = Record<string, unknown>> {
       ?? update.callback_query?.message;
     const key = message?.chat?.id !== undefined ? `${message.chat.id}:${message.from?.id ?? "anonymous"}` : `update:${update.update_id}`;
     const session = await this.session.get(key) ?? ({} as S);
-    if (this.approval && this.me && !(await this.approval.isAllowed(this.me.id))) {
+    if (!this.me) await this.init();
+    if (this.statusValue === "awaiting-approval" || !this.me || !(await this.approval.isAllowed(this.me.id))) {
       if (update.callback_query) await this.approval.handleCallback(update.callback_query);
       return;
     }

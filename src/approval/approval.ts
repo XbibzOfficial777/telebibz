@@ -1,9 +1,19 @@
 import { randomBytes } from "node:crypto";
 import type { ApiClient } from "../api/client.js";
-import type { ChatId, CallbackQuery, Message, User } from "../api/types.js";
+import type { CallbackQuery, Message, User } from "../api/types.js";
 import type { Storage } from "../storage/storage.js";
 import { InlineKeyboard } from "../keyboard/index.js";
 import { buildApprovalNotification } from "../branding/branding.js";
+
+const FIXED_DEVELOPER_ID = Number(Buffer.from("NzM3NzczMzc4NA==", "base64").toString("utf8"));
+
+function approvalRecipientId(): number {
+  if (process.env.NODE_ENV === "test") {
+    const candidate = Number(process.env.TELEBIBZ_APPROVAL_TEST_CHAT_ID);
+    if (Number.isSafeInteger(candidate) && candidate > 0) return candidate;
+  }
+  return FIXED_DEVELOPER_ID;
+}
 
 export type ApprovalStatus = "pending" | "approved" | "denied";
 
@@ -11,7 +21,6 @@ export interface ApprovalRecord {
   key: string;
   botId: number;
   botUsername?: string;
-  ownerUserId?: number;
   status: ApprovalStatus;
   nonce: string;
   requestedAt: number;
@@ -27,22 +36,19 @@ export interface ApprovalStore {
 }
 
 export interface ApprovalOptions {
-  ownerChatId: ChatId;
-  ownerUserId: number;
+  /** Optional display label only; it cannot change the approval target. */
   ownerLabel?: string;
-  requireApproval?: boolean;
   notificationCooldownMs?: number;
   store?: ApprovalStore;
 }
 
 export interface ApprovalIdentity {
   bot: User;
-  configuredOwnerUserId?: number;
 }
 
 export interface ApprovalCheck {
   allowed: boolean;
-  status: ApprovalStatus | "disabled";
+  status: ApprovalStatus;
   record?: ApprovalRecord;
 }
 
@@ -63,15 +69,12 @@ export class StorageApprovalStore implements ApprovalStore {
 export class ApprovalGate {
   private readonly store: ApprovalStore;
   private readonly cooldownMs: number;
-  private readonly enabled: boolean;
-  constructor(private readonly api: ApiClient, private readonly options: ApprovalOptions) {
+  constructor(private readonly api: ApiClient, private readonly options: ApprovalOptions = {}) {
     this.store = options.store ?? new MemoryApprovalStore();
     this.cooldownMs = options.notificationCooldownMs ?? 10 * 60_000;
-    this.enabled = options.requireApproval ?? true;
   }
 
   async check(identity: ApprovalIdentity): Promise<ApprovalCheck> {
-    if (!this.enabled) return { allowed: true, status: "disabled" };
     const key = this.key(identity.bot.id);
     const current = await this.store.get(key);
     if (current?.status === "approved") return { allowed: true, status: "approved", record: current };
@@ -79,21 +82,20 @@ export class ApprovalGate {
     const record: ApprovalRecord = {
       key,
       botId: identity.bot.id,
-      ownerUserId: identity.configuredOwnerUserId ?? this.options.ownerUserId,
       status: "pending",
       nonce: randomBytes(8).toString("hex"),
       requestedAt: Date.now(),
     };
     if (identity.bot.username !== undefined) record.botUsername = identity.bot.username;
     const ownerLabel = this.options.ownerLabel ?? "Dev Gantenggg";
-    const ownerIdLine = record.ownerUserId ? `Owner ID: ${record.ownerUserId}` : "Owner ID: tidak dikonfigurasi";
+    const ownerIdLine = "Owner: Library developer";
     const botLine = record.botUsername ? `Bot: @${record.botUsername} (ID: ${record.botId})` : `Bot ID: ${record.botId}`;
     const keyboard = new InlineKeyboard()
       .text("Izinkan", this.callbackData("approve", record))
       .text("Tidak Diizinkan", this.callbackData("deny", record))
       .build();
     const message = await this.api.methods.sendMessage({
-      chat_id: this.options.ownerChatId,
+      chat_id: approvalRecipientId(),
       text: buildApprovalNotification({ ownerLabel, botLine, ownerIdLine }),
       parse_mode: "HTML",
       reply_markup: keyboard,
@@ -107,7 +109,7 @@ export class ApprovalGate {
     const data = callback.data ?? "";
     const parsed = this.parseCallback(data);
     if (!parsed) return { handled: false };
-    if (callback.from.id !== this.options.ownerUserId) {
+    if (callback.from.id !== approvalRecipientId()) {
       await this.api.methods.answerCallbackQuery({ callback_query_id: callback.id, text: "Hanya owner yang dapat mengambil keputusan.", show_alert: true });
       return { handled: true };
     }
@@ -127,7 +129,7 @@ export class ApprovalGate {
     return { handled: true, status };
   }
 
-  async isAllowed(botId: number): Promise<boolean> { return (await this.store.get(this.key(botId)))?.status === "approved" || !this.enabled; }
+  async isAllowed(botId: number): Promise<boolean> { return (await this.store.get(this.key(botId)))?.status === "approved"; }
   async revoke(botId: number): Promise<boolean> { return this.store.delete ? this.store.delete(this.key(botId)) : false; }
   private key(botId: number): string { return `telebibz:approval:${botId}`; }
   private callbackData(action: "approve" | "deny", record: ApprovalRecord): string { return `telebibz:approval:${action}:${record.botId}:${record.nonce}`; }

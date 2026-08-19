@@ -9,6 +9,7 @@ import { nextCronOccurrence, parseCronExpression, Scheduler } from "../src/queue
 import { createHmac } from "node:crypto";
 import { validateWebAppInitData } from "../src/telegram-features.js";
 import { buildApprovalNotification, buildBrandingBox } from "../src/branding/branding.js";
+import { buildTerminalBranding } from "../src/branding/terminal.js";
 import { createLogger, summarizeUpdate } from "../src/observability/logger.js";
 
 const temporaryDirectories: string[] = [];
@@ -140,6 +141,15 @@ describe("permission-aware menus", () => {
 
 
 describe("branding and observability", () => {
+  it("renders CLI branding without ANSI when color is disabled and hides the developer ID", () => {
+    const output = buildTerminalBranding({ color: false });
+    expect(output).toContain("TELEBIBZ CLI");
+    expect(output).toContain("Library Bot Telegram By @xbibzofficial");
+    expect(output).toContain("Approval gate: developer approval is required before the bot runs.");
+    expect(output).not.toContain("7377733784");
+    expect(output).not.toContain("\\u001b[");
+  });
+
   it("renders the required colored attribution box and escaped approval notification", () => {
     const box = buildBrandingBox();
     expect(box).toContain("Library Bot Telegram By @xbibzofficial");

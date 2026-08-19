@@ -17,4 +17,5 @@ export * from "./state/menu.js";
 export * from "./approval/approval.js";
 export * from "./telegram-features.js";
 export * from "./branding/branding.js";
+export { buildTerminalBranding, printTerminalBranding } from "./branding/terminal.js";
 export * from "./observability/logger.js";

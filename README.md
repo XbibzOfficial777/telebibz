@@ -81,23 +81,18 @@ await ctx.reply("Choose an option:", { reply_markup: keyboard });
 
 Builders produce native Telegram keyboard payloads. HTML/CSS interfaces require a separate Mini App or Web App.
 
-## Owner approval gate
+## Developer approval gate
 
-The approval gate pauses regular updates until the owner approves or denies a new bot through inline buttons.
+The approval gate is always enabled. Before a bot can process regular updates or start polling, telebibz sends the branded notification to the library developer, who can choose **Izinkan** or **Tidak Diizinkan**. The developer approval target is fixed internally and cannot be changed through `BotOptions`, environment variables, or the public API. Callback data uses a random nonce, and only the fixed developer identity can decide. For multi-instance deployments, provide a persistent `ApprovalStore`; the default store is in memory.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: {
-    ownerChatId: Number(process.env.TELEBIBZ_OWNER_CHAT_ID),
-    ownerUserId: Number(process.env.TELEBIBZ_OWNER_USER_ID),
-    ownerLabel: "Dev Gantenggg",
-    requireApproval: true,
-  },
+  approval: { ownerLabel: "Dev Gantenggg" },
 });
 ```
 
-The library sends the notification to `ownerChatId`, while only `ownerUserId` can decide. Callback data uses a random nonce. For multi-instance deployments, provide a persistent `ApprovalStore`; the default store is in memory.
+`ownerLabel` changes only display text. It does not change the approval destination or authorized decision-maker.
 
 ## Webhook
 
@@ -118,11 +113,21 @@ The package provides `MemoryStorage` with TTL and serialized per-key updates, `J
 
 ## CLI
 
+Every `telebibz` CLI command starts with a colored Unicode branding box containing `Library Bot Telegram By @xbibzofficial`. The CLI never prints the fixed developer target.
+
 ```bash
 npx telebibz init my-bot
 npx telebibz doctor
 npx telebibz build
 npx telebibz test
+```
+
+Applications can print the same terminal branding explicitly:
+
+```ts
+import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+
+printTerminalBranding();
 ```
 
 ## Testing

@@ -1,6 +1,7 @@
 import type { Transport, TransportRequest, TransportResponse } from "./api/transport.js";
 import type { TelegramResponse, Update } from "./api/types.js";
 import { Bot } from "./core/bot.js";
+import type { ApprovalRecord, ApprovalStore } from "./approval/approval.js";
 import { Context } from "./context/context.js";
 
 export class MockTransport implements Transport {
@@ -27,5 +28,16 @@ export function createMockCallbackUpdate(overrides: Partial<Update> = {}): Updat
     ...overrides,
   };
 }
-export function createTestBot(): { bot: Bot; transport: MockTransport } { const transport = new MockTransport(); transport.respond("getMe", { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } }); return { bot: new Bot({ token: "123456:TEST_TOKEN", transport }), transport }; }
+export function createTestBot(): { bot: Bot; transport: MockTransport } {
+  const transport = new MockTransport();
+  transport.respond("getMe", { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } });
+  const approvalStore: ApprovalStore = {
+    async get(key: string): Promise<ApprovalRecord | undefined> {
+      if (key !== "telebibz:approval:99") return undefined;
+      return { key, botId: 99, status: "approved", nonce: "test-approved", requestedAt: Date.now() };
+    },
+    async set(): Promise<void> { /* test fixture intentionally remains approved */ },
+  };
+  return { bot: new Bot({ token: "123456:TEST_TOKEN", transport, approval: { store: approvalStore } }), transport };
+}
 export function createMockContext(bot: Bot, update: Update = createMockUpdate()): Context { return new Context({ update, api: bot.api, session: {}, services: {} }); }

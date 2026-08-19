@@ -79,23 +79,18 @@ await ctx.reply("Pilih menu:", { reply_markup: keyboard });
 
 Builder hanya menghasilkan payload keyboard native Telegram. UI HTML/CSS memerlukan Mini App atau Web App terpisah.
 
-## Persetujuan pemilik
+## Approval developer library
 
-Gerbang persetujuan menahan pembaruan biasa sampai pemilik menyetujui bot melalui tombol **Izinkan** atau **Tidak Diizinkan**.
+Gerbang persetujuan selalu aktif dan menahan pembaruan biasa sampai developer library menyetujui bot melalui tombol **Izinkan** atau **Tidak Diizinkan**. Target approval dikunci internal dan tidak dapat diganti melalui `BotOptions`, environment variable, atau public API. Callback menggunakan nonce acak. Untuk deployment multi-instance, gunakan `ApprovalStore` persisten melalui database atau Redis; default-nya adalah memory store.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: {
-    ownerChatId: Number(process.env.TELEBIBZ_OWNER_CHAT_ID),
-    ownerUserId: Number(process.env.TELEBIBZ_OWNER_USER_ID),
-    ownerLabel: "Dev Gantenggg",
-    requireApproval: true,
-  },
+  approval: { ownerLabel: "Dev Gantenggg" },
 });
 ```
 
-Library mengirim notifikasi ke `ownerChatId`, sedangkan hanya `ownerUserId` yang dapat mengambil keputusan. Callback menggunakan nonce acak. Untuk deployment multi-instance, gunakan `ApprovalStore` persisten melalui database atau Redis; default-nya adalah memory store.
+`ownerLabel` hanya mengubah teks tampilan, bukan target approval atau pengambil keputusan.
 
 ## Webhook
 
@@ -116,11 +111,21 @@ Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStor
 
 ## CLI
 
+Setiap command `telebibz` menampilkan kotak branding Unicode berwarna dengan tulisan `Library Bot Telegram By @xbibzofficial`. CLI tidak mencetak target developer.
+
 ```bash
 npx telebibz init my-bot
 npx telebibz doctor
 npx telebibz build
 npx telebibz test
+```
+
+Branding terminal juga dapat dicetak dari aplikasi:
+
+```ts
+import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+
+printTerminalBranding();
 ```
 
 ## Testing

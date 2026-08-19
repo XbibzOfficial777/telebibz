@@ -74,7 +74,7 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram 更新过滤器。 |
 | `polling.retryDelayMs` | `number` | `500` | 轮询失败时的初始延迟（毫秒）。 |
 | `polling.maxRetryDelayMs` | `number` | `30000` | 重连延迟的最大值（毫秒）。 |
-| `approval` | `ApprovalOptions` | disabled | 启用所有者审批门。 |
+| `approval` | `ApprovalOptions` | `{}` | 仅用于 label、cooldown 和 storage；developer target 在内部固定。 |
 
 ### `Bot` constructor
 
@@ -84,7 +84,7 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-Jika argumen berupa string, string tersebut dianggap sebagai token. Constructor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan approval gate bila dikonfigurasi. Constructor langsung memancarkan event `bot:created` secara asynchronous.
+Jika argumen berupa string, string tersebut dianggap sebagai token. Constructor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan always-on developer approval gate. Constructor langsung memancarkan event `bot:created` secara asynchronous.
 
 Constructor melempar `Error` jika token kosong atau tidak sesuai pola token Telegram.
 
@@ -157,7 +157,7 @@ usePlugin(plugin: Plugin<Context<S>>): this
 init(): Promise<this>
 ```
 
-调用 `getMe()`，保存 bot 信息，若 approval gate 启用则处理它，然后运行插件生命周期的 `setup()` 和 `start()`。
+调用 `getMe()`，保存 bot 信息，请求 developer approval，然后仅在批准后运行插件生命周期的 `setup()` 和 `start()`。
 
 若尚未获得批准，方法会将状态置为 `"awaiting-approval"`，通过 `ApprovalGate` 向 owner 发送通知，并返回 bot 而不设置为 `initialized`。在 owner 批准后后续调用仍可使用。
 
@@ -1264,16 +1264,13 @@ new Menu(id: string): Menu
 
 ## 12. 审批门
 
-Approval gate 在机器人首次使用库时向 owner 发送通知。默认消息使用标签 `Dev Gantenggg`，包含 bot ID/用户名 和 owner ID，并提供按钮 `Izinkan` 和 `Tidak Diizinkan`。
+Approval gate 始终在机器人首次使用 telebibz 时向 library developer 发送 branded notification。目标 chat 和决策者在内部固定，不属于 public configuration，也不会显示在 notification 中。消息包含 bot ID/用户名，并提供 `Izinkan` 和 `Tidak Diizinkan` 按钮。
 
 ### `ApprovalOptions`
 
 | 属性 | 类型 | 默认 | 描述 |
 |---|---|---:|---|
-| `ownerChatId` | `ChatId` | wajib | 通知目标聊天。 |
-| `ownerUserId` | `number` | wajib | 可以按下按钮的用户 ID。 |
-| `ownerLabel` | `string` | `Dev Gantenggg` | 通知上的标签。 |
-| `requireApproval` | `boolean` | `true` | `false` 会禁用 gate。 |
+| `ownerLabel` | `string` | `Dev Gantenggg` | 仅显示 label，不能改变 developer target。 |
 | `notificationCooldownMs` | `number` | `600000` | 等待通知的冷却时间（毫秒）。 |
 | `store` | `ApprovalStore` | `MemoryApprovalStore` | 自定义 approval 存储。 |
 
@@ -1286,7 +1283,6 @@ interface ApprovalRecord {
   key: string;
   botId: number;
   botUsername?: string;
-  ownerUserId?: number;
   status: ApprovalStatus;
   nonce: string;
   requestedAt: number;
@@ -1297,12 +1293,11 @@ interface ApprovalRecord {
 
 interface ApprovalIdentity {
   bot: User;
-  configuredOwnerUserId?: number;
 }
 
 interface ApprovalCheck {
   allowed: boolean;
-  status: ApprovalStatus | "disabled";
+  status: ApprovalStatus;
   record?: ApprovalRecord;
 }
 ```
@@ -1335,20 +1330,18 @@ new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
 |---|---|---|
 | `check` | `check(identity): Promise<ApprovalCheck>` | 若记录已批准则返回 approved；若不存在记录或冷却期已过则发送新的请求。 |
 | `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | 验证 nonce 和 owner，然后批准/拒绝。非审批回调返回 `handled: false`。 |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True 若为 approved 或 gate 被禁用。 |
+| `isAllowed` | `isAllowed(botId): Promise<boolean>` | 仅当固定 developer approval record 为 approved 时返回 True。 |
 | `revoke` | `revoke(botId): Promise<boolean>` | 如果 store 支持 delete，则删除记录。 |
 
-回调只能由已配置的 `ownerUserId` 决定。随机的 16 个十六进制字符 nonce 可以防止旧的回调被重用。过时的回调会产生过期提醒。
+回调只能由内部固定的 developer identity 决定；生产 API 不使用 caller 提供的 owner ID。随机的 16 个十六进制字符 nonce 可以防止旧的回调被重用。developer ID 不会显示在 terminal 或 Telegram notification 中。过时的回调会产生过期提醒。
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: {
-    ownerChatId: 7377733784,
-    ownerUserId: 7377733784,
-    ownerLabel: "Dev Gantenggg",
-  },
+  approval: { ownerLabel: "Dev Gantenggg" },
 });
+
+// Approval target is fixed internally and cannot be changed through this object.
 ```
 
 ---

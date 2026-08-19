@@ -79,23 +79,18 @@ await ctx.reply("Pilih menu:", { reply_markup: keyboard });
 
 构造器仅生成 Telegram 原生键盘的 payload。HTML/CSS 的 UI 需要单独的 Mini App 或 Web App。
 
-## 所有者审批
+## Library developer approval
 
-审批门将在所有者通过 **允许** 或 **不允许** 按钮批准机器人之前拦截普通更新。
+审批门始终启用，并在 library developer 通过 **Izinkan** 或 **Tidak Diizinkan** 按钮批准机器人之前拦截普通更新。Approval target 在内部固定，不能通过 `BotOptions`、environment variable 或 public API 更改。回调使用随机 nonce。对于多实例部署，请通过数据库或 Redis 使用持久化的 `ApprovalStore`；默认是内存存储。
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: {
-    ownerChatId: Number(process.env.TELEBIBZ_OWNER_CHAT_ID),
-    ownerUserId: Number(process.env.TELEBIBZ_OWNER_USER_ID),
-    ownerLabel: "Dev Gantenggg",
-    requireApproval: true,
-  },
+  approval: { ownerLabel: "Dev Gantenggg" },
 });
 ```
 
-库会向 `ownerChatId` 发送通知，但只有 `ownerUserId` 可以做出决策。回调使用随机 nonce。对于多实例部署，请通过数据库或 Redis 使用持久化的 `ApprovalStore`；默认是内存存储。
+`ownerLabel` 只改变显示文字，不改变 approval target 或决策者。
 
 ## Webhook
 
@@ -116,11 +111,21 @@ const handler = createWebhookHandler(bot, {
 
 ## CLI
 
+每个 `telebibz` command 都会显示带颜色的 Unicode branding box，其中包含 `Library Bot Telegram By @xbibzofficial`。CLI 不会打印 developer target。
+
 ```bash
 npx telebibz init my-bot
 npx telebibz doctor
 npx telebibz build
 npx telebibz test
+```
+
+也可以在应用中打印相同的 terminal branding：
+
+```ts
+import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+
+printTerminalBranding();
 ```
 
 ## 测试

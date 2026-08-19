@@ -74,7 +74,7 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Filter update Telegram. |
 | `polling.retryDelayMs` | `number` | `500` | Delay awal ketika polling gagal. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Batas maksimum delay reconnect. |
-| `approval` | `ApprovalOptions` | disabled | Mengaktifkan gerbang persetujuan (approval) untuk pemilik. |
+| `approval` | `ApprovalOptions` | `{}` | Hanya label, cooldown, dan storage; target developer dikunci internal. |
 
 ### Konstruktor `Bot`
 
@@ -84,7 +84,7 @@ new Bot<S extends object = Record<string, unknown>>(
 ): Bot<S>
 ```
 
-Jika argumen berupa string, string tersebut dianggap sebagai token. Konstruktor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan approval gate bila dikonfigurasi. Konstruktor langsung memancarkan event `bot:created` secara asinkron.
+Jika argumen berupa string, string tersebut dianggap sebagai token. Konstruktor membuat `ApiClient`, router, event bus, plugin manager, session storage, dan developer approval gate yang selalu aktif. Konstruktor langsung memancarkan event `bot:created` secara asinkron.
 
 Konstruktor melempar `Error` jika token kosong atau tidak sesuai pola token Telegram.
 
@@ -157,7 +157,7 @@ Mendaftarkan plugin. Nama plugin harus unik.
 init(): Promise<this>
 ```
 
-Memanggil `getMe()`, menyimpan informasi bot, memproses approval gate jika aktif, lalu menjalankan lifecycle plugin `setup()` dan `start()`.
+Memanggil `getMe()`, menyimpan informasi bot, meminta approval developer, lalu menjalankan lifecycle plugin `setup()` dan `start()` hanya setelah disetujui.
 
 Jika approval belum diberikan, method mengubah status menjadi `"awaiting-approval"`, mengirim notifikasi ke pemilik melalui `ApprovalGate`, dan mengembalikan bot tanpa mengaktifkan status `initialized`. Panggilan berikutnya tetap dapat dipakai setelah pemilik memberikan persetujuan.
 
@@ -1270,16 +1270,13 @@ new Menu(id: string): Menu
 
 ## 12. Gerbang persetujuan
 
-Gerbang persetujuan mengirim notifikasi kepada owner ketika bot baru pertama kali menggunakan library. Pesan default memakai label `Dev Gantenggg`, menyertakan bot ID/username dan owner ID, lalu menyediakan tombol `Izinkan` dan `Tidak Diizinkan`.
+Gerbang persetujuan selalu mengirim notifikasi branded kepada developer library ketika bot pertama kali memakai telebibz. Target chat dan pengambil keputusan dikunci secara internal; keduanya bukan bagian dari konfigurasi publik dan tidak dicetak pada notifikasi. Pesan menyertakan bot ID/username serta tombol `Izinkan` dan `Tidak Diizinkan`.
 
 ### `ApprovalOptions`
 
 | Properti | Tipe | Default | Deskripsi |
 |---|---|---:|---|
-| `ownerChatId` | `ChatId` | wajib | Chat tujuan notifikasi. |
-| `ownerUserId` | `number` | wajib | User ID yang boleh menekan tombol. |
-| `ownerLabel` | `string` | `Dev Gantenggg` | Label pada notifikasi. |
-| `requireApproval` | `boolean` | `true` | `false` menonaktifkan gate. |
+| `ownerLabel` | `string` | `Dev Gantenggg` | Hanya label tampilan; tidak dapat mengubah target developer. |
 | `notificationCooldownMs` | `number` | `600000` | Cooldown notifikasi pending. |
 | `store` | `ApprovalStore` | `MemoryApprovalStore` | Penyimpanan approval custom. |
 
@@ -1292,7 +1289,6 @@ interface ApprovalRecord {
   key: string;
   botId: number;
   botUsername?: string;
-  ownerUserId?: number;
   status: ApprovalStatus;
   nonce: string;
   requestedAt: number;
@@ -1303,12 +1299,11 @@ interface ApprovalRecord {
 
 interface ApprovalIdentity {
   bot: User;
-  configuredOwnerUserId?: number;
 }
 
 interface ApprovalCheck {
   allowed: boolean;
-  status: ApprovalStatus | "disabled";
+  status: ApprovalStatus;
   record?: ApprovalRecord;
 }
 ```
@@ -1341,20 +1336,18 @@ new ApprovalGate(api: ApiClient, options: ApprovalOptions): ApprovalGate
 |---|---|---|
 | `check` | `check(identity): Promise<ApprovalCheck>` | Mengembalikan approved jika record berstatus approved; mengirim request baru jika belum ada atau cooldown habis. |
 | `handleCallback` | `handleCallback(callback): Promise<{ handled: boolean; status?: ApprovalStatus }>` | Memvalidasi nonce dan owner, lalu melakukan approve/deny. Callback yang tidak valid atau bukan approval dikembalikan sebagai `handled: false`. |
-| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True jika approved atau gate dinonaktifkan. |
+| `isAllowed` | `isAllowed(botId): Promise<boolean>` | True hanya jika record approval developer tetap berstatus approved. |
 | `revoke` | `revoke(botId): Promise<boolean>` | Menghapus record jika store mendukung delete. |
 
-Callback hanya dapat diputuskan oleh `ownerUserId` yang dikonfigurasi. Nonce acak 16 karakter heksadesimal mencegah callback lama digunakan kembali. Callback kadaluarsa menghasilkan alert kedaluwarsa.
+Callback hanya dapat diputuskan oleh identitas developer internal; owner ID dari caller tidak digunakan oleh API produksi. Nonce acak 16 karakter heksadesimal mencegah callback lama digunakan kembali. ID developer tidak dicetak pada terminal atau notifikasi Telegram. Callback kadaluarsa menghasilkan alert kedaluwarsa.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
-  approval: {
-    ownerChatId: 7377733784,
-    ownerUserId: 7377733784,
-    ownerLabel: "Dev Gantenggg",
-  },
+  approval: { ownerLabel: "Dev Gantenggg" },
 });
+
+// Target approval dikunci internal; object ini tidak dapat mengubahnya.
 ```
 
 ---
