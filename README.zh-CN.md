@@ -145,7 +145,7 @@ npm run release:check
 
 ## 发布自动化
 
-GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，将相同的 tarball 发布到 npmjs 和 GitHub Packages，然后创建 GitHub Release。由于 source repository 是 private，npmjs 发布使用 `--provenance=false`；GitHub Packages 使用带有 `packages: write` 权限的 `GITHUB_TOKEN`。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) 和 [GitHub Packages 指南](docs/GITHUB_PACKAGES.zh-CN.md)。
+GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，将 package 发布到 npmjs，然后创建 GitHub Release。由于 source repository 是 private，npmjs 发布使用 `--provenance=false`。如果以后创建了 scope 为 `xbibzlibrary` 的 GitHub organization，GitHub Packages 可以作为独立选项启用。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) 和 [GitHub Packages 指南](docs/GITHUB_PACKAGES.zh-CN.md)。
 
 ## 项目 policy 和贡献
 
@@ -157,7 +157,7 @@ GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` �
 | [GOVERNANCE.md](GOVERNANCE.md) | 角色、决策、triage、repository protection 和规则修改。 |
 | [SECURITY.md](SECURITY.md) | 私密漏洞报告、security boundary 和 credential rotation。 |
 | [SUPPORT.md](SUPPORT.md) | Support channel、安全报告规则和 response 预期。 |
-| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | GitHub-to-npm/GitHub Packages automation 和 `NPM_TOKEN` setup。 |
+| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | GitHub-to-npm automation 和 `NPM_TOKEN` setup。 |
 | [RELEASE_POLICY.md](RELEASE_POLICY.md) | Immutable release 和 hardening 控制。 |
 | [NOTICE.md](NOTICE.md) | 第三方 declaration attribution。 |
 
