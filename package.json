@@ -1,6 +1,6 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Production-grade, strongly typed Telegram Bot API SDK and framework for Node.js and TypeScript.",
   "type": "module",
   "private": false,
