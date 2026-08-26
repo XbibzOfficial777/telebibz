@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -16,7 +19,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm install --ignore-scripts --legacy-peer-deps
+      - run: npm ci --ignore-scripts
       - run: node scripts/generate-api.mjs
       - run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit
       - run: ./node_modules/.bin/tsc -p tests/tsconfig.json --noEmit
