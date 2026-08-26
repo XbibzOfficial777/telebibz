@@ -1,9 +1,10 @@
 ---
 name: Security report
 about: Do not use a public issue for vulnerabilities. Follow SECURITY.md.
-title: ""
-labels: ""
-assignees: ""
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
 # Security report notice
