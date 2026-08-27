@@ -3,6 +3,9 @@
 ![telebibz logo](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-logo.png)
 
 [![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![npm downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![Node.js](https://img.shields.io/node/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 
 **`@xbibzlibrary/telebibz`** is a full-scale Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
 
@@ -13,6 +16,10 @@
 Complete API references: [English](docs/API.md) · [Indonesia](docs/API.id.md) · [中文](docs/API.zh-CN.md)
 
 GitHub Packages guide: [English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
+
+Getting started: [English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
+
+Community showcase: [SHOWCASE.md](SHOWCASE.md)
 
 ![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
@@ -31,13 +38,24 @@ import { Bot } from "@xbibzlibrary/telebibz";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.command("start", (ctx) => ctx.reply("Bot is active."));
-bot.onText("ping", (ctx) => ctx.reply("pong"));
+bot.command("start", async (ctx) => { await ctx.reply("Bot is active."); });
+bot.onText("ping", async (ctx) => { await ctx.reply("pong"); });
 
 await bot.start();
 ```
 
 `Bot.start()` runs long polling. For manual lifecycle control, use `init()`, `launch({ mode: "polling" })`, `health()`, `stop()`, or `restart()`.
+
+## Official starter examples
+
+The repository includes runnable starters for a minimal bot, a multi-step registration wizard, and a Node.js webhook server. Browse [`examples/README.md`](examples/README.md), or run the minimal starter after setting `TELEGRAM_BOT_TOKEN`:
+
+```bash
+export TELEGRAM_BOT_TOKEN="<your-bot-token>"
+npx tsx examples/minimal.ts
+```
+
+The examples are typechecked in CI with `npm run test:examples` and never contain real credentials.
 
 ## Router and middleware
 
@@ -48,9 +66,9 @@ bot.use(async (ctx, next) => {
   console.log(`processed in ${Date.now() - started}ms`);
 });
 
-bot.command("help", (ctx) => ctx.reply("Help is available."));
-bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order received."));
-bot.callback("profile:*", (ctx) => ctx.answerCallbackQuery("Opened."));
+bot.command("help", async (ctx) => { await ctx.reply("Help is available."); });
+bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order received."); });
+bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Opened."); });
 ```
 
 The router supports commands, exact text, regular expressions, callback patterns, custom predicates, nested routers, per-route middleware, and route priority.
@@ -109,7 +127,7 @@ const wizard = new Wizard()
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 bot.useWizard(wizard);
-bot.command("start", (ctx) => wizard.run(ctx));
+bot.command("start", async (ctx) => { await wizard.run(ctx); });
 await bot.start();
 ```
 

@@ -16,6 +16,7 @@ The project requires Node.js `>=20` and uses npm for release-compatible commands
 npm ci
 npm run typecheck
 npm run test:types
+npm run test:examples
 npm run lint
 npm test
 npm run build
@@ -33,7 +34,7 @@ Create a focused branch from `main`. Keep unrelated refactors out of a feature o
 
 Public behavior must be implemented in TypeScript with strict typing. Do not add fake responses, silent stubs, undocumented breaking behavior, or untested branches. Preserve ESM and CommonJS builds, zero runtime vendor dependencies in the core package, Node.js `>=20` compatibility, and the existing package export map.
 
-Changes to routing, context, lifecycle, transport, storage, queue, scheduler, approval, generated API declarations, or release automation require regression tests. Changes to a public function, class, method, option, error, event, or generated method require a corresponding API documentation update. Changes that affect package contents must pass `release:check` and `npm pack --dry-run`.
+Changes to routing, context, lifecycle, transport, storage, queue, scheduler, approval, generated API declarations, or release automation require regression tests. Changes to a public function, class, method, option, error, event, or generated method require a corresponding API documentation update. Changes to examples require `npm run test:examples` and must use placeholders instead of credentials. Changes that affect package contents must pass `release:check` and `npm pack --dry-run`.
 
 ## Pull request process
 
@@ -48,6 +49,10 @@ English is the default README language. Keep `README.id.md`, `README.zh-CN.md`, 
 ## Release process
 
 Normal pushes to `main` can trigger the protected auto-publish workflow. The workflow runs quality gates, computes an unused patch version, publishes the package, commits the version, creates a tag, and creates a GitHub Release. See [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) for the required `NPM_TOKEN` secret and private-source provenance constraint. Contributors must not publish directly to npm unless explicitly authorized by the maintainers.
+
+## Showcase submissions
+
+Public projects using Telebibz may be submitted through a pull request to [SHOWCASE.md](SHOWCASE.md). Include only public links and a short description. Never include bot tokens, private endpoints, personal data, or confidential source code.
 
 ## Questions
 

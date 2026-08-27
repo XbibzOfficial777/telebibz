@@ -23,6 +23,7 @@ jobs:
       - run: node scripts/generate-api.mjs
       - run: ./node_modules/.bin/tsc -p tsconfig.json --noEmit
       - run: ./node_modules/.bin/tsc -p tests/tsconfig.json --noEmit
+      - run: npm run test:examples
       - run: ./node_modules/.bin/eslint scripts/*.mjs bin/*.mjs --no-error-on-unmatched-pattern
       - run: ./node_modules/.bin/vitest run
       - run: ./node_modules/.bin/tsc -p tsconfig.json

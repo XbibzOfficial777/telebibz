@@ -2,6 +2,11 @@
 
 ![telebibz logo](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-logo.png)
 
+[![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![npm downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![Node.js](https://img.shields.io/node/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+
 **`@xbibzlibrary/telebibz`** adalah SDK dan framework Telegram Bot untuk Node.js dan TypeScript. Paket ini menyediakan API client, polling, router, middleware, context, keyboard builder, state/session, webhook handler, queue, scheduler, cache, plugin lifecycle, CLI, dan utilitas pengujian.
 
 [English](README.md) · **Bahasa Indonesia** · [简体中文](README.zh-CN.md)
@@ -9,6 +14,10 @@
 Referensi API lengkap: [English](docs/API.md) · **Indonesia** · [中文](docs/API.zh-CN.md)
 
 Panduan GitHub Packages: [English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
+
+Panduan mulai: [English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
+
+Showcase komunitas: [SHOWCASE.md](SHOWCASE.md)
 
 ![overview telebibz](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
@@ -27,13 +36,24 @@ import { Bot } from "@xbibzlibrary/telebibz";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.command("start", (ctx) => ctx.reply("Bot aktif."));
-bot.onText("ping", (ctx) => ctx.reply("pong"));
+bot.command("start", async (ctx) => { await ctx.reply("Bot aktif."); });
+bot.onText("ping", async (ctx) => { await ctx.reply("pong"); });
 
 await bot.start();
 ```
 
 `Bot.start()` menjalankan long polling. Untuk siklus hidup manual, gunakan `init()`, `launch({ mode: "polling" })`, `health()`, `stop()`, atau `restart()`.
+
+## Starter resmi
+
+Repository menyediakan starter yang bisa langsung dijalankan untuk bot minimal, registration wizard multi-langkah, dan webhook Node.js. Lihat [`examples/README.md`](examples/README.md), atau jalankan starter minimal setelah mengatur `TELEGRAM_BOT_TOKEN`:
+
+```bash
+export TELEGRAM_BOT_TOKEN="<token-bot-kamu>"
+npx tsx examples/minimal.ts
+```
+
+Semua examples di-typecheck oleh CI melalui `npm run test:examples` dan tidak berisi credential asli.
 
 ## Router dan middleware
 
@@ -44,9 +64,9 @@ bot.use(async (ctx, next) => {
   console.log(`processed in ${Date.now() - started}ms`);
 });
 
-bot.command("help", (ctx) => ctx.reply("Bantuan tersedia."));
-bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order diterima."));
-bot.callback("profile:*", (ctx) => ctx.answerCallbackQuery("Dibuka."));
+bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
+bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
+bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
 ```
 
 Router mendukung command, text, regex, pola callback, predikat kustom, router bersarang, middleware per rute, dan prioritas rute.

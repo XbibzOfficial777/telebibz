@@ -2,6 +2,11 @@
 
 ![telebibz 徽标](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-logo.png)
 
+[![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![npm downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![Node.js](https://img.shields.io/node/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+
 **`@xbibzlibrary/telebibz`** 是一个面向 Node.js 和 TypeScript 的 Telegram Bot SDK 和框架。该包提供 API 客户端、轮询、路由器、中间件、上下文、键盘构造器、状态/会话、Webhook 处理、队列、调度器、缓存、插件生命周期、CLI 以及测试工具。
 
 [English](README.md) · [Bahasa Indonesia](README.id.md) · **简体中文**
@@ -9,6 +14,10 @@
 完整 API 参考：[English](docs/API.md) · [Indonesia](docs/API.id.md) · **中文**
 
 GitHub Packages 指南：[English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
+
+入门指南：[English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
+
+社区 showcase：[SHOWCASE.md](SHOWCASE.md)
 
 ![telebibz 概览](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
 
@@ -27,13 +36,24 @@ import { Bot } from "@xbibzlibrary/telebibz";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.command("start", (ctx) => ctx.reply("Bot aktif."));
-bot.onText("ping", (ctx) => ctx.reply("pong"));
+bot.command("start", async (ctx) => { await ctx.reply("Bot aktif."); });
+bot.onText("ping", async (ctx) => { await ctx.reply("pong"); });
 
 await bot.start();
 ```
 
 `Bot.start()` 会运行长轮询。要手动管理生命周期，请使用 `init()`, `launch({ mode: "polling" })`, `health()`, `stop()`, 或 `restart()`。
+
+## 官方 starter examples
+
+repository 提供可直接运行的 minimal bot、多步骤 registration wizard 和 Node.js webhook starter。请查看 [`examples/README.md`](examples/README.md)，或设置 `TELEGRAM_BOT_TOKEN` 后运行 minimal starter：
+
+```bash
+export TELEGRAM_BOT_TOKEN="<your-bot-token>"
+npx tsx examples/minimal.ts
+```
+
+所有 examples 都会通过 `npm run test:examples` 在 CI 中进行类型检查，并且不包含真实 credential。
 
 ## 路由器与中间件
 
@@ -44,9 +64,9 @@ bot.use(async (ctx, next) => {
   console.log(`processed in ${Date.now() - started}ms`);
 });
 
-bot.command("help", (ctx) => ctx.reply("Bantuan tersedia."));
-bot.onRegex(/^order:(\\d+)$/, (ctx) => ctx.reply("Order diterima."));
-bot.callback("profile:*", (ctx) => ctx.answerCallbackQuery("Dibuka."));
+bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
+bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
+bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
 ```
 
 路由器支持命令、文本、正则、回调模式、自定义谓词、嵌套路由器、每条路由的中间件，以及路由优先级。

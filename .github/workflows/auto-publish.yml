@@ -75,6 +75,9 @@ jobs:
       - name: Type-level tests
         run: npm run test:types
 
+      - name: Example typecheck
+        run: npm run test:examples
+
       - name: Lint
         run: npm run lint
 
