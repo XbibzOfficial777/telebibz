@@ -1,6 +1,6 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "Production-grade Telegram Bot framework for Node.js and TypeScript with typed API, routing, webhooks, keyboards, conversations, plugins, queues, and colorful CLI logs.",
   "keywords": [
     "telegram",
