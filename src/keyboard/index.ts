@@ -8,6 +8,10 @@ export class InlineKeyboard {
   webApp(text: string, url: string): this { return this.button({ text, web_app: { url } }); }
   pay(text = "Pay"): this { return this.button({ text, pay: true }); }
   copy(text: string, copiedText: string): this { return this.button({ text, copy_text: { text: copiedText } }); }
+  switchInline(text: string, query = ""): this { return this.button({ text, switch_inline_query: query }); }
+  switchInlineCurrent(text: string, query = ""): this { return this.button({ text, switch_inline_query_current_chat: query }); }
+  login(text: string, url: string, options: Record<string, unknown> = {}): this { return this.button({ text, login_url: { url, ...options } }); }
+  game(text: string): this { return this.button({ text, callback_game: {} }); }
   button(button: InlineKeyboardButton): this { this.ensureRow().push(validateInlineButton(button)); return this; }
   row(...buttons: InlineKeyboardButton[]): this { this.rows.push(buttons.map(validateInlineButton)); return this; }
   conditional(condition: boolean, factory: (keyboard: this) => this): this { return condition ? factory(this) : this; }
@@ -19,15 +23,23 @@ export class InlineKeyboard {
 
 export class ReplyKeyboard {
   private readonly rows: KeyboardButton[][] = [];
+  private options: Omit<ReplyKeyboardMarkup, "keyboard"> = {};
   text(text: string): this { return this.button({ text }); }
   contact(text: string): this { return this.button({ text, request_contact: true }); }
   location(text: string): this { return this.button({ text, request_location: true }); }
   poll(text: string, type?: "quiz" | "regular"): this { return this.button({ text, request_poll: type ? { type } : {} }); }
   webApp(text: string, url: string): this { return this.button({ text, web_app: { url } }); }
+  requestUsers(text: string, options: Record<string, unknown> = {}): this { return this.button({ text, request_users: options }); }
+  requestChat(text: string, options: Record<string, unknown> = {}): this { return this.button({ text, request_chat: options }); }
+  resized(resize = true): this { this.options.resize_keyboard = resize; return this; }
+  oneTime(oneTime = true): this { this.options.one_time_keyboard = oneTime; return this; }
+  persistent(persistent = true): this { this.options.is_persistent = persistent; return this; }
+  placeholder(text: string): this { this.options.input_field_placeholder = text; return this; }
+  selective(selective = true): this { this.options.selective = selective; return this; }
   button(button: KeyboardButton): this { this.ensureRow().push(button); return this; }
   row(...buttons: KeyboardButton[]): this { this.rows.push([...buttons]); return this; }
   grid(buttons: KeyboardButton[], columns: number): this { if (!Number.isInteger(columns) || columns < 1) throw new RangeError("columns must be a positive integer"); for (let index = 0; index < buttons.length; index += columns) this.rows.push(buttons.slice(index, index + columns)); return this; }
-  build(options: Omit<ReplyKeyboardMarkup, "keyboard"> = {}): ReplyKeyboardMarkup { return { keyboard: this.rows.map((row) => [...row]), ...options }; }
+  build(options: Omit<ReplyKeyboardMarkup, "keyboard"> = {}): ReplyKeyboardMarkup { return { keyboard: this.rows.map((row) => [...row]), ...this.options, ...options }; }
   asReplyMarkup(): ReplyKeyboardMarkup { return this.build(); }
   private ensureRow(): KeyboardButton[] { const row = this.rows.at(-1); if (row) return row; const next: KeyboardButton[] = []; this.rows.push(next); return next; }
 }

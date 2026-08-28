@@ -128,3 +128,87 @@ describe("polling failure isolation", () => {
     expect(transport.calls.filter((call) => call.method === "getUpdates")).toHaveLength(1);
   });
 });
+
+describe("router middleware and parameter regressions", () => {
+  it("executes router.use() middleware before matching routes without halting first-match routing", async () => {
+    const calls: string[] = [];
+    const router = new Router<TestContext>();
+    router.use(async (_ctx, next) => {
+      calls.push("middleware");
+      await next();
+    });
+    router.text("hello", async () => {
+      calls.push("route");
+    });
+
+    await router.handle(testContext("hello"));
+
+    expect(calls).toEqual(["middleware", "route"]);
+  });
+
+  it("captures command arguments into ctx.args and regex groups into ctx.match", async () => {
+    const router = new Router<TestContext>();
+    let capturedArgs: string[] | undefined;
+    let capturedMatch: string[] | undefined;
+
+    router.command("ban", async (ctx) => {
+      capturedArgs = ctx.args;
+    });
+    router.regex(/user_(\d+)/, async (ctx) => {
+      capturedMatch = ctx.match ? [...ctx.match] : undefined;
+    });
+
+    const banContext = testContext("/ban @alice 7d");
+    await router.handle(banContext);
+    expect(capturedArgs).toEqual(["@alice", "7d"]);
+
+    const regexContext = testContext("user_42");
+    await router.handle(regexContext);
+    expect(capturedMatch?.[1]).toBe("42");
+  });
+});
+
+describe("context enhancements and text formatting regressions", () => {
+  it("applies withReplyMarkup default to reply and send", async () => {
+    const { bot, transport } = createTestBot();
+    const ctx = createMockContext(bot, createMockUpdate());
+    ctx.withReplyMarkup({ inline_keyboard: [[{ text: "Btn", callback_data: "1" }]] });
+
+    await ctx.reply("hello with keyboard");
+
+    expect(transport.calls[0]?.payload).toMatchObject({
+      text: "hello with keyboard",
+      reply_markup: { inline_keyboard: [[{ text: "Btn", callback_data: "1" }]] },
+    });
+  });
+
+  it("formats MarkdownV2 and HTML correctly including code blocks and spoilers", async () => {
+    const { md, html } = await import("../src/utils/text.js");
+
+    const codeBlock = md.pre("const a = 1;", "typescript");
+    expect(codeBlock).toBe("```typescript\nconst a = 1;\n```");
+
+    expect(md.spoiler("secret")).toBe("||secret||");
+    expect(md.underline("under")).toBe("__under__");
+    expect(md.strikethrough("deleted")).toBe("~deleted~");
+    expect(md.blockquote("quoted line")).toBe(">quoted line");
+
+    expect(html.spoiler("secret")).toBe("<tg-spoiler>secret</tg-spoiler>");
+    expect(html.bold("bold text")).toBe("<b>bold text</b>");
+    expect(html.code("const x = 1;")).toBe("<code>const x = 1;</code>");
+  });
+
+  it("ensures Form parsing is stateless and does not leak values across parses", async () => {
+    const { Form, validators } = await import("../src/state/forms.ts");
+    const form = new Form<{ username: string }>();
+    form.field({ name: "username", parse: validators.string, required: true });
+
+    const first = await form.parse({ username: "alice" });
+    const second = await form.parse({});
+
+    expect(first.success).toBe(true);
+    if (first.success) expect(first.data.username).toBe("alice");
+
+    expect(second.success).toBe(false);
+  });
+});

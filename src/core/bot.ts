@@ -24,6 +24,7 @@ export interface BotOptions<S extends object = Record<string, unknown>> {
   polling?: { timeout?: number; limit?: number; allowedUpdates?: string[]; retryDelayMs?: number; maxRetryDelayMs?: number };
   router?: RouterOptions;
   logger?: Logger | LoggerOptions;
+  branding?: boolean;
 }
 
 export interface HealthStatus { status: BotStatus; apiReachable: boolean; bot?: User; checkedAt: string; error?: string }
@@ -48,27 +49,27 @@ export class Bot<S extends object = Record<string, unknown>> {
     const config = typeof options === "string" ? { token: options } : options;
     if (!config.token || !/^\d+:[\w-]+$/.test(config.token)) throw new Error("A valid Telegram bot token is required.");
     this.token = config.token;
-    printTerminalBranding();
+    if (config.branding) printTerminalBranding();
     this.logger = config.logger instanceof Logger ? config.logger : createLogger(config.logger);
     this.router = new Router<Context<S>>(config.router);
     this.session = config.session ?? new MemoryStorage<string, S>();
     this.services = { ...(config.services ?? {}) };
     const transport = config.transport ?? new FetchTransport({ baseUrl: `${config.apiBaseUrl ?? "https://api.telegram.org"}/bot${config.token}`, ...(config.transportOptions ?? {}) });
     this.api = new ApiClient({
-      transport,
       hooks: {
         onRequest: (context) => { this.logger.trace("api.request", { method: context.method, payload: context.payload }); return this.events.emit("api:request", { method: context.method, payload: context.payload }); },
         onResponse: (context) => { this.logger.debug("api.response", { method: context.method, durationMs: context.durationMs ?? 0, ok: context.response?.ok }); return this.events.emit("api:response", { method: context.method, durationMs: context.durationMs ?? 0, response: context.response }); },
         onError: (context) => { this.logger.error("api.error", { method: context.method, durationMs: context.durationMs ?? 0, error: context.error }); return this.events.emit("api:error", { method: context.method, durationMs: context.durationMs ?? 0, error: context.error }); },
       },
+      transport,
     });
     this.plugins = new PluginManager<Context<S>>(this);
     this.pollingOptions = {
-      timeout: config.polling?.timeout ?? 30,
-      limit: config.polling?.limit ?? 100,
       allowedUpdates: config.polling?.allowedUpdates ?? [],
-      retryDelayMs: config.polling?.retryDelayMs ?? 500,
+      limit: config.polling?.limit ?? 100,
       maxRetryDelayMs: config.polling?.maxRetryDelayMs ?? 30_000,
+      retryDelayMs: config.polling?.retryDelayMs ?? 500,
+      timeout: config.polling?.timeout ?? 30,
     };
     this.logger.info("bot.created", { status: this.statusValue });
     void this.events.emit("bot:created", { bot: this });
@@ -178,7 +179,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     const session = await this.session.get(key) ?? ({} as S);
     if (!this.me) await this.init();
     if (!this.me) return;
-    const ctx = new Context<S>({ update, api: this.api, session, services: this.services });
+    const ctx = new Context<S>({ update, api: this.api, session, services: this.services, me: this.me });
     await this.events.emit("update", { update });
     if (message) {
       await this.events.emit("message", { message });
@@ -204,16 +205,25 @@ export class Bot<S extends object = Record<string, unknown>> {
   }
 
   private conversationKey(update: Update): string {
+    if (update.callback_query) {
+      const chat = update.callback_query.message?.chat;
+      const userId = update.callback_query.from.id;
+      if (chat?.id !== undefined) return `${chat.id}:${userId}`;
+      return `user:${userId}`;
+    }
+    if (update.inline_query?.from?.id !== undefined) return `user:${update.inline_query.from.id}`;
+    if (update.chosen_inline_result?.from?.id !== undefined) return `user:${update.chosen_inline_result.from.id}`;
     const message = update.message
       ?? update.edited_message
       ?? update.channel_post
       ?? update.edited_channel_post
       ?? update.business_message
       ?? update.edited_business_message
-      ?? update.guest_message
-      ?? update.callback_query?.message;
+      ?? update.guest_message;
     if (message?.chat?.id !== undefined) return `${message.chat.id}:${message.from?.id ?? "anonymous"}`;
-    if (update.callback_query?.from?.id !== undefined) return `user:${update.callback_query.from.id}`;
+    if (update.chat_member?.chat?.id !== undefined) return `${update.chat_member.chat.id}:${update.chat_member.from.id}`;
+    if (update.my_chat_member?.chat?.id !== undefined) return `${update.my_chat_member.chat.id}:${update.my_chat_member.from.id}`;
+    if (update.chat_join_request?.chat?.id !== undefined) return `${update.chat_join_request.chat.id}:${update.chat_join_request.from.id}`;
     return `update:${update.update_id}`;
   }
 

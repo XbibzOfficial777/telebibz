@@ -2,9 +2,12 @@ import { compose, type Middleware } from "../middleware/compose.js";
 
 export interface RoutableContext {
   update: { [key: string]: unknown };
-  message: { text?: string; chat?: { id: number | string }; [key: string]: unknown } | undefined;
+  message: { text?: string; caption?: string; chat?: { id: number | string }; [key: string]: unknown } | undefined;
   callbackQuery: { data?: string } | undefined;
   params: Record<string, string>;
+  match?: RegExpMatchArray | undefined;
+  args?: string[] | undefined;
+  me?: { username?: string; id?: number; [key: string]: unknown } | undefined;
 }
 
 type Matcher<Context> = (ctx: Context) => boolean | Promise<boolean>;
@@ -30,6 +33,7 @@ function testRegExp(expression: RegExp, value: string): boolean {
 }
 
 export class Router<Context extends RoutableContext> {
+  private readonly middlewares: Handler<Context>[] = [];
   private readonly routes: Route<Context>[] = [];
   private sequence = 0;
   readonly matchMode: RouterMatchMode;
@@ -40,7 +44,7 @@ export class Router<Context extends RoutableContext> {
 
   use(...middleware: Handler<Context>[]): this {
     if (middleware.length === 0) return this;
-    this.routes.push({ priority: -1_000_000 + this.sequence++, matcher: () => true, middleware });
+    this.middlewares.push(...middleware);
     return this;
   }
 
@@ -52,31 +56,63 @@ export class Router<Context extends RoutableContext> {
 
   command(name: string | RegExp, ...middleware: Handler<Context>[]): this {
     return this.route(async (ctx) => {
-      const text = ctx.message?.text;
+      const text = ctx.message?.text ?? ctx.message?.caption;
       if (!text?.startsWith("/")) return false;
-      const command = text.slice(1).split(/[\s@]/, 1)[0] ?? "";
-      return typeof name === "string"
+      const parts = text.slice(1).split(/\s+/);
+      const commandWithBot = parts[0] ?? "";
+      const [command, botUsername] = commandWithBot.split("@");
+      if (botUsername && ctx.me?.username && botUsername.toLowerCase() !== ctx.me.username.toLowerCase()) {
+        return false;
+      }
+      const matched = typeof name === "string"
         ? command === name.replace(/^\//, "")
-        : testRegExp(name, command);
+        : testRegExp(name, command ?? "");
+      if (matched) {
+        ctx.args = parts.slice(1);
+      }
+      return matched;
     }, ...middleware);
   }
 
   text(value: string, ...middleware: Handler<Context>[]): this {
-    return this.route((ctx) => ctx.message?.text === value, ...middleware);
+    return this.route((ctx) => {
+      const text = ctx.message?.text ?? ctx.message?.caption;
+      return text === value;
+    }, ...middleware);
   }
 
   regex(expression: RegExp, ...middleware: Handler<Context>[]): this {
-    return this.route((ctx) => testRegExp(expression, ctx.message?.text ?? ""), ...middleware);
+    return this.route((ctx) => {
+      const text = ctx.message?.text ?? ctx.message?.caption ?? "";
+      const match = text.match(expression);
+      if (match) {
+        ctx.match = match;
+        return true;
+      }
+      return false;
+    }, ...middleware);
   }
 
   callback(pattern: string | RegExp, ...middleware: Handler<Context>[]): this {
     return this.route((ctx) => {
       const data = ctx.callbackQuery?.data ?? "";
-      return typeof pattern === "string"
-        ? pattern.endsWith("*")
-          ? data.startsWith(pattern.slice(0, -1))
-          : data === pattern
-        : testRegExp(pattern, data);
+      if (typeof pattern === "string") {
+        if (pattern.endsWith("*")) {
+          const prefix = pattern.slice(0, -1);
+          if (data.startsWith(prefix)) {
+            ctx.params = { ...ctx.params, wildcard: data.slice(prefix.length) };
+            return true;
+          }
+          return false;
+        }
+        return data === pattern;
+      }
+      const match = data.match(pattern);
+      if (match) {
+        ctx.match = match;
+        return true;
+      }
+      return false;
     }, ...middleware);
   }
 
@@ -98,14 +134,25 @@ export class Router<Context extends RoutableContext> {
   }
 
   async handle(ctx: Context, terminal?: () => Promise<void>): Promise<void> {
-    const ordered = [...this.routes].sort((left, right) => left.priority - right.priority);
-    let matched = false;
-    for (const route of ordered) {
-      if (!(await route.matcher(ctx))) continue;
-      matched = true;
-      await compose(route.middleware)(ctx);
-      if (this.matchMode === "first") break;
+    const routeDispatcher: Handler<Context> = async (currentCtx, next) => {
+      const ordered = [...this.routes].sort((left, right) => left.priority - right.priority);
+      let matched = false;
+      for (const route of ordered) {
+        if (!(await route.matcher(currentCtx))) continue;
+        matched = true;
+        await compose(route.middleware)(currentCtx);
+        if (this.matchMode === "first") break;
+      }
+      if (!matched) {
+        if (terminal) await terminal();
+        else await next();
+      }
+    };
+
+    if (this.middlewares.length === 0) {
+      await routeDispatcher(ctx, async () => {});
+    } else {
+      await compose([...this.middlewares, routeDispatcher])(ctx);
     }
-    if (!matched) await terminal?.();
   }
 }
