@@ -13,8 +13,11 @@
 
 ### Added
 
+- Animated terminal startup experience (on by default, `branding: false` to disable): typing effect for `Installing Dependencies......`, a glass progress bar with a sweeping highlight, and the animated rainbow ASCII banner `Tele Bibz` (figlet `Speed` font) that flows until the bot connects and then freezes with `✓ Connected as @<username>`.
+- Human-readable incoming update logs: `[ => ] Message From {id} {nickname} {dd/mm/yyyy} {hh:mm:ss}` plus an indented content line. Regular message/command text is truncated to 50 characters; callback button data is shown in full. Errors print in red with the full stack. Non-interactive stdout falls back to plain output; `logger.format: "json"` emits structured `update.received` entries instead.
+- Branding helpers exported for applications: `runStartupSequence()`, `startTeleBibzBanner()`, `printTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()`, plus `Logger.incoming()` and `describeIncomingUpdate()`.
 - `TransportRequest.timeoutMs` for per-request timeouts, honored by `FetchTransport` and `ApiClient.request()`.
-- Regression tests for polling timeout/abort behavior, JSON storage TTL persistence, and webhook framework adapters.
+- Regression tests for polling timeout/abort behavior, JSON storage TTL persistence, webhook framework adapters, and the branding/incoming-log pipeline.
 
 - Callback-query contexts now resolve `message` and `chat` from `callback_query.message`, so `ctx.reply()`, `ctx.edit()`, and `ctx.delete()` work for button callbacks.
 - Router matching is first-match by default; explicit `matchMode: "all"` preserves deliberate fan-out without accidental double replies.

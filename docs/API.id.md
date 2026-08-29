@@ -68,6 +68,7 @@ type BotStatus =
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, dan fetch implementation. |
 | `session` | `Storage<string, S>` | storage baru | Penyimpanan session berdasarkan kunci chat/user; dapat memakai adapter persistent. |
 | `services` | `Record<string, unknown>` | `{}` | Dependency/service yang tersedia melalui `ctx.services`. |
+| `branding` | `boolean` | `true` | Pengalaman startup terminal: efek ketik, glass progress bar, banner rainbow animasi `Tele Bibz`, dan baris update yang mudah dibaca. Hanya dirender pada TTY interaktif. |
 | `polling.timeout` | `number` | `30` | Long-poll timeout dalam detik untuk `getUpdates`. |
 | `polling.limit` | `number` | `100` | Jumlah maksimum update per request polling. |
 | `polling.allowedUpdates` | `string[]` | `[]` | Filter update Telegram. |
@@ -1263,7 +1264,20 @@ new Menu(id: string): Menu
 
 ## 12. Logging Terminal
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+Saat stdout adalah TTY interaktif, setiap `bot.start()` / `bot.launch()` memainkan urutan startup: efek ketik `Installing Dependencies......`, glass progress bar dengan kilau menyapu, dan banner ASCII rainbow animasi `Tele Bibz` (font figlet `Speed`) yang terus mengalir sampai bot terhubung, lalu diam dengan `✓ Connected as @<username>`.
+
+Setiap update yang ditangani bot dicatat dalam baris yang mudah dibaca:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Teks pesan/command dibatasi 50 karakter; data tombol callback ditampilkan penuh. Error dicetak merah lengkap dengan stack. Nonaktifkan dengan `branding: false` pada `Bot`, atau set `logger.format: "json"` untuk log terstruktur — pada mode itu update masuk dikeluarkan sebagai entry `update.received`. Stdout non-interaktif (pipe, Docker, CI) otomatis fallback ke teks polos tanpa animasi.
+
+Helper branding tambahan yang diekspor untuk aplikasi: `runStartupSequence()`, `startTeleBibzBanner()`, `printTeleBibzBanner()`, `paintRainbow()`, dan `printStatusLine()`.
 
 ## 13. Utilitas Teks
 

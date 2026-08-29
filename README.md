@@ -150,9 +150,24 @@ const handler = createWebhookHandler(bot, {
 
 The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
 
+## Terminal experience
+
+When the bot starts on an interactive terminal (`npm start`, `node index.js`, `telebibz start`), telebibz plays a startup sequence: a typing effect for `Installing Dependencies......`, a glass progress bar with a sweeping highlight, and the animated rainbow ASCII banner **Tele Bibz** (figlet `Speed` font) that keeps flowing until the bot connects, then freezes with `✓ Connected as @<username>`.
+
+Afterwards, every incoming update is logged on a human-readable line, and errors are printed in red with the full stack:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Message and command text is truncated to 50 characters; callback button data is shown in full. Pass `branding: false` to `Bot` to disable the sequence, or set `logger.format: "json"` for structured log ingestion. Non-interactive stdout (pipes, Docker, CI) automatically falls back to plain output without animations.
+
 ## CLI
 
-Every `telebibz` CLI command starts with a colored Unicode branding box containing `Library Bot Telegram By @xbibzofficial`. Startup animation automatically falls back to clean static output when stdout is not a TTY.
+CLI commands such as `telebibz doctor`, `init`, and `webhook` start with the rainbow `Tele Bibz` banner. Startup animation automatically falls back to clean static output when stdout is not a TTY.
 
 ```bash
 npm start
@@ -165,8 +180,9 @@ npx telebibz test
 Applications can print the same terminal branding explicitly:
 
 ```ts
-import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+import { printTeleBibzBanner, printTerminalBranding } from "@xbibzlibrary/telebibz";
 
+printTeleBibzBanner({ subtitle: "My bot" });
 printTerminalBranding();
 ```
 

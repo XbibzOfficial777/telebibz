@@ -68,6 +68,7 @@ type BotStatus =
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | 超时、重试、退避、jitter、headers 和 fetch 实现。 |
 | `session` | `Storage<string, S>` | 新的存储 | 基于 chat/user key 的会话存储，可使用持久化适配器。 |
 | `services` | `Record<string, unknown>` | `{}` | 通过 `ctx.services` 可用的依赖/服务。 |
+| `branding` | `boolean` | `true` | 终端启动体验：打字效果、glass 进度条、动画彩虹 `Tele Bibz` 横幅以及易读的 update 日志行。仅在交互式 TTY 上渲染。 |
 | `polling.timeout` | `number` | `30` | 用于 `getUpdates` 的长轮询超时（秒）。 |
 | `polling.limit` | `number` | `100` | 每次轮询请求的最大 update 数量。 |
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram 更新过滤器。 |
@@ -1257,7 +1258,20 @@ new Menu(id: string): Menu
 
 ## 12. Terminal Logging
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+当 stdout 是交互式 TTY 时，每次 `bot.start()` / `bot.launch()` 都会播放启动序列：`Installing Dependencies......` 打字效果、带扫过高光的 glass 进度条，以及动画彩虹 ASCII 横幅 `Tele Bibz`（figlet `Speed` 字体）——持续流动直到 bot 连接成功，随后定格为 `✓ Connected as @<username>`。
+
+bot 处理的每条 update 都会以易读的行格式记录：
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+普通消息与命令文本截断为 50 个字符；回调按钮数据完整显示。错误以红色打印并附带完整堆栈。向 `Bot` 传入 `branding: false` 可关闭启动序列；设置 `logger.format: "json"` 时，进入的 update 会作为结构化 `update.received` entry 输出。非交互 stdout（管道、Docker、CI）自动回退为无动画的纯文本。
+
+面向应用导出的附加 branding helper：`runStartupSequence()`、`startTeleBibzBanner()`、`printTeleBibzBanner()`、`paintRainbow()` 和 `printStatusLine()`。
 
 ## 13. 文本工具
 

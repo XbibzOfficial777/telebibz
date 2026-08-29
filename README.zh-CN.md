@@ -122,9 +122,24 @@ const handler = createWebhookHandler(bot, {
 
 该包提供带 TTL 和原子更新的 `MemoryStorage`、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`、bot session、基于 Storage 的 conversation/form、基于 permission 的菜单、`MenuController` 分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和完整五字段 cron 的调度器。Redis、SQL 和 Mongo 适配器使用小型 driver interface，因此 core package 不需要 vendor runtime dependency。
 
+## 终端体验
+
+当 bot 在交互式终端启动时（`npm start`、`node index.js`、`telebibz start`），telebibz 会播放启动序列：`Installing Dependencies......` 打字效果、带扫过高光的 glass 进度条，以及动画彩虹 ASCII 横幅 **Tele Bibz**（figlet `Speed` 字体）——彩虹持续流动直到 bot 连接成功，随后定格并显示 `✓ Connected as @<username>`。
+
+之后，每一条进入的 update 都会以易读的格式输出，错误自动以红色打印并附带完整堆栈：
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+普通消息与命令文本截断为 50 个字符；回调按钮数据完整显示。向 `Bot` 传入 `branding: false` 可关闭启动序列，或设置 `logger.format: "json"` 获取结构化日志。非交互 stdout（管道、Docker、CI）会自动回退到无动画的纯文本输出。
+
 ## CLI
 
-每个 `telebibz` command 都会显示带颜色的 Unicode branding box，其中包含 `Library Bot Telegram By @xbibzofficial`。CLI 不会打印 developer target。
+`telebibz doctor`、`init`、`webhook` 等 CLI command 以彩虹 `Tele Bibz` 横幅开始。当 stdout 不是 TTY 时，启动动画自动回退为干净的静态输出。
 
 ```bash
 npx telebibz init my-bot
@@ -136,8 +151,9 @@ npx telebibz test
 也可以在应用中打印相同的 terminal branding：
 
 ```ts
-import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+import { printTeleBibzBanner, printTerminalBranding } from "@xbibzlibrary/telebibz";
 
+printTeleBibzBanner({ subtitle: "My bot" });
 printTerminalBranding();
 ```
 

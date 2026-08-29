@@ -67,6 +67,7 @@ type BotStatus =
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, and fetch implementation. |
 | `session` | `Storage<string, S>` | new storage | Session storage keyed by chat/user; any storage adapter may be used. |
 | `services` | `Record<string, unknown>` | `{}` | Dependencies/services available via `ctx.services`. |
+| `branding` | `boolean` | `true` | Terminal startup experience: typing effect, glass progress bar, animated rainbow "Tele Bibz" banner, and human-readable update lines. Only renders on an interactive TTY. |
 | `polling.timeout` | `number` | `30` | Long-poll timeout in seconds for `getUpdates`. |
 | `polling.limit` | `number` | `100` | Maximum number of updates per polling request. |
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram update filters. |
@@ -1281,11 +1282,23 @@ new Menu(id: string): Menu
 
 ## 12. Terminal Logging
 
-The CLI prints a colored Unicode attribution box and an animated startup status when attached to a TTY. The default logger emits compact, readable terminal lines with colored levels and structured context. Use `format: "json"` for machine ingestion, `includeUpdateContent: true` when message text or callback data is explicitly required, and a custom `sink` for application monitoring.
+When stdout is an interactive TTY, every `bot.start()` / `bot.launch()` plays a startup sequence: a typing effect for `Installing Dependencies......`, a glass progress bar with a sweeping highlight, and the animated rainbow ASCII banner `Tele Bibz` (figlet `Speed` font) that keeps flowing until the bot connects, then freezes with `✓ Connected as @<username>`.
+
+Every update the bot handles is logged on a human-readable line:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Message and command text is truncated to 50 characters; callback button data is shown in full. Errors are printed in red and include the full stack. Pass `branding: false` to `Bot` to disable the startup sequence, and set `logger.format: "json"` for machine ingestion — in that mode incoming updates are emitted as structured `update.received` entries. Non-interactive stdout (pipes, Docker, CI) automatically falls back to plain, uncolored output without animations.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
+  branding: false, // turn off the startup sequence
   logger: {
     level: "debug",
     format: "pretty",
@@ -1294,6 +1307,8 @@ const bot = new Bot({
   },
 });
 ```
+
+Additional branding helpers exported for applications: `runStartupSequence()`, `startTeleBibzBanner()`, `printTeleBibzBanner()`, `paintRainbow()`, and `printStatusLine()`.
 
 ---
 
