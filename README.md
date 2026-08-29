@@ -21,6 +21,20 @@ Storage quick start (Memory/JSON/Redis/SQL/Mongo): [English](docs/STORAGE.md) ·
 
 Getting started: [English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
 
+Files (upload & download): [English](docs/FILES.md) · [Bahasa Indonesia](docs/FILES.id.md) · [简体中文](docs/FILES.zh-CN.md)
+
+Errors & rate limits: [English](docs/ERRORS.md) · [Bahasa Indonesia](docs/ERRORS.id.md) · [简体中文](docs/ERRORS.zh-CN.md)
+
+Webhook deployment: [English](docs/WEBHOOK.md) · [Bahasa Indonesia](docs/WEBHOOK.id.md) · [简体中文](docs/WEBHOOK.zh-CN.md)
+
+Testing (offline with MockTransport): [English](docs/TESTING.md) · [Bahasa Indonesia](docs/TESTING.id.md) · [简体中文](docs/TESTING.zh-CN.md)
+
+Migrating from Telegraf: [English](docs/MIGRATION_TELEGRAF.md) · [Bahasa Indonesia](docs/MIGRATION_TELEGRAF.id.md) · [简体中文](docs/MIGRATION_TELEGRAF.zh-CN.md)
+
+Production cookbook (13 recipes): [English](docs/COOKBOOK.md) · [Bahasa Indonesia](docs/COOKBOOK.id.md) · [简体中文](docs/COOKBOOK.zh-CN.md)
+
+Full documentation catalog: [docs/README.md](docs/README.md)
+
 Community showcase: [SHOWCASE.md](SHOWCASE.md)
 
 ![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
