@@ -122,6 +122,25 @@ const handler = createWebhookHandler(bot, {
 
 `createWebhookHandler` 接受标准 Web `Request` 并返回 `Response`。处理程序会验证 secret token、body 大小、JSON 解析以及重复更新处理。
 
+## 高负载更新与广播
+
+telebibz 为 1000+ 条消息的突发场景而生，没有任何人为冷却：
+
+- **跨 chat 并行，同一 chat 内按序。** 每个 `getUpdates` 批次（以及每个 webhook 请求）都并发处理——不同 chat 的 update 不会互相排队，而同一 chat 的 update 保持到达顺序，因此会话、wizard 和 conversation 始终正确，会话写入永不丢失。并发突发只触发一次 `getMe` 初始化。
+- **没有主动限流。** 库永远不会延迟外发请求。当 Telegram 返回 429 时，transport 会严格按照 Telegram 指定的 `retry_after` 窗口等待（全局 "flood gate" 保护所有进行中的流量）并自动重试——因此突发流量会完整送达而不是失败。
+- **一次性向 1000+ 用户广播。** `bot.broadcast()` 立即尝试所有 chat，按照 Telegram 自己的 `retry_after` 重试 429，并返回完整报告。
+
+```ts
+const report = await bot.broadcast(
+  subscriberIds,
+  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
+  { onProgress: (p) => console.log(`${p.delivered}/${p.total} delivered`) },
+);
+console.log(`Delivered ${report.delivered}/${report.total} in ${report.durationMs}ms`);
+```
+
+当你自己的下游（数据库、API）需要时，可以用 `new Bot({ ..., updates: { concurrency: 64 } })` 或 `broadcast(..., { concurrency: 64 })` 限制并发——默认情况下两者都完全并行。
+
 ## 状态、队列、调度器和缓存
 
 该包提供带 TTL 和原子更新的 `MemoryStorage`、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`、bot session、基于 Storage 的 conversation/form、基于 permission 的菜单、`MenuController` 分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和完整五字段 cron 的调度器。Redis、SQL 和 Mongo 适配器使用小型 driver interface，因此 core package 不需要 vendor runtime dependency。

@@ -30,6 +30,14 @@ export interface FetchTransportOptions {
   maxBackoffMs?: number;
   jitter?: number;
   headers?: HeadersInit;
+  /**
+   * When Telegram answers 429 (rate limit), pause NEW requests until the
+   * `retry_after` window Telegram ordered has elapsed. Default `true`.
+   * This is never a proactive cooldown: the only waiting ever done is the
+   * delay Telegram itself demands, so a flood on one method protects the rest
+   * of the traffic instead of every request hitting the same 429 wall.
+   */
+  floodGate?: boolean;
 }
 
 export class FetchTransport implements Transport {
@@ -41,6 +49,9 @@ export class FetchTransport implements Transport {
   private readonly maxBackoffMs: number;
   private readonly jitter: number;
   private readonly headers: HeadersInit;
+  private readonly floodGate: boolean;
+  /** Timestamp (ms) until which Telegram asked us to stop sending. */
+  private floodUntil = 0;
 
   constructor(options: FetchTransportOptions = {}) {
     this.baseUrl = (options.baseUrl ?? "https://api.telegram.org").replace(/\/$/, "");
@@ -52,6 +63,22 @@ export class FetchTransport implements Transport {
     this.maxBackoffMs = options.maxBackoffMs ?? 8_000;
     this.jitter = options.jitter ?? 0.2;
     this.headers = options.headers ?? {};
+    this.floodGate = options.floodGate ?? true;
+  }
+
+  /** Waits out the remainder of a Telegram-ordered flood window, if any. */
+  private async waitForFloodWindow(): Promise<void> {
+    if (!this.floodGate) return;
+    const waitMs = this.floodUntil - Date.now();
+    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+
+  /** Extends the flood window when Telegram answers 429 or sends retry_after. */
+  private recordFloodWindow(data: TelegramResponse<unknown>): void {
+    if (!this.floodGate) return;
+    if (data.ok || (data.error_code !== 429 && data.parameters?.retry_after === undefined)) return;
+    const retryAfterMs = Math.max(0, (data.parameters?.retry_after ?? 0) * 1000);
+    this.floodUntil = Math.max(this.floodUntil, Date.now() + retryAfterMs);
   }
 
   async request<T>({ method, payload = {}, signal, timeoutMs }: TransportRequest): Promise<TransportResponse<T>> {
@@ -70,6 +97,7 @@ export class FetchTransport implements Transport {
 
     let attempt = 0;
     while (true) {
+      await this.waitForFloodWindow();
       let responseStatus: number | undefined;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(new Error(`Request timed out after ${effectiveTimeoutMs}ms`)), effectiveTimeoutMs);
@@ -96,6 +124,7 @@ export class FetchTransport implements Transport {
           throw error;
         }
         const data = await response.json() as TelegramResponse<T>;
+        this.recordFloodWindow(data);
         if (!data.ok && isRetryableResponse(response.status, data) && attempt < this.retries) {
           const retryAfterMs = data.parameters?.retry_after === undefined ? undefined : Math.max(0, data.parameters.retry_after * 1000);
           await waitBeforeRetry(attempt, this.backoffMs, this.maxBackoffMs, this.jitter, retryAfterMs);

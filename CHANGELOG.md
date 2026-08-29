@@ -16,6 +16,10 @@
 - Human-readable incoming update logs: `[ => ] Message From {id} {nickname} {dd/mm/yyyy} {hh:mm:ss}` plus an indented content line. Regular message/command text is truncated to 50 characters; callback button data is shown in full. Errors print in red with the full stack. Non-interactive stdout falls back to plain output; `logger.format: "json"` emits structured `update.received` entries instead.
 - Branding helpers exported for applications: `runStartupSequence()`, `startTeleBibzBanner()`, `printTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()`, plus `Logger.incoming()` and `describeIncomingUpdate()`.
 - `TransportRequest.timeoutMs` for per-request timeouts, honored by `FetchTransport` and `ApiClient.request()`.
+- Concurrent update processing built for 1000+ message bursts: updates run in parallel across chats while staying ordered within a single chat, so a slow handler never blocks other chats, sessions never lose writes, and a concurrent burst triggers exactly one `getMe` initialization. `bot.handleUpdates(updates)` processes a whole batch at once and the polling loop uses it for every `getUpdates` batch. Cap simultaneous work with `updates: { concurrency }` (default `Infinity`).
+- `bot.broadcast(chatIds, send, options)` for sending to 1000+ users at once: every chat is attempted immediately (no proactive cooldown, configurable `concurrency`), 429 answers are retried automatically after exactly the `retry_after` delay Telegram ordered, and the returned `BroadcastReport` lists delivered/failed counts with per-chat failure details plus `onProgress` streaming.
+- `FetchTransport` flood gate (`floodGate`, default on): when Telegram answers 429, new requests wait out the `retry_after` window Telegram ordered — the only delay ever introduced, never a proactive cooldown.
+- `Limiter` and `mapWithConcurrency` concurrency primitives (promise semaphore and ordered concurrent mapping) exported for applications.
 - Storage-backed conversations, full five-field cron parsing, scheduler error hooks, permission-aware menus, `MenuController`, Web App init-data validation, PaymentsClient, and vendored Telegram declarations.
 
 ### Fixed
@@ -31,6 +35,8 @@
 - Callback-query contexts resolve `message` and `chat` from `callback_query.message`, so `ctx.reply()`, `ctx.edit()`, and `ctx.delete()` work for button callbacks.
 - Router matching is first-match by default; explicit `matchMode: "all"` preserves deliberate fan-out without accidental double replies.
 - Polling isolates handler failures per update, continues the remainder of a batch, emits `update:error`, and uses abortable reconnect backoff.
+- A burst of concurrent updates no longer races `init()`: initialization is memoized, so 1000 simultaneous updates trigger exactly one `getMe` call instead of one per update.
+- Session writes are no longer lost when one chat sends several messages at once: same-chat updates are serialized in arrival order, so each update reads the session state written by the previous one.
 
 ### Removed
 

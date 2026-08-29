@@ -73,6 +73,7 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram update filters. |
 | `polling.retryDelayMs` | `number` | `500` | Initial delay when polling fails. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Maximum reconnect delay. |
+| `updates.concurrency` | `number` | `Infinity` | Cap on how many updates are processed at the same time. Updates always run in parallel across chats and stay ordered within a single chat, so bursts of 1000+ messages are handled at once. |
 
 ### Constructor `Bot`
 
@@ -218,7 +219,7 @@ launch(options?: {
 }): Promise<void>
 ```
 
-Runs the bot in polling mode. On start, the lifecycle moves through `starting` to `running`, then the `getUpdates()` loop processes each update sequentially. Polling failures emit `polling:reconnect` and use exponential backoff.
+Runs the bot in polling mode. On start, the lifecycle moves through `starting` to `running`, then the `getUpdates()` loop processes each batch of updates concurrently: updates for different chats run in parallel while updates for the same chat keep their arrival order. Polling failures emit `polling:reconnect` and use exponential backoff.
 
 Modes other than `"polling"` throw an error and suggest using `createWebhookHandler()` for webhooks.
 
@@ -295,7 +296,53 @@ handleUpdate(update: Update): Promise<void>
 
 Processes a single update manually. The method determines the session key from `chat.id` and `from.id`, creates a `Context`, emits `update` and `message` events, runs middleware then the router, and saves the session after the pipeline completes.
 
+Updates for different chats are processed in parallel; updates for the same chat are serialized in arrival order, so sessions, wizards, and conversations never interleave and session writes are never lost. A burst of concurrent updates triggers exactly one `getMe` initialization.
+
 Pipeline errors set the bot status to `error`, emit `bot:error`, and then rethrow the error.
+
+### `bot.handleUpdates(updates)`
+
+```ts
+handleUpdates(updates: readonly Update[]): Promise<void>
+```
+
+Handles a whole batch of updates at once: every chat in the batch is processed immediately — parallel across chats, ordered per chat — so a burst of 1000 messages is never stuck behind one slow handler. Individual handler failures are logged, emitted as `update:error`, and passed to the `catch()` error boundary; they never reject this promise. The polling loop uses this method for every `getUpdates` batch.
+
+### `bot.broadcast(chatIds, send, options?)`
+
+```ts
+broadcast(
+  chatIds: readonly ChatId[],
+  send: (chatId: ChatId) => Promise<unknown>,
+  options?: BroadcastOptions,
+): Promise<BroadcastReport>
+```
+
+Sends to many chats in parallel — built for broadcasts to 1000+ users. There is no proactive cooldown: every chat is attempted at once (up to `options.concurrency`, default `Infinity`). When Telegram answers 429, the send is retried automatically after exactly the `retry_after` delay Telegram ordered (up to `options.maxAttempts`, default `10`), so bursts deliver completely instead of failing. Non-retryable errors (for example, a chat the bot cannot message) are recorded per chat in the returned report.
+
+```ts
+const report = await bot.broadcast(
+  subscriberIds,
+  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
+  { onProgress: (progress) => console.log(`${progress.delivered}/${progress.total} delivered`) },
+);
+console.log(`Delivered ${report.delivered} of ${report.total} in ${report.durationMs}ms`);
+for (const failure of report.failures) console.warn(`Failed: ${failure.chatId} — ${failure.error}`);
+```
+
+#### `BroadcastOptions` and `BroadcastReport`
+
+| Property | Type | Default | Description |
+|---|---|---:|---|
+| `BroadcastOptions.concurrency` | `number` | `Infinity` | How many chats are messaged at the same time. |
+| `BroadcastOptions.maxAttempts` | `number` | `10` | Attempts per chat when Telegram answers 429. |
+| `BroadcastOptions.onProgress` | `(progress: BroadcastProgress) => void` | — | Called after each chat settles. |
+| `BroadcastOptions.signal` | `AbortSignal` | — | Aborts pending sends; delivered messages stay delivered. |
+| `BroadcastReport.total` | `number` | — | Chats in the run. |
+| `BroadcastReport.delivered` | `number` | — | Chats that received the message. |
+| `BroadcastReport.failed` | `number` | — | Chats that did not. |
+| `BroadcastReport.durationMs` | `number` | — | Wall-clock duration of the run. |
+| `BroadcastReport.failures` | `BroadcastFailure[]` | — | Per-chat `{ chatId, attempts, error, errorKind }` records. |
 
 ### Minimal bot example
 
@@ -434,6 +481,7 @@ interface Transport {
 | `maxBackoffMs` | `8000` | Transport delay cap. |
 | `jitter` | `0.2` | Random variation ±20% of the exponential delay. |
 | `headers` | `{}` | Additional headers. |
+| `floodGate` | `true` | When Telegram answers 429, pauses NEW requests until the `retry_after` window Telegram ordered has elapsed. Never a proactive cooldown — the only waiting done is what Telegram itself demands. |
 
 ### `new FetchTransport(options?)`
 
@@ -1014,6 +1062,20 @@ new Scheduler(): Scheduler
 | `clear` | `clear(): void` | Cancels all timers. |
 
 The full cron format is not supported by the built-in scheduler. Expressions other than `*/N` throw an `Error`.
+
+### `Limiter` and `mapWithConcurrency`
+
+```ts
+new Limiter(limit: number): Limiter
+
+mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]>
+```
+
+`Limiter` is a promise semaphore: tasks run immediately while a slot is free and queue FIFO beyond that. `limit` accepts any positive integer or `Infinity` (fully parallel — the library default). `mapWithConcurrency` maps items through an async worker with the same cap while preserving result order; results and errors behave like `Promise.all` mapped arrays. These primitives add no delays of their own — they only bound how many tasks run at the same time. `Limiter` exposes `activeCount` and `queuedCount` for observability.
 
 ## 9. Plugins and services
 

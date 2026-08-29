@@ -150,6 +150,25 @@ const handler = createWebhookHandler(bot, {
 
 `createWebhookHandler` accepts a standard Web `Request` and returns a `Response`. It verifies the optional secret token, body size, JSON payload, and update shape before calling `bot.handleUpdate()`.
 
+## High-load updates and broadcast
+
+telebibz is built for bursts of 1000+ messages with no artificial cooldown:
+
+- **Parallel across chats, ordered per chat.** Every `getUpdates` batch (and every webhook request) is processed concurrently — updates from different chats never queue behind each other, while updates from the same chat keep their arrival order so sessions, wizards, and conversations stay correct and session writes are never lost. A concurrent burst triggers exactly one `getMe` initialization.
+- **No proactive throttling.** Outgoing requests are never delayed by the library. When Telegram answers 429, the transport waits exactly the `retry_after` window Telegram ordered (a global "flood gate" protects all in-flight traffic) and retries automatically — so bursts deliver completely instead of failing.
+- **Broadcast to 1000+ users at once.** `bot.broadcast()` attempts every chat immediately, retries 429s per Telegram's own `retry_after`, and returns a full report.
+
+```ts
+const report = await bot.broadcast(
+  subscriberIds,
+  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
+  { onProgress: (p) => console.log(`${p.delivered}/${p.total} delivered`) },
+);
+console.log(`Delivered ${report.delivered}/${report.total} in ${report.durationMs}ms`);
+```
+
+Cap simultaneous work with `new Bot({ ..., updates: { concurrency: 64 } })` or `broadcast(..., { concurrency: 64 })` when your own downstream (database, API) needs it — by default both run fully parallel.
+
 ## State, queue, scheduler, and cache
 
 The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
