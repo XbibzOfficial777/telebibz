@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- Restored a green build: `npm run typecheck`, `lint`, `test:types`, `test:examples`, and `build` failed under TypeScript 5.9 with `exactOptionalPropertyTypes` (`Context.me` assignment, `RoutableContext.me` index-signature constraint, and an invalid `webhookCallback` cast).
+- The published `telebibz` CLI binary crashed with `MODULE_NOT_FOUND` because `bin/telebibz.mjs` imported `../dist/cli.js`; the build emits `dist/src/cli.js`. `release:check` now verifies every bin import resolves inside the tarball.
+- Long polling no longer races its own transport timeout: `getUpdates` now uses a per-request timeout of the polling timeout plus a 10-second buffer instead of the flat 30s transport default, which aborted healthy connections the moment Telegram responded.
+- `bot.stop()` now aborts the in-flight long-poll request (the polling `AbortSignal` is passed through to the transport), so shutdown no longer blocks for up to the full polling timeout.
+- `JsonFileStorage` now persists `expiresAt` metadata, so values written with a TTL no longer silently become permanent after a restart.
+- `webhookCallback` now actually supports Koa-style contexts (`status`/`body`), reads secret-token headers from fetch `Request` header maps, and parses bodies from web-standard `Request` objects instead of misreading their `ReadableStream` `body` as a pre-parsed update.
+
+### Added
+
+- `TransportRequest.timeoutMs` for per-request timeouts, honored by `FetchTransport` and `ApiClient.request()`.
+- Regression tests for polling timeout/abort behavior, JSON storage TTL persistence, and webhook framework adapters.
+
 - Callback-query contexts now resolve `message` and `chat` from `callback_query.message`, so `ctx.reply()`, `ctx.edit()`, and `ctx.delete()` work for button callbacks.
 - Router matching is first-match by default; explicit `matchMode: "all"` preserves deliberate fan-out without accidental double replies.
 - Polling isolates handler failures per update, continues the remainder of a batch, emits `update:error`, and uses abortable reconnect backoff.

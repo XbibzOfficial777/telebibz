@@ -6,7 +6,7 @@ export interface ContextOptions<S extends object = Record<string, unknown>> {
   api: ApiClient;
   session: S;
   services: Record<string, unknown>;
-  me?: User;
+  me?: User | undefined;
 }
 
 export class Context<S extends object = Record<string, unknown>> {
@@ -16,7 +16,7 @@ export class Context<S extends object = Record<string, unknown>> {
   readonly state: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   readonly services: Record<string, unknown>;
   readonly params: Record<string, string> = Object.create(null) as Record<string, string>;
-  readonly me?: User;
+  readonly me?: User | undefined;
   match?: RegExpMatchArray;
   args?: string[];
 

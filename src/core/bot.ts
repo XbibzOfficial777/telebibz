@@ -245,9 +245,12 @@ export class Bot<S extends object = Record<string, unknown>> {
 
   private async poll(timeout: number, allowedUpdates: string[], signal: AbortSignal): Promise<void> {
     let delay = this.pollingOptions.retryDelayMs;
+    // Telegram holds a long-poll connection open for `timeout` seconds, so the
+    // request timeout must exceed it to avoid aborting a healthy connection.
+    const requestTimeoutMs = timeout * 1_000 + 10_000;
     while (!signal.aborted) {
       try {
-        const updates = await this.api.methods.getUpdates({ offset: this.offset, limit: this.pollingOptions.limit, timeout, allowed_updates: allowedUpdates });
+        const updates = await this.api.request("getUpdates", { offset: this.offset, limit: this.pollingOptions.limit, timeout, allowed_updates: allowedUpdates }, signal, { timeoutMs: requestTimeoutMs });
         delay = this.pollingOptions.retryDelayMs;
         for (const update of updates) {
           this.offset = Math.max(this.offset, update.update_id + 1);

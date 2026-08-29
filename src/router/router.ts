@@ -7,7 +7,7 @@ export interface RoutableContext {
   params: Record<string, string>;
   match?: RegExpMatchArray | undefined;
   args?: string[] | undefined;
-  me?: { username?: string; id?: number; [key: string]: unknown } | undefined;
+  me?: { username?: string; id?: number } | undefined;
 }
 
 type Matcher<Context> = (ctx: Context) => boolean | Promise<boolean>;

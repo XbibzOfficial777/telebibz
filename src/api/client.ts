@@ -25,13 +25,14 @@ export class ApiClient {
     }) as ApiMethods;
   }
   async call<M extends TelegramMethodName>(method: M, ...args: ApiCallArgs<M>): Promise<ApiResult<M>> { return this.request<M>(method, args[0] as ApiParams<M> | undefined); }
-  async request<M extends TelegramMethodName>(method: M, payload?: ApiParams<M>, signal?: AbortSignal): Promise<ApiResult<M>> {
+  async request<M extends TelegramMethodName>(method: M, payload?: ApiParams<M>, signal?: AbortSignal, options?: { timeoutMs?: number }): Promise<ApiResult<M>> {
     const context: ApiHookContext = { method, payload, startedAt: Date.now() };
     await this.hooks.onRequest?.(context);
     try {
       const request: TransportRequest = { method };
       if (payload !== undefined) request.payload = payload as Record<string, unknown>;
       if (signal !== undefined) request.signal = signal;
+      if (options?.timeoutMs !== undefined) request.timeoutMs = options.timeoutMs;
       const response = await this.transport.request<ApiResult<M>>(request);
       context.durationMs = Date.now() - context.startedAt;
       context.response = response.data as TelegramResponse<unknown>;

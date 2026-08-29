@@ -44,8 +44,17 @@ export function webhookCallback<S extends object>(
       if (rawRes && typeof rawRes.writeHead === "function" && typeof rawRes.end === "function") {
         rawRes.writeHead(status, { "Content-Type": "text/plain" });
         rawRes.end(message);
-      } else if (rawRes && typeof (rawRes as { status?: Function }).status === "function") {
-        (rawRes as { status: Function; send: Function }).status(status).send(message);
+        return;
+      }
+      const expressLike = rawRes as unknown as { status?: unknown; send?: unknown } | undefined;
+      if (typeof expressLike?.status === "function" && typeof expressLike.send === "function") {
+        (expressLike as unknown as { status: (code: number) => { send: (body: string) => void } }).status(status).send(message);
+        return;
+      }
+      const koaLike = rawRes as unknown as { status?: unknown; body?: unknown } | undefined;
+      if (koaLike !== undefined) {
+        koaLike.status = status;
+        koaLike.body = message;
       }
     };
 
@@ -55,9 +64,7 @@ export function webhookCallback<S extends object>(
     }
 
     if (options.secretToken) {
-      const tokenHeader = rawReq.headers?.["x-telegram-bot-api-secret-token"];
-      const headerStr = Array.isArray(tokenHeader) ? tokenHeader[0] ?? "" : tokenHeader ?? "";
-      if (!secureEqual(headerStr, options.secretToken)) {
+      if (!secureEqual(readHeader(rawReq, "x-telegram-bot-api-secret-token"), options.secretToken)) {
         sendResponse(401, "Unauthorized");
         return;
       }
@@ -65,7 +72,17 @@ export function webhookCallback<S extends object>(
 
     try {
       let update: Update;
-      if (rawReq.body && typeof rawReq.body === "object") {
+      if (typeof (rawReq as { arrayBuffer?: unknown }).arrayBuffer === "function") {
+        // Web-standard Request objects (e.g. Deno, Bun, WinterCG runtimes, or
+        // a converted fetch Request) expose the body through arrayBuffer().
+        // Checked before `body` because a Request's `body` is a ReadableStream.
+        const raw = await (rawReq as unknown as Request).arrayBuffer();
+        if (raw.byteLength > maxBodyBytes) {
+          sendResponse(413, "Payload Too Large");
+          return;
+        }
+        update = JSON.parse(new TextDecoder().decode(raw)) as Update;
+      } else if (rawReq.body && typeof rawReq.body === "object") {
         update = rawReq.body as Update;
       } else {
         const chunks: Buffer[] = [];
@@ -95,6 +112,14 @@ export function webhookCallback<S extends object>(
       sendResponse(500, "Internal Server Error");
     }
   };
+}
+
+function readHeader(req: IncomingMessage & { headers?: unknown }, name: string): string {
+  const headers: unknown = req.headers;
+  if (!headers || typeof headers !== "object") return "";
+  if (typeof (headers as { get?: unknown }).get === "function") return (headers as unknown as Headers).get(name) ?? "";
+  const value = (headers as Record<string, string | string[] | undefined>)[name];
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
 function secureEqual(left: string, right: string): boolean {

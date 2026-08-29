@@ -7,6 +7,8 @@ export interface TransportRequest {
   method: string;
   payload?: Record<string, unknown>;
   signal?: AbortSignal;
+  /** Per-request timeout in milliseconds; overrides the transport default. */
+  timeoutMs?: number;
 }
 
 export interface TransportResponse<T = unknown> {
@@ -52,7 +54,8 @@ export class FetchTransport implements Transport {
     this.headers = options.headers ?? {};
   }
 
-  async request<T>({ method, payload = {}, signal }: TransportRequest): Promise<TransportResponse<T>> {
+  async request<T>({ method, payload = {}, signal, timeoutMs }: TransportRequest): Promise<TransportResponse<T>> {
+    const effectiveTimeoutMs = timeoutMs ?? this.timeoutMs;
     const hasUpload = await containsUpload(payload);
     let body: BodyInit | undefined;
     const headers = new Headers(this.headers);
@@ -69,7 +72,7 @@ export class FetchTransport implements Transport {
     while (true) {
       let responseStatus: number | undefined;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(new Error(`Request timed out after ${this.timeoutMs}ms`)), this.timeoutMs);
+      const timeout = setTimeout(() => controller.abort(new Error(`Request timed out after ${effectiveTimeoutMs}ms`)), effectiveTimeoutMs);
       const onAbort = () => controller.abort(signal?.reason);
       signal?.addEventListener("abort", onAbort, { once: true });
       try {

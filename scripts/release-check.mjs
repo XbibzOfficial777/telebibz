@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 const root = process.cwd();
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
@@ -21,5 +21,17 @@ expect(files.includes("package.json"), "tarball must contain package.json");
 expect(files.some((file) => file.startsWith("dist/")), "tarball must contain ESM dist");
 expect(files.some((file) => file.startsWith("dist-cjs/")), "tarball must contain CommonJS dist");
 expect(!files.some((file) => /(?:\.npmrc|mytoken|token\.txt)/i.test(file)), "tarball must not contain credential files");
+for (const [binName, rawBinPath] of Object.entries(packageJson.bin ?? {})) {
+  const binPath = rawBinPath.replace(/^\.\//, "");
+  expect(files.includes(binPath), `tarball must contain the ${binName} bin entry: ${binPath}`);
+  const binSource = readFileSync(resolve(root, binPath), "utf8");
+  for (const match of binSource.matchAll(/from\s+["']([^"']+)["']/g)) {
+    const specifier = match[1];
+    if (!specifier.startsWith("../")) continue;
+    const target = resolve(root, dirname(binPath), specifier);
+    const relative = target.replace(`${root}/`, "");
+    expect(files.includes(relative), `${binName} bin imports ${specifier}, which is missing from the tarball (expected ${relative})`);
+  }
+}
 if (failures.length) { console.error(JSON.stringify({ status: "FAIL", failures }, null, 2)); process.exit(1); }
 console.log(JSON.stringify({ status: "PASS", package: packageJson.name, version: packageJson.version, tarballFiles: files.length }, null, 2));
