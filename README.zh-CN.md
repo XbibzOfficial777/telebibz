@@ -15,6 +15,8 @@
 
 GitHub Packages 指南：[English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
 
+存储快速上手（Memory/JSON/Redis/SQL/Mongo）：[English](docs/STORAGE.md) · [Bahasa Indonesia](docs/STORAGE.id.md) · [简体中文](docs/STORAGE.zh-CN.md)
+
 入门指南：[English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
 
 社区 showcase：[SHOWCASE.md](SHOWCASE.md)
@@ -240,9 +242,9 @@ npm run release:check
 
 | 领域 | 导出 |
 |---|---|
-| Bot 与生命周期 | `Bot` 的 `on`、`onText`、`onRegex`、`command`、`hears`、`callback`、`action`、`catch`、`use`、`usePlugin`、`useWizard`、`handleUpdate`、`handleUpdates`、`start`/`launch`、`stop`、`restart`、`init`、`health`、`broadcast`、`getMe`、`setCommands`、`deleteCommands`；`UpdateTimeoutError` |
+| Bot 与生命周期 | `Bot` 的 `on`、`onText`、`onRegex`、`command`、`hears`、`callback`、`action`、`catch`、`use`、`usePlugin`、`useWizard`、`handleUpdate`、`handleUpdates`、`start`/`launch`、`stop`、`restart`、`init`、`health`、`broadcast`、`getMe`、`setCommands`、`deleteCommands`、`downloadFile`；`UpdateTimeoutError` |
 | Context | `Context`、`ContextOptions`、launch 选项 `contextType`；`ctx` 上约 80 个快捷方法，覆盖回复、管理员操作、聊天管理、邀请链接、投票、游戏、支付与论坛主题 |
-| Telegram API | `ApiClient` 的 `call()`、`request()`、`raw()` 与 `methods`（全部生成的 Bot API 方法）；`FetchTransport` 自带 429/5xx 自动重试和全局 flood gate |
+| Telegram API | `ApiClient` 的 `call()`、`request()`、`raw()`、`downloadFile()` 与 `methods`（全部生成的 Bot API 方法）；`FetchTransport` 自带 429/5xx 自动重试、全局 flood gate、multipart 上传（Blob/字节/路径/流）以及文件下载 |
 | 错误 | `TelegramError` 带 `kind` 分类（`retryable`、`rate-limit`、`authentication`、`validation`、`network`、`server`、`unknown`）与 `retryAfter`，另有 `TelegramRateLimitError`、`TelegramAuthError`、`TelegramValidationError`、`TelegramNetworkError` |
 | 路由器与中间件 | `Router`、`compose`、24 个 update 过滤器（`message:photo`、`callback_query:data` 等）、`matchMode`（`first`/`all`） |
 | 键盘 | `InlineKeyboard`、`ReplyKeyboard`、`removeKeyboard()`、`forceReply()` |
@@ -255,7 +257,8 @@ npm run release:check
 | 可观测性 | `Logger`（级别、redaction、JSON 格式）、带 `update:*`、`bot:*`、`broadcast:*` 事件映射的 `EventBus`、`redact()` |
 | 终端 | `printTeleBibzBanner()`、`printTerminalBranding()`、`buildTerminalBranding()`、`runStartupSequence()`、`startTeleBibzBanner()`、`paintRainbow()`、`printStatusLine()` |
 | 文本工具 | `splitMessage()`、`splitCaption()`、`escapeMarkdownV2()`、`escapeHtml()`、`md`、`html`、`template()` |
-| 测试（`@xbibzlibrary/telebibz/testing`） | `MockTransport`、`createTestBot()`、`createMockUpdate()`、`createMockCallbackUpdate()`、`createMockContext()` |
+| 文件工具 | `validateUpload()`、`assertValidUpload()`、`UploadValidationError`（大小、MIME、扩展名规则） |
+| 测试（`@xbibzlibrary/telebibz/testing`） | `MockTransport`（含 mock 下载）、`createTestBot()`、`createMockUpdate()`、`createMockCallbackUpdate()`、`createMockContext()` |
 | CLI（`telebibz …`） | `init`、`doctor`、`build`、`test`、`start`、`webhook`、`generate` |
 
 ## API 目标与限制

@@ -291,6 +291,22 @@ deleteCommands(
 
 Shortcut to `deleteMyCommands`.
 
+### `bot.downloadFile(fileId, options?)`
+
+```ts
+downloadFile(
+  fileId: string,
+  options?: { signal?: AbortSignal; destination?: string },
+): Promise<DownloadedFile>
+```
+
+Resolves `fileId` through `getFile`, then downloads the raw bytes via the transport's download endpoint. Pass `destination` to also persist the bytes to a local file path (`savedTo` is set on the result). Throws a `TelegramError` (kind `validation`) when Telegram returns no `file_path` or the transport cannot download, and a `TelegramNetworkError` when the download fails. Telegram caps downloads at 20 MB; the returned `url` stays valid for at least one hour.
+
+```ts
+const file = await bot.downloadFile(photoFileId, { destination: "downloads/photo.jpg" });
+console.log(file.fileName, file.sizeBytes, file.url, file.savedTo);
+```
+
 ### `bot.handleUpdate(update)`
 
 ```ts
@@ -609,6 +625,37 @@ raw(
 ```
 
 Calls an arbitrary method string on the transport. Use this for Telegram methods or new parameters not yet included in `TelegramMethodMap`. Responses with `ok: false` are still converted into a `TelegramError`.
+
+### `api.downloadFile(fileId, options?)`
+
+```ts
+downloadFile(fileId: string, options?: { signal?: AbortSignal }): Promise<DownloadedFile>
+```
+
+The API-client core of `bot.downloadFile`: resolves `getFile`, validates that a `file_path` came back, and downloads the bytes through the transport.
+
+### `DownloadedFile`
+
+```ts
+interface DownloadedFile {
+  file: File;            // Telegram File object from getFile
+  bytes: Uint8Array;     // raw file bytes (max 20 MB per Telegram)
+  filePath: string;      // file_path used for the download
+  url: string;           // direct download URL, valid for at least one hour
+  fileName: string;      // last path segment of filePath
+  sizeBytes: number;     // byte length of bytes
+  savedTo?: string;      // set when Bot.downloadFile persisted the file to disk
+}
+```
+
+### `fetchTransport.fileUrl(filePath)` and `fetchTransport.download(filePath, signal?)`
+
+```ts
+fileUrl(filePath: string): string
+download(filePath: string, signal?: AbortSignal): Promise<Uint8Array>
+```
+
+`FetchTransport` maps its `/bot<token>` base URL to the `/file/bot<token>` download endpoint; `download` GETs the bytes (timeout floor of 120 s for large files) and throws `TelegramNetworkError` on HTTP failure. Both are optional members of the `Transport` interface, so custom transports may omit them — `downloadFile` then fails with a precise validation error instead of crashing.
 
 ### Available typed parameters and results
 
@@ -1532,6 +1579,27 @@ template("Halo {{ user.name }}", { user: { name: "Ayu" } });
 
 ---
 
+### `validateUpload(upload, rules)`
+
+```ts
+validateUpload(upload: UploadLike, rules: UploadRules): UploadValidationIssue[]
+```
+
+Validates an upload before it is sent: `maxBytes` (size limit), `allowedMimeTypes` (exact or wildcard like `image/*`), and `allowedExtensions` (case-insensitive, with or without the leading dot). Returns every violation found — an empty array means the upload is acceptable.
+
+### `assertValidUpload(upload, rules)`
+
+Same rules, but throws `UploadValidationError` (with all `issues` attached) instead of returning them.
+
+```ts
+import { assertValidUpload } from "@xbibzlibrary/telebibz";
+
+assertValidUpload(
+  { sizeBytes: fileBytes.length, mimeType: "image/png", fileName: "logo.png" },
+  { maxBytes: 5_000_000, allowedMimeTypes: ["image/png", "image/jpeg"], allowedExtensions: [".png", ".jpg"] },
+);
+```
+
 ## 14. Testing utilities
 
 Import dari `@xbibzlibrary/telebibz/testing` atau root package.
@@ -1557,6 +1625,8 @@ const transport = new MockTransport()
     result: { id: 1, is_bot: true, first_name: "Test" },
   });
 ```
+
+`MockTransport` also implements the optional download members: `download(filePath)` records the path into `downloads` and returns `downloadBytes` (default: the UTF-8 encoding of the path), and `fileUrl(filePath)` returns `mock://files/<filePath>` — so `bot.downloadFile()` is fully testable without network access.
 
 ### `createMockUpdate(overrides?)`
 

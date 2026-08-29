@@ -15,6 +15,8 @@ Referensi API lengkap: [English](docs/API.md) · **Indonesia** · [中文](docs/
 
 Panduan GitHub Packages: [English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
 
+Panduan cepat storage (Memory/JSON/Redis/SQL/Mongo): [English](docs/STORAGE.md) · [Bahasa Indonesia](docs/STORAGE.id.md) · [简体中文](docs/STORAGE.zh-CN.md)
+
 Panduan mulai: [English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
 
 Showcase komunitas: [SHOWCASE.md](SHOWCASE.md)
@@ -240,9 +242,9 @@ Semua yang tercantum di bawah diekspor dari entry point package kecuali disebutk
 
 | Area | Export |
 |---|---|
-| Bot & lifecycle | `Bot` dengan `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`; `UpdateTimeoutError` |
+| Bot & lifecycle | `Bot` dengan `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`, `downloadFile`; `UpdateTimeoutError` |
 | Context | `Context`, `ContextOptions`, opsi launch `contextType`; ~80 shortcut di `ctx` untuk balasan, aksi admin, manajemen chat, invite link, poll, game, pembayaran, dan forum topic |
-| Telegram API | `ApiClient` dengan `call()`, `request()`, `raw()`, dan `methods` (seluruh generated Bot API method); `FetchTransport` dengan retry 429/5xx otomatis dan flood gate global |
+| Telegram API | `ApiClient` dengan `call()`, `request()`, `raw()`, `downloadFile()`, dan `methods` (seluruh generated Bot API method); `FetchTransport` dengan retry 429/5xx otomatis, flood gate global, upload multipart (Blob/byte/path/stream), dan unduhan file |
 | Error | `TelegramError` dengan taksonomi `kind` (`retryable`, `rate-limit`, `authentication`, `validation`, `network`, `server`, `unknown`) dan `retryAfter`, plus `TelegramRateLimitError`, `TelegramAuthError`, `TelegramValidationError`, `TelegramNetworkError` |
 | Router & middleware | `Router`, `compose`, 24 filter update (`message:photo`, `callback_query:data`, …), `matchMode` (`first`/`all`) |
 | Keyboard | `InlineKeyboard`, `ReplyKeyboard`, `removeKeyboard()`, `forceReply()` |
@@ -255,7 +257,8 @@ Semua yang tercantum di bawah diekspor dari entry point package kecuali disebutk
 | Observability | `Logger` (level, redaction, format JSON), `EventBus` dengan event map `update:*`, `bot:*`, `broadcast:*`, `redact()` |
 | Terminal | `printTeleBibzBanner()`, `printTerminalBranding()`, `buildTerminalBranding()`, `runStartupSequence()`, `startTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()` |
 | Utilitas teks | `splitMessage()`, `splitCaption()`, `escapeMarkdownV2()`, `escapeHtml()`, `md`, `html`, `template()` |
-| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport`, `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
+| Utilitas file | `validateUpload()`, `assertValidUpload()`, `UploadValidationError` (aturan ukuran, MIME, ekstensi) |
+| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport` (dengan unduhan mock), `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
 | CLI (`telebibz …`) | `init`, `doctor`, `build`, `test`, `start`, `webhook`, `generate` |
 
 ## API target dan batasan

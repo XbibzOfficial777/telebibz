@@ -111,6 +111,9 @@ export interface ReplyKeyboardRemove { remove_keyboard: true; selective?: boolea
 export interface ForceReply { force_reply: true; input_field_placeholder?: string; selective?: boolean }
 export type ReplyMarkup = InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
 
+export interface PhotoSize { file_id: string; file_unique_id: string; width: number; height: number; file_size?: number; [key: string]: unknown }
+export interface FileAttachment { file_id: string; file_unique_id: string; file_name?: string; mime_type?: string; file_size?: number; duration?: number; [key: string]: unknown }
+
 export interface Message {
   message_id: number;
   message_thread_id?: number;
@@ -133,6 +136,14 @@ export interface Message {
   media_group_id?: string;
   author_signature?: string;
   reply_markup?: InlineKeyboardMarkup;
+  photo?: PhotoSize[];
+  document?: FileAttachment;
+  video?: FileAttachment;
+  animation?: FileAttachment;
+  audio?: FileAttachment;
+  voice?: FileAttachment;
+  video_note?: FileAttachment;
+  sticker?: FileAttachment;
   [key: string]: unknown;
 }
 

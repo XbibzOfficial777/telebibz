@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.4 — 2026-08-29
+
+### Added
+
+- `bot.downloadFile(fileId, { signal?, destination? })` and `ctx.downloadFile(fileId)`: resolve `getFile` and download the raw bytes in one call — the result carries the bytes, the direct download URL, the filename, the size, and `savedTo` when persisted to disk. `ctx.getFile()` is now typed as the Telegram `File` object (previously `unknown`, which forced manual casting to reach `file_path`).
+- Upload validation utilities: `validateUpload()`, `assertValidUpload()`, and `UploadValidationError` — size limits, MIME allowlists (with wildcards), and extension rules, all before a byte leaves the process.
+- Optional `Transport#fileUrl()` and `Transport#download()` members, implemented by `FetchTransport` (`/bot<token>` maps to `/file/bot<token>`, so local Bot API servers work too).
+- `MockTransport` mock downloads (`downloads` log and `downloadBytes` fixture) so download flows are testable without network access.
+- `docs/STORAGE.md` quick-start recipes in three languages: copy-paste wiring for Memory, JSON file, Redis, SQL, and Mongo storage.
+- New example `examples/files.ts` (validated upload + download round trip).
+
+### Fixed
+
+- **Multipart path uploads never worked**: a `{ source: "/path/file" }` payload was sent as plain JSON containing the raw path string — `containsUpload` did not recognize path-like string sources, so the request never switched to multipart and the file was never read. Now fixed and locked with unit tests.
+- Web `ReadableStream` and Node.js stream sources are now actually uploaded as multipart parts; they were JSON-stringified before despite being part of the `InputFile` type.
+- `{ source: Uint8Array | ArrayBuffer | Blob, filename }` now applies the explicit filename to the multipart part.
+- `FEATURE_MATRIX.md` refreshed to current reality (multipart, file download, upload validation, plugin system, CLI, message splitting, conversations, Mini App integration, and payments are `IMPLEMENTED` with tests) plus a Design decisions section documenting the deliberate boundaries (zero runtime dependencies, no web-frontend UI kit, no per-IP limiting, fetch has no upload-progress hook).
+
+### Changed
+
+- 34 new tests (multipart encoding, file download, upload validation, end-to-end wizard flows) — 186 total.
+
 ## 0.4.2 — 2026-08-29
 
 ### Added

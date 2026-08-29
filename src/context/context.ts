@@ -1,5 +1,7 @@
-import type { ApiClient } from "../api/client.js";
-import type { Chat, ChatId, ChatMember, InputFile, Message, ReplyMarkup, Update, User } from "../api/types.js";
+import { writeFile } from "node:fs/promises";
+
+import type { ApiClient, DownloadedFile } from "../api/client.js";
+import type { Chat, ChatId, ChatMember, File, InputFile, Message, ReplyMarkup, Update, User } from "../api/types.js";
 
 export interface ContextOptions<S extends object = Record<string, unknown>> {
   update: Update;
@@ -202,7 +204,21 @@ export class Context<S extends object = Record<string, unknown>> {
   async answerInlineQuery(results: unknown[], extra: Record<string, unknown> = {}): Promise<true> { if (!this.inlineQuery) throw new Error("No inline query in this update."); return this.api.call("answerInlineQuery", { inline_query_id: this.inlineQuery.id, results, ...extra } as never) as Promise<true>; }
   async getChat(): Promise<Chat> { if (!this.chat) throw new Error("No chat in this update."); return this.api.methods.getChat({ chat_id: this.chat.id }); }
   async getUserProfilePhotos(userId = this.from?.id, extra: Record<string, unknown> = {}): Promise<unknown> { if (!userId) throw new Error("No user in this update."); return this.api.call("getUserProfilePhotos", { user_id: userId, ...extra } as never); }
-  async getFile(fileId: string): Promise<unknown> { return this.api.methods.getFile({ file_id: fileId }); }
+  async getFile(fileId: string): Promise<File> { return this.api.methods.getFile({ file_id: fileId }); }
+  /**
+   * Resolves `fileId` with `getFile` and downloads the raw bytes (see
+   * `Bot.downloadFile`). Pass `destination` to persist the bytes to a local
+   * file path. Prefer this over reading `file_path` manually — it throws
+   * precise `TelegramError`s when Telegram returns no path.
+   */
+  async downloadFile(fileId: string, options: { signal?: AbortSignal; destination?: string } = {}): Promise<DownloadedFile> {
+    const downloaded = await this.api.downloadFile(fileId, options.signal !== undefined ? { signal: options.signal } : {});
+    if (options.destination !== undefined) {
+      await writeFile(options.destination, downloaded.bytes);
+      return { ...downloaded, savedTo: options.destination };
+    }
+    return downloaded;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Admin & moderation (full Telegraf-parity surface; chat defaults to ctx.chat)

@@ -8,6 +8,24 @@ export interface ApiHookContext { method: string; payload: unknown; startedAt: n
 export interface ApiClientOptions { transport: Transport; hooks?: { onRequest?: (context: ApiHookContext) => void | Promise<void>; onResponse?: (context: ApiHookContext) => void | Promise<void>; onError?: (context: ApiHookContext) => void | Promise<void> } }
 export type ApiMethods = { [M in TelegramMethodName]: (...args: ApiCallArgs<M>) => Promise<ApiResult<M>> };
 
+/** A Telegram file downloaded through `getFile` + the transport download endpoint. */
+export interface DownloadedFile {
+  /** Telegram `File` object as returned by `getFile`. */
+  file: import("./types.js").File;
+  /** Raw file bytes. Telegram currently caps downloads at 20 MB. */
+  bytes: Uint8Array;
+  /** The `file_path` used for the download; guaranteed for at least one hour. */
+  filePath: string;
+  /** Direct download URL (`https://api.telegram.org/file/bot<token>/<file_path>`). */
+  url: string;
+  /** Last path segment of `filePath`, e.g. `report.pdf`. */
+  fileName: string;
+  /** Byte length of `bytes`. */
+  sizeBytes: number;
+  /** Set when the caller asked Bot.downloadFile to persist the bytes to disk. */
+  savedTo?: string;
+}
+
 export class ApiClient {
   readonly methods: ApiMethods;
   private readonly transport: Transport;
@@ -66,5 +84,35 @@ export class ApiClient {
     const response = await this.transport.request(request);
     if (!response.data.ok) throw telegramErrorFromResponse(response.data, { method, payload, status: response.status });
     return response.data.result;
+  }
+
+  /** Direct download URL for a `file_path` returned by `getFile`; undefined when the transport cannot download files. */
+  fileUrl(filePath: string): string | undefined {
+    return this.transport.fileUrl?.(filePath);
+  }
+
+  /**
+   * Resolves a `file_id` through `getFile` and downloads the bytes behind the
+   * returned `file_path`. Throws a `TelegramError` (kind `validation`) when
+   * Telegram returns no `file_path`, and a `TelegramNetworkError` when the
+   * download itself fails.
+   */
+  async downloadFile(fileId: string, options: { signal?: AbortSignal } = {}): Promise<DownloadedFile> {
+    const file = await this.methods.getFile({ file_id: fileId });
+    if (!file.file_path) {
+      throw new TelegramError("Telegram returned no file_path for this file; request a fresh one with getFile", { method: "getFile", payload: { file_id: fileId }, kind: "validation" });
+    }
+    if (!this.transport.download || !this.transport.fileUrl) {
+      throw new TelegramError("The configured transport does not support file downloads", { method: "getFile", payload: { file_id: fileId }, kind: "validation" });
+    }
+    const bytes = await this.transport.download(file.file_path, options.signal);
+    return {
+      file,
+      bytes,
+      filePath: file.file_path,
+      url: this.transport.fileUrl(file.file_path),
+      fileName: file.file_path.split("/").pop() ?? file.file_path,
+      sizeBytes: bytes.byteLength,
+    };
   }
 }

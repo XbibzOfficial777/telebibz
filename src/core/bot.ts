@@ -14,6 +14,8 @@ import { runBroadcast, type BroadcastOptions, type BroadcastReport } from "../br
 import { Limiter } from "../utils/concurrency.js";
 import { runWithWebhookReply, runWithoutWebhookReply, type WebhookReplySink } from "./webhook-reply.js";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { writeFile } from "node:fs/promises";
+import type { DownloadedFile } from "../api/client.js";
 import type { ContextOptions } from "../context/context.js";
 
 /** Thrown when a single update exceeds `handlerTimeout`; the handler keeps running in the background. */
@@ -283,6 +285,22 @@ export class Bot<S extends object = Record<string, unknown>> {
   async getMe(): Promise<User> { const me = await this.api.methods.getMe(); this.me = me; return me; }
   async setCommands(commands: BotCommand[], scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("setMyCommands", { commands, scope, language_code: languageCode } as never) as Promise<true>; }
   async deleteCommands(scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("deleteMyCommands", { scope, language_code: languageCode } as never) as Promise<true>; }
+
+  /**
+   * Downloads a Telegram file by `file_id`: resolves it with `getFile`, then
+   * fetches the raw bytes via the transport's download endpoint. Pass
+   * `destination` to also persist the bytes to a local file path. The
+   * returned `url` is valid for at least one hour; Telegram caps downloads
+   * at 20 MB.
+   */
+  async downloadFile(fileId: string, options: { signal?: AbortSignal; destination?: string } = {}): Promise<DownloadedFile> {
+    const downloaded = await this.api.downloadFile(fileId, options.signal !== undefined ? { signal: options.signal } : {});
+    if (options.destination !== undefined) {
+      await writeFile(options.destination, downloaded.bytes);
+      return { ...downloaded, savedTo: options.destination };
+    }
+    return downloaded;
+  }
 
   /**
    * Handles a single update. Updates for different chats run in parallel;

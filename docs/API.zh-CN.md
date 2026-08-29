@@ -274,6 +274,22 @@ deleteCommands(
 
 相当于 `deleteMyCommands` 的快捷方式。
 
+### `bot.downloadFile(fileId, options?)`
+
+```ts
+downloadFile(
+  fileId: string,
+  options?: { signal?: AbortSignal; destination?: string },
+): Promise<DownloadedFile>
+```
+
+通过 `getFile` 解析 `fileId`，再经由 transport 的下载端点获取原始字节。传入 `destination` 可同时把字节保存到本地文件路径（结果中的 `savedTo` 会被填充）。当 Telegram 未返回 `file_path` 或 transport 不支持下载时抛出 `TelegramError`（kind 为 `validation`）；下载失败时抛出 `TelegramNetworkError`。Telegram 限制单次下载 20 MB；返回的 `url` 至少一小时内有效。
+
+```ts
+const file = await bot.downloadFile(photoFileId, { destination: "downloads/photo.jpg" });
+console.log(file.fileName, file.sizeBytes, file.url, file.savedTo);
+```
+
 ### `bot.handleUpdate(update)`
 
 ```ts
@@ -592,6 +608,37 @@ raw(
 ```
 
 在 transport 上调用任意字符串方法。用于调用尚未包含在 `TelegramMethodMap` 的新的 Telegram 方法或参数。即使响应为 `ok: false`，也会被转换为 `TelegramError`。
+
+### `api.downloadFile(fileId, options?)`
+
+```ts
+downloadFile(fileId: string, options?: { signal?: AbortSignal }): Promise<DownloadedFile>
+```
+
+`bot.downloadFile` 的 API 客户端核心：解析 `getFile`、校验返回了 `file_path`，然后通过 transport 下载字节。
+
+### `DownloadedFile`
+
+```ts
+interface DownloadedFile {
+  file: File;            // getFile 返回的 Telegram File 对象
+  bytes: Uint8Array;     // 原始字节（Telegram 上限 20 MB）
+  filePath: string;      // 用于下载的 file_path
+  url: string;           // 直接下载 URL，至少一小时内有效
+  fileName: string;      // filePath 的最后一段
+  sizeBytes: number;     // bytes 的字节长度
+  savedTo?: string;      // 当 Bot.downloadFile 把文件写入磁盘时填充
+}
+```
+
+### `fetchTransport.fileUrl(filePath)` 与 `fetchTransport.download(filePath, signal?)`
+
+```ts
+fileUrl(filePath: string): string
+download(filePath: string, signal?: AbortSignal): Promise<Uint8Array>
+```
+
+`FetchTransport` 把 `/bot<token>` 基础 URL 映射为 `/file/bot<token>` 下载端点；`download` 以 GET 获取字节（大文件的 timeout 下限为 120 秒），HTTP 失败时抛出 `TelegramNetworkError`。两者都是 `Transport` 接口的可选成员，自定义 transport 可以省略 —— 此时 `downloadFile` 会以明确的校验错误失败，而不是崩溃。
 
 ### 可用的类型化参数和返回值
 
@@ -1492,6 +1539,27 @@ template("你好 {{ user.name }}", { user: { name: "Ayu" } });
 
 ---
 
+### `validateUpload(upload, rules)`
+
+```ts
+validateUpload(upload: UploadLike, rules: UploadRules): UploadValidationIssue[]
+```
+
+在发送前校验上传：`maxBytes`（大小上限）、`allowedMimeTypes`（精确或通配符如 `image/*`）、`allowedExtensions`（大小写不敏感，带不带前导点均可）。返回找到的全部违规 —— 空数组表示上传可接受。
+
+### `assertValidUpload(upload, rules)`
+
+规则相同，但不返回结果而是抛出 `UploadValidationError`（附带全部 `issues`）。
+
+```ts
+import { assertValidUpload } from "@xbibzlibrary/telebibz";
+
+assertValidUpload(
+  { sizeBytes: fileBytes.length, mimeType: "image/png", fileName: "logo.png" },
+  { maxBytes: 5_000_000, allowedMimeTypes: ["image/png", "image/jpeg"], allowedExtensions: [".png", ".jpg"] },
+);
+```
+
 ## 14. Testing utilities
 
 Import dari `@xbibzlibrary/telebibz/testing` atau root package.
@@ -1517,6 +1585,8 @@ const transport = new MockTransport()
     result: { id: 1, is_bot: true, first_name: "Test" },
   });
 ```
+
+`MockTransport` 同样实现了可选的下载成员：`download(filePath)` 把路径记录进 `downloads` 并返回 `downloadBytes`（默认为路径的 UTF-8 编码），`fileUrl(filePath)` 返回 `mock://files/<filePath>` —— 因此 `bot.downloadFile()` 无需网络即可完整测试。
 
 ### `createMockUpdate(overrides?)`
 
