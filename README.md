@@ -7,7 +7,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![Node.js](https://img.shields.io/node/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 
-**`@xbibzlibrary/telebibz`** is a full-scale Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
+**`@xbibzlibrary/telebibz`** is a Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
 
 ## Documentation languages
 
@@ -29,7 +29,7 @@ Community showcase: [SHOWCASE.md](SHOWCASE.md)
 npm install @xbibzlibrary/telebibz
 ```
 
-Node.js **20 or newer** is required.
+Node.js **22 or newer** is required.
 
 ## Minimal bot
 
@@ -69,9 +69,13 @@ bot.use(async (ctx, next) => {
 bot.command("help", async (ctx) => { await ctx.reply("Help is available."); });
 bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order received."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Opened."); });
+bot.on("message:photo", async (ctx) => { await ctx.reply("Nice photo."); });
+bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Got it."); });
+bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
+bot.catch(async (error, ctx) => { await ctx.reply("Something went wrong."); });
 ```
 
-The router supports commands, exact text, regular expressions, callback patterns, custom predicates, nested routers, per-route middleware, and route priority.
+The router supports commands, exact text, regular expressions, callback patterns, update-type filters (`on`), custom predicates, nested routers, per-route middleware, and route priority. `bot.catch()` registers an error boundary: handler failures are routed there instead of rejecting the update.
 
 ## Telegram API
 
@@ -103,7 +107,7 @@ Builders produce native Telegram keyboard payloads. HTML/CSS interfaces require 
 
 ## Colorful runtime logging
 
-Runtime logging is enabled by default. The CLI prints a colored boxed attribution, an animated startup status on TTY terminals, and compact structured lines for lifecycle, API, polling, webhook, and update events. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
+The logger emits compact, readable terminal lines with colored levels and structured context. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted; errors print in red with the full stack. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
 
 ```ts
 const bot = new Bot({

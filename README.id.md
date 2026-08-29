@@ -27,7 +27,7 @@ Showcase komunitas: [SHOWCASE.md](SHOWCASE.md)
 npm install @xbibzlibrary/telebibz
 ```
 
-Node.js **20 atau lebih baru** diperlukan.
+Node.js **22 atau lebih baru** diperlukan.
 
 ## Bot sederhana
 
@@ -67,9 +67,13 @@ bot.use(async (ctx, next) => {
 bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
 bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
+bot.on("message:photo", async (ctx) => { await ctx.reply("Foto yang bagus."); });
+bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Diterima."); });
+bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
+bot.catch(async (error, ctx) => { await ctx.reply("Terjadi kesalahan."); });
 ```
 
-Router mendukung command, text, regex, pola callback, predikat kustom, router bersarang, middleware per rute, dan prioritas rute.
+Router mendukung command, text, regex, pola callback, filter tipe update (`on`), predikat kustom, router bersarang, middleware per rute, dan prioritas rute. `bot.catch()` mendaftarkan error boundary: kegagalan handler diarahkan ke sana alih-alih menolak update.
 
 ## Telegram API
 
@@ -103,7 +107,7 @@ Builder hanya menghasilkan payload keyboard native Telegram. UI HTML/CSS memerlu
 
 ## Startup dan log terminal
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+Logger mengeluarkan baris terminal yang ringkas dan mudah dibaca dengan level berwarna serta konteks terstruktur. Level log: `silent`, `error`, `warn`, `info`, `debug`, dan `trace`; nilai sensitif di-redact; error dicetak merah lengkap dengan stack. Gunakan `format: "json"` untuk log terstruktur, dan `includeUpdateContent: true` hanya bila teks pesan atau data callback memang diperlukan.
 
 ## Webhook
 

@@ -27,6 +27,7 @@ export class ServiceContainer {
 export class PluginManager<Context> {
   private readonly plugins: Plugin<Context>[] = [];
   private readonly api: PluginApi<Context>;
+  private setupComplete = false;
   constructor(bot: unknown) {
     const host = bot as {
       use?: (...middleware: unknown[]) => unknown;
@@ -49,7 +50,12 @@ export class PluginManager<Context> {
     };
   }
   use(plugin: Plugin<Context>): this { if (this.plugins.some((existing) => existing.name === plugin.name)) throw new Error(`Plugin already registered: ${plugin.name}`); this.plugins.push(plugin); return this; }
-  async setup(): Promise<void> { for (const plugin of this.plugins) { await plugin.install?.(this.api); await plugin.setup?.(this.api); } }
+  /** Installs plugins once; re-running setup after a restart must not double-register middleware. */
+  async setup(): Promise<void> {
+    if (this.setupComplete) return;
+    for (const plugin of this.plugins) { await plugin.install?.(this.api); await plugin.setup?.(this.api); }
+    this.setupComplete = true;
+  }
   async start(): Promise<void> { for (const plugin of this.plugins) await plugin.onStart?.(this.api); }
   async update(context: Context): Promise<void> { for (const plugin of this.plugins) await plugin.onUpdate?.(context); }
   async stop(): Promise<void> { for (const plugin of this.plugins) await plugin.onStop?.(this.api); }

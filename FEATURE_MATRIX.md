@@ -1,6 +1,6 @@
 # telebibz Feature Matrix
 
-Status memiliki arti: `IMPLEMENTED` berarti implementasi dan test lokal tersedia; `PARTIAL` berarti core tersedia tetapi coverage atau adapter belum lengkap; `BLOCKED` berarti memerlukan credential/server eksternal; `NOT_AVAILABLE` berarti belum dibuat.
+Runtime yang dibutuhkan: Node.js `>=22`. Status memiliki arti: `IMPLEMENTED` berarti implementasi dan test lokal tersedia; `PARTIAL` berarti core tersedia tetapi coverage atau adapter belum lengkap; `BLOCKED` berarti memerlukan credential/server eksternal; `NOT_AVAILABLE` berarti belum dibuat.
 
 | Feature | Native API | telebibz Abstraction | Implementation | Unit Test | Integration Test | E2E Test | Status |
 |---|---|---|---|---|---|---|---|
@@ -13,8 +13,12 @@ Status memiliki arti: `IMPLEMENTED` berarti implementasi dan test lokal tersedia
 | Bot lifecycle | Bot operations | init/start/stop/restart/health | `src/core/bot.ts` | Yes | Yes | Blocked without token | IMPLEMENTED |
 | Long polling | getUpdates | offset/retry/backoff/shutdown, per-update error isolation, abortable reconnect | `src/core/bot.ts` | Yes | Yes | Blocked without token | IMPLEMENTED |
 | Webhook | setWebhook/update POST | Request/Response handler and secret | `src/webhook/handler.ts` | Yes | Yes | Blocked without deployed endpoint | IMPLEMENTED |
-| Context | Update/Message/CallbackQuery | typed getters, callback message fallback, reply/edit/delete helpers | `src/context/context.ts` | Yes | Yes | Partial | IMPLEMENTED |
-| Router | Update fields | command/text/regex/callback/chat/predicate/nesting | `src/router/router.ts` | Yes | Yes | No | IMPLEMENTED |
+| Terminal experience | Developer UX | typing effect, glass progress bar, animated rainbow banner, human-readable update lines, red errors | `src/branding/terminal.ts`, `src/observability/logger.ts` | Yes | No | No | IMPLEMENTED |
+| Context | Update/Message/CallbackQuery | typed getters, callback message fallback, reply/edit/delete helpers, 17 `replyWith*` senders (text, photo, video, audio, voice, document, animation, video note, sticker, media group, location, venue, contact, poll, dice, HTML, Markdown) with automatic quote-reply | `src/context/context.ts` | Yes | Yes | Partial | IMPLEMENTED |
+| Router | Update fields | command/text/regex/callback/chat/predicate/nesting/update-type filters (`on`) | `src/router/router.ts` | Yes | Yes | No | IMPLEMENTED |
+| Update-type filters | Telegram `Update` object | `bot.on("message:photo")`, `bot.on(["message:text", "callback_query:data"])` with validated filter grammar | `src/router/router.ts`, `src/core/bot.ts` | Yes | Yes | No | IMPLEMENTED |
+| Text/regex triggers | Message text | `bot.hears("ping")` / `bot.hears(/regex/)` | `src/core/bot.ts` | Yes | Yes | No | IMPLEMENTED |
+| Error boundary | Handler failures | `bot.catch(handler)`; without it errors reject `handleUpdate()` and webhooks answer 500 | `src/core/bot.ts` | Yes | Yes | No | IMPLEMENTED |
 | Middleware | Update processing | async composition and error propagation | `src/middleware/compose.ts` | Yes | Yes | No | IMPLEMENTED |
 | Commands | Telegram commands | command matcher and registration | `src/core/bot.ts` | Yes | Yes | Partial | IMPLEMENTED |
 | Callback framework | callback query | exact/prefix/regex matching | `src/core/bot.ts` | Yes | Yes | Partial | IMPLEMENTED |
@@ -26,9 +30,8 @@ Status memiliki arti: `IMPLEMENTED` berarti implementasi dan test lokal tersedia
 | Rate limiter | Telegram flood control | validated token bucket primitive with reset/retry metadata | `src/cache/cache.ts` | Yes | No | No | IMPLEMENTED |
 | Queue | Background work | retry/backoff/concurrency/priority/delay | `src/queue/queue.ts` | Yes | No | No | IMPLEMENTED |
 | Scheduler | Background work | interval/one-shot/full five-field cron, reschedule, error hook | `src/queue/queue.ts` | Yes | No | No | IMPLEMENTED |
-| Plugin system | Application concern | lifecycle and service container | `src/plugins/plugin.ts` | Partial | No | No | PARTIAL |
-| Owner approval gate | Application concern | pending/approved/denied, owner notification, signed callback, owner-only decision | `src/approval/approval.ts`, `BotOptions.approval` | Yes | Yes | No | IMPLEMENTED |
-| CLI | Developer tooling | init/doctor/generate/build/test/inspect | `src/cli.ts`, `bin` | Partial | No | No | PARTIAL |
+| Plugin system | Application concern | lifecycle, service container, restart-safe (install once) | `src/plugins/plugin.ts` | Partial | No | No | PARTIAL |
+| CLI | Developer tooling | start/init/doctor/webhook/generate/build/test/inspect | `src/cli.ts`, `bin` | Partial | No | No | PARTIAL |
 | Message splitting/formatting | Telegram limits | splitMessage, MarkdownV2/HTML helpers | `src/utils/text.ts` | Yes | No | No | PARTIAL |
 | Real Telegram E2E | Telegram API | gated tests | `tests/e2e`, deep runners | Yes | Yes | PASS with provided credentials | IMPLEMENTED |
 | Full generated object types | Official schema | vendored `TelegramTypes` object/union/enum/method declarations plus specialized core map | `src/api/telegram.ts`, `src/api/telegram-types/` | Yes | No | No | IMPLEMENTED |

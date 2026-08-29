@@ -1,5 +1,5 @@
 import type { ApiClient } from "../api/client.js";
-import type { Chat, ChatId, InputFile, Message, ReplyMarkup, SendDocumentParams, SendPhotoParams, Update, User } from "../api/types.js";
+import type { Chat, ChatId, InputFile, Message, ReplyMarkup, Update, User } from "../api/types.js";
 
 export interface ContextOptions<S extends object = Record<string, unknown>> {
   update: Update;
@@ -73,41 +73,49 @@ export class Context<S extends object = Record<string, unknown>> {
   get reaction() { return this.update.message_reaction; }
   get boost() { return this.update.chat_boost ?? this.update.removed_chat_boost; }
 
-  async reply(text: string, extra: Record<string, unknown> = {}): Promise<Message> {
-    if (!this.chat) throw new Error("Cannot reply without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
-    const reply_parameters = this.message?.message_id !== undefined
-      ? { message_id: this.message.message_id, ...(extra.reply_parameters as Record<string, unknown> | undefined) }
-      : (extra.reply_parameters as Record<string, unknown> | undefined);
-    return this.api.methods.sendMessage({
+  private replyExtras(extra: Record<string, unknown>): { replyParameters: Record<string, unknown> | undefined; replyMarkup: unknown; rest: Record<string, unknown> } {
+    const { reply_parameters, reply_markup, ...rest } = extra as { reply_parameters?: Record<string, unknown>; reply_markup?: unknown };
+    const quoted = this.message?.message_id !== undefined ? { message_id: this.message.message_id } : undefined;
+    const replyParameters = quoted === undefined && reply_parameters === undefined ? undefined : { ...(quoted ?? {}), ...(reply_parameters ?? {}) };
+    return { replyParameters, replyMarkup: reply_markup ?? this.state.reply_markup, rest };
+  }
+
+  private sendMethod<M extends string>(method: M, payload: Record<string, unknown>, extra: Record<string, unknown> = {}): Promise<unknown> {
+    if (!this.chat) throw new Error(`Cannot send ${method} without a chat in this update.`);
+    const { replyParameters, replyMarkup, rest } = this.replyExtras(extra);
+    return this.api.call(method as never, {
       chat_id: this.chat.id,
-      text,
-      ...(reply_parameters ? { reply_parameters } : {}),
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
-    } as never) as Promise<Message>;
+      ...payload,
+      ...rest,
+      ...(replyParameters ? { reply_parameters: replyParameters } : {}),
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    } as never);
+  }
+
+  async reply(text: string, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendMessage", { text }, extra) as Promise<Message>;
   }
 
   async send(text: string, extra: Record<string, unknown> = {}): Promise<Message> {
     if (!this.chat) throw new Error("Cannot send without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
+    const { replyMarkup, rest } = this.replyExtras(extra);
     return this.api.methods.sendMessage({
       chat_id: this.chat.id,
       text,
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
+      ...rest,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     } as never) as Promise<Message>;
   }
 
   async edit(text: string, extra: Record<string, unknown> = {}): Promise<Message | true> {
     if (!this.chat || !this.message) throw new Error("Cannot edit without a chat and message in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
+    const { replyMarkup, rest } = this.replyExtras(extra);
     return this.api.methods.editMessageText({
       chat_id: this.chat.id,
       message_id: this.message.message_id,
       text,
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
+      ...rest,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     } as never) as Promise<Message | true>;
   }
 
@@ -120,69 +128,59 @@ export class Context<S extends object = Record<string, unknown>> {
   }
 
   async replyWithPhoto(photo: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
-    if (!this.chat) throw new Error("Cannot reply without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
-    const reply_parameters = this.message?.message_id !== undefined
-      ? { message_id: this.message.message_id, ...(extra.reply_parameters as Record<string, unknown> | undefined) }
-      : (extra.reply_parameters as Record<string, unknown> | undefined);
-    return this.api.methods.sendPhoto({
-      chat_id: this.chat.id,
-      photo,
-      ...(reply_parameters ? { reply_parameters } : {}),
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
-    } as never) as Promise<Message>;
+    return this.sendMethod("sendPhoto", { photo }, extra) as Promise<Message>;
   }
 
   async replyWithDocument(document: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
-    if (!this.chat) throw new Error("Cannot reply without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
-    const reply_parameters = this.message?.message_id !== undefined
-      ? { message_id: this.message.message_id, ...(extra.reply_parameters as Record<string, unknown> | undefined) }
-      : (extra.reply_parameters as Record<string, unknown> | undefined);
-    return this.api.methods.sendDocument({
-      chat_id: this.chat.id,
-      document,
-      ...(reply_parameters ? { reply_parameters } : {}),
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
-    } as never) as Promise<Message>;
+    return this.sendMethod("sendDocument", { document }, extra) as Promise<Message>;
   }
 
   async replyWithAudio(audio: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
-    if (!this.chat) throw new Error("Cannot reply without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
-    return this.api.call("sendAudio", {
-      chat_id: this.chat.id,
-      audio,
-      reply_parameters: this.message?.message_id !== undefined ? { message_id: this.message.message_id } : undefined,
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
-    } as never) as Promise<Message>;
+    return this.sendMethod("sendAudio", { audio }, extra) as Promise<Message>;
   }
 
   async replyWithVideo(video: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
-    if (!this.chat) throw new Error("Cannot reply without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
-    return this.api.call("sendVideo", {
-      chat_id: this.chat.id,
-      video,
-      reply_parameters: this.message?.message_id !== undefined ? { message_id: this.message.message_id } : undefined,
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
-    } as never) as Promise<Message>;
+    return this.sendMethod("sendVideo", { video }, extra) as Promise<Message>;
   }
 
   async replyWithVoice(voice: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
-    if (!this.chat) throw new Error("Cannot reply without a chat in this update.");
-    const reply_markup = extra.reply_markup ?? this.state.reply_markup;
-    return this.api.call("sendVoice", {
-      chat_id: this.chat.id,
-      voice,
-      reply_parameters: this.message?.message_id !== undefined ? { message_id: this.message.message_id } : undefined,
-      ...(reply_markup ? { reply_markup } : {}),
-      ...extra,
-    } as never) as Promise<Message>;
+    return this.sendMethod("sendVoice", { voice }, extra) as Promise<Message>;
+  }
+
+  async replyWithAnimation(animation: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendAnimation", { animation }, extra) as Promise<Message>;
+  }
+
+  async replyWithVideoNote(videoNote: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendVideoNote", { video_note: videoNote }, extra) as Promise<Message>;
+  }
+
+  async replyWithSticker(sticker: InputFile, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendSticker", { sticker }, extra) as Promise<Message>;
+  }
+
+  async replyWithMediaGroup(media: Array<Record<string, unknown>>, extra: Record<string, unknown> = {}): Promise<Message[]> {
+    return this.sendMethod("sendMediaGroup", { media }, extra) as Promise<Message[]>;
+  }
+
+  async replyWithLocation(latitude: number, longitude: number, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendLocation", { latitude, longitude }, extra) as Promise<Message>;
+  }
+
+  async replyWithVenue(latitude: number, longitude: number, title: string, address: string, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendVenue", { latitude, longitude, title, address }, extra) as Promise<Message>;
+  }
+
+  async replyWithContact(phoneNumber: string, firstName: string, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendContact", { phone_number: phoneNumber, first_name: firstName }, extra) as Promise<Message>;
+  }
+
+  async replyWithPoll(question: string, options: string[], extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendPoll", { question, options }, extra) as Promise<Message>;
+  }
+
+  async replyWithDice(emoji?: string, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendDice", emoji === undefined ? {} : { emoji }, extra) as Promise<Message>;
   }
 
   async sendChatAction(action: string, extra: Record<string, unknown> = {}): Promise<true> {

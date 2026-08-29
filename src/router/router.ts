@@ -32,6 +32,55 @@ function testRegExp(expression: RegExp, value: string): boolean {
   return expression.test(value);
 }
 
+/** Update types accepted by `on()` filters, mirroring the Telegram `Update` object. */
+export const UPDATE_FILTER_TYPES = [
+  "message",
+  "edited_message",
+  "channel_post",
+  "edited_channel_post",
+  "business_connection",
+  "business_message",
+  "edited_business_message",
+  "deleted_business_messages",
+  "guest_message",
+  "message_reaction",
+  "message_reaction_count",
+  "inline_query",
+  "chosen_inline_result",
+  "callback_query",
+  "shipping_query",
+  "pre_checkout_query",
+  "purchased_paid_media",
+  "poll",
+  "poll_answer",
+  "my_chat_member",
+  "chat_member",
+  "chat_join_request",
+  "chat_boost",
+  "removed_chat_boost",
+] as const;
+
+export type UpdateFilterType = typeof UPDATE_FILTER_TYPES[number];
+/** Filter grammar: an update type such as `message`, optionally narrowed by a payload field: `message:text`. */
+export type UpdateFilter = `${UpdateFilterType}` | `${UpdateFilterType}:${string}`;
+
+const updateFilterTypes = new Set<string>(UPDATE_FILTER_TYPES);
+
+function assertValidFilter(filter: string): void {
+  const type = filter.split(":", 1)[0] ?? "";
+  if (!updateFilterTypes.has(type)) throw new TypeError(`Unknown update type in filter "${filter}". Expected one of: ${UPDATE_FILTER_TYPES.join(", ")}.`);
+}
+
+function matchesFilter(ctx: RoutableContext, filter: string): boolean {
+  const separator = filter.indexOf(":");
+  const type = separator < 0 ? filter : filter.slice(0, separator);
+  const field = separator < 0 ? undefined : filter.slice(separator + 1);
+  const payload = ctx.update[type];
+  if (payload === undefined || payload === null) return false;
+  if (field === undefined || field === "") return true;
+  return typeof payload === "object" && (payload as Record<string, unknown>)[field] !== undefined;
+}
+
 export class Router<Context extends RoutableContext> {
   private readonly middlewares: Handler<Context>[] = [];
   private readonly routes: Route<Context>[] = [];
@@ -121,6 +170,18 @@ export class Router<Context extends RoutableContext> {
       const id = ctx.message?.chat?.id;
       return id !== undefined && (id === chatId || String(id) === String(chatId));
     }, ...middleware);
+  }
+
+  /**
+   * Registers handlers for update types, with optional payload narrowing:
+   * `on("message")`, `on("message:photo")`, `on("callback_query:data")`,
+   * or an array such as `["message:text", "callback_query:data"]`.
+   */
+  on(filter: UpdateFilter | UpdateFilter[], ...middleware: Handler<Context>[]): this {
+    const filters = (Array.isArray(filter) ? filter : [filter]).map((value) => String(value));
+    if (filters.length === 0) throw new Error("At least one update filter is required.");
+    for (const value of filters) assertValidFilter(value);
+    return this.route((ctx) => filters.some((value) => matchesFilter(ctx, value)), ...middleware);
   }
 
   predicate(matcher: Matcher<Context>, ...middleware: Handler<Context>[]): this {

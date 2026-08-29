@@ -27,7 +27,7 @@ GitHub Packages 指南：[English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia
 npm install @xbibzlibrary/telebibz
 ```
 
-需要 Node.js **20 或更高版本**。
+需要 Node.js **22 或更高版本**。
 
 ## 简单机器人
 
@@ -67,9 +67,13 @@ bot.use(async (ctx, next) => {
 bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
 bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
+bot.on("message:photo", async (ctx) => { await ctx.reply("照片不错。"); });
+bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("收到。"); });
+bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
+bot.catch(async (error, ctx) => { await ctx.reply("出错了。"); });
 ```
 
-路由器支持命令、文本、正则、回调模式、自定义谓词、嵌套路由器、每条路由的中间件，以及路由优先级。
+路由器支持命令、文本、正则、回调模式、更新类型过滤器（`on`）、自定义谓词、嵌套路由器、每条路由的中间件，以及路由优先级。`bot.catch()` 注册错误边界：处理器失败会转发到那里，而不是拒绝整个 update。
 
 ## Telegram API
 
@@ -103,7 +107,7 @@ await ctx.reply("Pilih menu:", { reply_markup: keyboard });
 
 ## Startup and terminal logs
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+The logger emits compact, readable terminal lines with colored levels and structured context. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted; errors print in red with the full stack. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
 
 ## Webhook
 

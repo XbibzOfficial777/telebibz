@@ -1,7 +1,7 @@
 {
   "name": "@xbibzlibrary/telebibz",
   "version": "0.1.19",
-  "description": "Production-grade Telegram Bot framework for Node.js and TypeScript with typed API, routing, webhooks, keyboards, conversations, plugins, queues, and colorful CLI logs.",
+  "description": "Telegram Bot framework for Node.js and TypeScript with a typed API client, routing, middleware, webhooks, keyboards, conversations, plugins, queues, and a polished terminal experience.",
   "keywords": [
     "telegram",
     "telegram-bot",
@@ -32,7 +32,7 @@
     "url": "https://github.com/XbibzOfficial777/telebibz/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "generate": "node scripts/generate-api.mjs",

@@ -3,7 +3,7 @@ import { FetchTransport, type FetchTransportOptions, type Transport } from "../a
 import type { BotCommand, BotCommandScope, ChatId, Update, User } from "../api/types.js";
 import { Context } from "../context/context.js";
 import { compose, type Middleware } from "../middleware/compose.js";
-import { Router, type RouterOptions } from "../router/router.js";
+import { Router, type RouterOptions, type UpdateFilter } from "../router/router.js";
 import { EventBus, type EventMap } from "./events.js";
 import { MemoryStorage, type Storage } from "../storage/storage.js";
 import { PluginManager, type Plugin } from "../plugins/plugin.js";
@@ -48,6 +48,7 @@ export class Bot<S extends object = Record<string, unknown>> {
   /** Branding effects run only on an interactive TTY; structured logs stay untouched otherwise. */
   private readonly brandingActive: boolean;
   private activeBanner: BannerHandle | undefined;
+  private errorHandler?: (error: unknown, ctx: Context<S>) => void | Promise<void>;
 
   constructor(options: string | BotOptions<S>) {
     const config = typeof options === "string" ? { token: options } : options;
@@ -94,6 +95,19 @@ export class Bot<S extends object = Record<string, unknown>> {
   callback(pattern: string | RegExp, handler: Middleware<Context<S>>): this { this.router.callback(pattern, handler); return this; }
   onText(text: string, handler: Middleware<Context<S>>): this { this.router.text(text, handler); return this; }
   onRegex(expression: RegExp, handler: Middleware<Context<S>>): this { this.router.regex(expression, handler); return this; }
+  /** Registers a handler for update types: `bot.on("message:photo", handler)` or `bot.on(["message:text", "callback_query:data"], handler)`. */
+  on(filter: UpdateFilter | UpdateFilter[], handler: Middleware<Context<S>>): this { this.router.on(filter, handler); return this; }
+  /** Registers a handler for exact text or a regular expression, mirroring familiar frameworks. */
+  hears(trigger: string | RegExp, handler: Middleware<Context<S>>): this {
+    if (trigger instanceof RegExp) this.router.regex(trigger, handler);
+    else this.router.text(trigger, handler);
+    return this;
+  }
+  /**
+   * Sets the error boundary for update handlers. When set, handler failures are
+   * passed here instead of rejecting `handleUpdate()` (webhooks answer 200).
+   */
+  catch(handler: (error: unknown, ctx: Context<S>) => void | Promise<void>): this { this.errorHandler = handler; return this; }
   usePlugin(plugin: Plugin<Context<S>>): this { this.plugins.use(plugin); return this; }
 
   /**
@@ -234,6 +248,12 @@ export class Bot<S extends object = Record<string, unknown>> {
       this.logger.error("update.handler_error", { update: summarizeUpdate(update, this.logger.includeUpdateContent), error });
       await this.events.emit("update:error", { update, error });
       await this.events.emit("bot:error", { bot: this, error });
+      if (this.errorHandler) {
+        // With an error boundary registered, the failure is considered handled:
+        // webhooks answer 200 and polling continues without rethrowing.
+        await this.errorHandler(error, ctx);
+        return;
+      }
       throw error;
     }
   }
