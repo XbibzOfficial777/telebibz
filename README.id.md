@@ -122,6 +122,25 @@ const handler = createWebhookHandler(bot, {
 
 `createWebhookHandler` menerima Request Web standar dan menghasilkan Response. Secret token, ukuran body, parsing JSON, dan penanganan update duplikat diverifikasi oleh handler.
 
+## Update beban tinggi dan broadcast
+
+telebibz dibangun untuk burst 1000+ pesan tanpa cooldown buatan:
+
+- **Paralel antar chat, berurutan per chat.** Setiap batch `getUpdates` (dan setiap request webhook) diproses secara konkuren — update dari chat berbeda tidak pernah saling mengantre, sementara update dari chat yang sama menjaga urutan kedatangannya sehingga session, wizard, dan conversation tetap benar dan penulisan session tidak pernah hilang. Burst konkuren hanya memicu satu inisialisasi `getMe`.
+- **Tidak ada throttling proaktif.** Permintaan keluar tidak pernah ditunda oleh library. Ketika Telegram menjawab 429, transport menunggu tepat jendela `retry_after` yang diperintahkan Telegram ("flood gate" global melindungi seluruh trafik) lalu otomatis retry — sehingga burst tetap terkirim lengkap, bukan gagal.
+- **Broadcast ke 1000+ user sekaligus.** `bot.broadcast()` langsung mencoba semua chat, me-retry 429 sesuai `retry_after` dari Telegram sendiri, dan mengembalikan laporan lengkap.
+
+```ts
+const report = await bot.broadcast(
+  subscriberIds,
+  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
+  { onProgress: (p) => console.log(`${p.delivered}/${p.total} terkirim`) },
+);
+console.log(`Terkirim ${report.delivered}/${report.total} dalam ${report.durationMs}ms`);
+```
+
+Batasi pekerjaan simultan dengan `new Bot({ ..., updates: { concurrency: 64 } })` atau `broadcast(..., { concurrency: 64 })` jika downstream Anda (database, API) membutuhkannya — secara default keduanya berjalan sepenuhnya paralel.
+
 ## State, queue, scheduler, dan cache
 
 Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, session bot, conversation dan form berbasis Storage, menu berbasis permission, pagination `MenuController`, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan cron lima field lengkap. Adapter Redis, SQL, dan Mongo memakai driver kecil sehingga core package tetap tanpa runtime dependency vendor.

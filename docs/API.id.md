@@ -74,6 +74,7 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Filter update Telegram. |
 | `polling.retryDelayMs` | `number` | `500` | Delay awal ketika polling gagal. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Batas maksimum delay reconnect. |
+| `updates.concurrency` | `number` | `Infinity` | Batas jumlah update yang diproses bersamaan. Update selalu berjalan paralel antar chat dan tetap berurutan di dalam satu chat, sehingga burst 1000+ pesan tertangani sekaligus. |
 
 ### Konstruktor `Bot`
 
@@ -201,7 +202,7 @@ launch(options?: {
 }): Promise<void>
 ```
 
-Menjalankan bot dalam mode polling. Saat mulai, lifecycle berpindah melalui `starting` lalu `running`, kemudian loop `getUpdates()` memproses setiap update secara berurutan. Kegagalan polling memancarkan `polling:reconnect` dan menggunakan backoff eksponensial.
+Menjalankan bot dalam mode polling. Saat mulai, lifecycle berpindah melalui `starting` lalu `running`, kemudian loop `getUpdates()` memproses setiap batch update secara konkuren: update dari chat berbeda berjalan paralel, sedangkan update dari chat yang sama menjaga urutan kedatangannya. Kegagalan polling memancarkan `polling:reconnect` dan menggunakan backoff eksponensial.
 
 Mode selain `"polling"` melempar error dan menyarankan penggunaan `createWebhookHandler()` untuk webhook.
 
@@ -278,7 +279,53 @@ handleUpdate(update: Update): Promise<void>
 
 Memproses satu update secara manual. Method menentukan kunci session dari `chat.id` dan `from.id`, membuat `Context`, memancarkan event `update` dan `message`, menjalankan middleware lalu router, dan menyimpan session setelah pipeline selesai.
 
+Update dari chat berbeda diproses paralel; update dari chat yang sama diserialisasi sesuai urutan kedatangan, sehingga session, wizard, dan conversation tidak pernah saling tumpang tindih dan penulisan session tidak pernah hilang. Burst update konkuren hanya memicu satu inisialisasi `getMe`.
+
 Error pipeline mengubah status bot menjadi `error`, memancarkan `bot:error`, lalu dilempar kembali.
+
+### `bot.handleUpdates(updates)`
+
+```ts
+handleUpdates(updates: readonly Update[]): Promise<void>
+```
+
+Menangani satu batch update sekaligus: setiap chat dalam batch langsung diproses — paralel antar chat, berurutan per chat — sehingga burst 1000 pesan tidak pernah terhambat oleh satu handler yang lambat. Kegagalan handler individual dicatat ke log, dipancarkan sebagai `update:error`, dan diteruskan ke error boundary `catch()`; kegagalan tersebut tidak pernah menolak promise ini. Loop polling memakai method ini untuk setiap batch `getUpdates`.
+
+### `bot.broadcast(chatIds, send, options?)`
+
+```ts
+broadcast(
+  chatIds: readonly ChatId[],
+  send: (chatId: ChatId) => Promise<unknown>,
+  options?: BroadcastOptions,
+): Promise<BroadcastReport>
+```
+
+Mengirim ke banyak chat secara paralel — dibuat untuk broadcast ke 1000+ user. Tidak ada cooldown proaktif: semua chat langsung dicoba sekaligus (sampai `options.concurrency`, default `Infinity`). Ketika Telegram menjawab 429, pengiriman otomatis diulang setelah tepat delay `retry_after` yang diperintahkan Telegram (maksimal `options.maxAttempts`, default `10`), sehingga burst tetap terkirim lengkap, bukan gagal. Error yang tidak bisa di-retry (misalnya chat yang tidak bisa dihubungi bot) dicatat per chat pada laporan yang dikembalikan.
+
+```ts
+const report = await bot.broadcast(
+  subscriberIds,
+  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
+  { onProgress: (progress) => console.log(`${progress.delivered}/${progress.total} terkirim`) },
+);
+console.log(`Terkirim ${report.delivered} dari ${report.total} dalam ${report.durationMs}ms`);
+for (const failure of report.failures) console.warn(`Gagal: ${failure.chatId} — ${failure.error}`);
+```
+
+#### `BroadcastOptions` dan `BroadcastReport`
+
+| Properti | Tipe | Default | Deskripsi |
+|---|---|---:|---|
+| `BroadcastOptions.concurrency` | `number` | `Infinity` | Berapa chat dikirimi pesan secara bersamaan. |
+| `BroadcastOptions.maxAttempts` | `number` | `10` | Percobaan per chat ketika Telegram menjawab 429. |
+| `BroadcastOptions.onProgress` | `(progress: BroadcastProgress) => void` | — | Dipanggil setelah setiap chat selesai. |
+| `BroadcastOptions.signal` | `AbortSignal` | — | Membatalkan pengiriman tertunda; pesan yang sudah terkirim tetap terkirim. |
+| `BroadcastReport.total` | `number` | — | Jumlah chat dalam sesi broadcast. |
+| `BroadcastReport.delivered` | `number` | — | Chat yang menerima pesan. |
+| `BroadcastReport.failed` | `number` | — | Chat yang tidak menerima. |
+| `BroadcastReport.durationMs` | `number` | — | Durasi total sesi broadcast. |
+| `BroadcastReport.failures` | `BroadcastFailure[]` | — | Catatan per chat `{ chatId, attempts, error, errorKind }`. |
 
 ### Contoh bot minimal
 
@@ -416,6 +463,7 @@ interface Transport {
 | `backoffMs` | `250` | Delay exponential awal. |
 | `maxBackoffMs` | `8000` | Batas delay transport. |
 | `jitter` | `0.2` | Variasi acak ±20% dari exponential delay. |
+| `floodGate` | `true` | Ketika Telegram menjawab 429, permintaan BARU ditunda sampai jendela `retry_after` yang diperintahkan Telegram berlalu. Bukan cooldown proaktif — penundaan satu-satunya hanyalah yang diminta Telegram sendiri. |
 | `headers` | `{}` | Header tambahan. |
 
 ### `new FetchTransport(options?)`
@@ -996,6 +1044,20 @@ new Scheduler(): Scheduler
 | `clear` | `clear(): void` | Membatalkan semua timer. |
 
 Format cron penuh tidak didukung oleh built-in scheduler. Ekspresi selain `*/N` melempar `Error`.
+
+### `Limiter` dan `mapWithConcurrency`
+
+```ts
+new Limiter(limit: number): Limiter
+
+mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]>
+```
+
+`Limiter` adalah semaphore berbasis promise: task langsung berjalan selama ada slot kosong dan mengantre FIFO setelahnya. `limit` menerima bilangan bulat positif atau `Infinity` (sepenuhnya paralel — default library). `mapWithConcurrency` memetakan item melalui async worker dengan batas yang sama sambil menjaga urutan hasil. Primitif ini tidak menambahkan delay apa pun — hanya membatasi jumlah task yang berjalan bersamaan. `Limiter` mengekspos `activeCount` dan `queuedCount` untuk observability.
 
 ## 9. Plugin dan services
 

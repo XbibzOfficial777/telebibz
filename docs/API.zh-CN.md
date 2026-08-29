@@ -74,6 +74,7 @@ type BotStatus =
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram 更新过滤器。 |
 | `polling.retryDelayMs` | `number` | `500` | 轮询失败时的初始延迟（毫秒）。 |
 | `polling.maxRetryDelayMs` | `number` | `30000` | 重连延迟的最大值（毫秒）。 |
+| `updates.concurrency` | `number` | `Infinity` | 同时处理的 update 数量上限。不同 chat 的 update 始终并行，同一 chat 内保持顺序，因此 1000+ 条消息的突发可一次性处理。 |
 
 ### `Bot` constructor
 
@@ -201,7 +202,7 @@ launch(options?: {
 }): Promise<void>
 ```
 
-以 polling 模式运行 bot。启动时生命周期依次变为 `starting` 然后 `running`，之后 `getUpdates()` 循环按顺序处理每个 update。轮询失败会触发 `polling:reconnect` 并使用指数退避。
+以 polling 模式运行 bot。启动时生命周期依次变为 `starting` 然后 `running`，之后 `getUpdates()` 循环并发处理每一批 update：不同 chat 的 update 并行执行，同一 chat 的 update 保持到达顺序。轮询失败会触发 `polling:reconnect` 并使用指数退避。
 
 除 `"polling"` 外的模式会抛出错误，并建议对 webhook 使用 `createWebhookHandler()`。
 
@@ -278,7 +279,53 @@ handleUpdate(update: Update): Promise<void>
 
 手动处理单个 update。该方法根据 `chat.id` 和 `from.id` 确定会话 key，创建 `Context`，触发 `update` 和 `message` 事件，执行 middleware 然后路由器，并在流水线完成后保存会话。
 
+不同 chat 的 update 并行处理；同一 chat 的 update 按到达顺序串行处理，因此会话、wizard 和 conversation 永远不会交错，会话写入也不会丢失。并发的 update 突发只会触发一次 `getMe` 初始化。
+
 流水线错误会将 bot 状态置为 `error`，触发 `bot:error`，然后重新抛出错误。
+
+### `bot.handleUpdates(updates)`
+
+```ts
+handleUpdates(updates: readonly Update[]): Promise<void>
+```
+
+一次性处理整批 update：批次中的每个 chat 立即处理——跨 chat 并行、同一 chat 内按序——因此 1000 条消息的突发绝不会卡在某个慢速 handler 后面。单个 handler 的失败会记录日志、以 `update:error` 触发事件并交给 `catch()` 错误边界；它们永远不会让该 promise 被 reject。轮询循环对每个 `getUpdates` 批次都使用此方法。
+
+### `bot.broadcast(chatIds, send, options?)`
+
+```ts
+broadcast(
+  chatIds: readonly ChatId[],
+  send: (chatId: ChatId) => Promise<unknown>,
+  options?: BroadcastOptions,
+): Promise<BroadcastReport>
+```
+
+并行向大量 chat 发送消息——专为向 1000+ 用户广播而设计。没有主动冷却：所有 chat（至多 `options.concurrency`，默认 `Infinity`）同时尝试发送。当 Telegram 返回 429 时，会严格按照 Telegram 指定的 `retry_after` 延迟自动重试（至多 `options.maxAttempts` 次，默认 `10`），因此突发流量会完整送达而不是失败。不可重试的错误（例如 bot 无法发送的 chat）会按 chat 记录在返回的报告中。
+
+```ts
+const report = await bot.broadcast(
+  subscriberIds,
+  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
+  { onProgress: (progress) => console.log(`${progress.delivered}/${progress.total} delivered`) },
+);
+console.log(`Delivered ${report.delivered} of ${report.total} in ${report.durationMs}ms`);
+for (const failure of report.failures) console.warn(`Failed: ${failure.chatId} — ${failure.error}`);
+```
+
+#### `BroadcastOptions` 和 `BroadcastReport`
+
+| 属性 | 类型 | 默认值 | 说明 |
+|---|---|---:|---|
+| `BroadcastOptions.concurrency` | `number` | `Infinity` | 同时向多少个 chat 发送消息。 |
+| `BroadcastOptions.maxAttempts` | `number` | `10` | Telegram 返回 429 时每个 chat 的尝试次数。 |
+| `BroadcastOptions.onProgress` | `(progress: BroadcastProgress) => void` | — | 每个 chat 结束后调用。 |
+| `BroadcastOptions.signal` | `AbortSignal` | — | 中止待发送的消息；已送达的消息保持送达。 |
+| `BroadcastReport.total` | `number` | — | 本次广播的 chat 总数。 |
+| `BroadcastReport.delivered` | `number` | — | 成功收到消息的 chat 数。 |
+| `BroadcastReport.failed` | `number` | — | 未收到消息的 chat 数。 |
+| `BroadcastReport.durationMs` | `number` | — | 本次广播的实际耗时（毫秒）。 |
+| `BroadcastReport.failures` | `BroadcastFailure[]` | — | 按 chat 记录的 `{ chatId, attempts, error, errorKind }`。 |
 
 ### 最小 bot 示例
 
@@ -416,6 +463,7 @@ interface Transport {
 | `backoffMs` | `250` | 初始指数退避延迟（毫秒）。 |
 | `maxBackoffMs` | `8000` | 传输延迟上限（毫秒）。 |
 | `jitter` | `0.2` | 对指数延迟的随机抖动，范围为 ±20%。 |
+| `floodGate` | `true` | 当 Telegram 返回 429 时，暂停新的请求直到 Telegram 指定的 `retry_after` 窗口结束。这不是主动冷却——唯一的等待就是 Telegram 自己要求的等待。 |
 | `headers` | `{}` | 额外的请求头。 |
 
 ### `new FetchTransport(options?)`
@@ -988,6 +1036,20 @@ new Scheduler(): Scheduler
 | `clear` | `clear(): void` | 取消所有定时器。 |
 
 内置调度器不支持完整的 cron 格式。除 `*/N` 外的表达式会抛出 `Error`。
+
+### `Limiter` 和 `mapWithConcurrency`
+
+```ts
+new Limiter(limit: number): Limiter
+
+mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]>
+```
+
+`Limiter` 是一个 promise 信号量：有空闲槽位时任务立即执行，超出后按 FIFO 排队。`limit` 接受任意正整数或 `Infinity`（完全并行——即本库的默认值）。`mapWithConcurrency` 以相同的并发上限让 item 通过 async worker 映射，同时保持结果顺序。这些原语自身不会添加任何延迟——它们只限制同时运行的任务数量。`Limiter` 暴露 `activeCount` 和 `queuedCount` 用于可观测性。
 
 ---
 

@@ -10,6 +10,8 @@ import { PluginManager, type Plugin } from "../plugins/plugin.js";
 import { createLogger, describeIncomingUpdate, Logger, type LogContext, type LoggerOptions, summarizeUpdate } from "../observability/logger.js";
 import { printStatusLine, printTeleBibzBanner, runStartupSequence, startTeleBibzBanner, startTerminalAnimation, type BannerHandle } from "../branding/terminal.js";
 import { conversationKeyFromContext, type Wizard } from "../state/conversation.js";
+import { runBroadcast, type BroadcastOptions, type BroadcastReport } from "../broadcast/broadcast.js";
+import { Limiter } from "../utils/concurrency.js";
 
 export type BotStatus = "created" | "initialized" | "starting" | "running" | "stopping" | "stopped" | "error";
 export type BotContext<S extends object = Record<string, unknown>> = Context<S>;
@@ -22,6 +24,13 @@ export interface BotOptions<S extends object = Record<string, unknown>> {
   session?: Storage<string, S>;
   services?: Record<string, unknown>;
   polling?: { timeout?: number; limit?: number; allowedUpdates?: string[]; retryDelayMs?: number; maxRetryDelayMs?: number };
+  /**
+   * Update-processing tuning. Updates always run in parallel across chats
+   * while staying ordered within a single chat. `concurrency` caps how many
+   * updates may be processed at the same time (default `Infinity` — bursts of
+   * 1000+ messages are processed at once, with no artificial cooldown).
+   */
+  updates?: { concurrency?: number };
   router?: RouterOptions;
   logger?: Logger | LoggerOptions;
   branding?: boolean;
@@ -44,6 +53,12 @@ export class Bot<S extends object = Record<string, unknown>> {
   private pollingAbort: AbortController | undefined;
   private offset = 0;
   private me?: User;
+  /** Caps how many updates run at once (default: unlimited). */
+  private readonly updateLimiter: Limiter;
+  /** Per-chat processing chains: parallel across chats, ordered within a chat. */
+  private readonly chatChains = new Map<string, Promise<void>>();
+  /** Memoized init so a burst of updates triggers exactly one getMe call. */
+  private initOnce: Promise<void> | undefined;
   private readonly brandingEnabled: boolean;
   /** Branding effects run only on an interactive TTY; structured logs stay untouched otherwise. */
   private readonly brandingActive: boolean;
@@ -70,6 +85,7 @@ export class Bot<S extends object = Record<string, unknown>> {
       transport,
     });
     this.plugins = new PluginManager<Context<S>>(this);
+    this.updateLimiter = new Limiter(config.updates?.concurrency ?? Infinity);
     this.pollingOptions = {
       allowedUpdates: config.polling?.allowedUpdates ?? [],
       limit: config.polling?.limit ?? 100,
@@ -213,7 +229,70 @@ export class Bot<S extends object = Record<string, unknown>> {
   async setCommands(commands: BotCommand[], scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("setMyCommands", { commands, scope, language_code: languageCode } as never) as Promise<true>; }
   async deleteCommands(scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("deleteMyCommands", { scope, language_code: languageCode } as never) as Promise<true>; }
 
+  /**
+   * Handles a single update. Updates for different chats run in parallel;
+   * updates for the same chat are processed strictly in arrival order so
+   * sessions, wizards, and conversations never interleave. Rejects for this
+   * update's failure (as before) without affecting other updates.
+   */
   async handleUpdate(update: Update): Promise<void> {
+    const key = this.conversationKey(update);
+    const previous = this.chatChains.get(key);
+    const run = (previous ?? Promise.resolve()).catch(() => undefined).then(() => this.processUpdate(update));
+    const tail = run.then(() => undefined, () => undefined);
+    this.chatChains.set(key, tail);
+    void tail.then(() => {
+      if (this.chatChains.get(key) === tail) this.chatChains.delete(key);
+    });
+    await run;
+  }
+
+  /**
+   * Handles a whole batch of updates at once: every chat in the batch is
+   * processed immediately (parallel across chats, ordered per chat), so a
+   * burst of 1000 messages is not stuck behind one slow handler. Individual
+   * handler failures are logged, emitted as `update:error`, and passed to the
+   * `catch()` error boundary; they never reject this promise.
+   */
+  async handleUpdates(updates: readonly Update[]): Promise<void> {
+    await Promise.all(updates.map(async (update) => {
+      try {
+        await this.handleUpdate(update);
+      } catch {
+        // Already logged and emitted by processUpdate; the polling loop must
+        // keep flowing no matter how many handlers failed.
+      }
+    }));
+  }
+
+  /**
+   * Sends to many chats in parallel — built for broadcasts to 1000+ users.
+   * There is no proactive cooldown: every chat is attempted at once (up to
+   * `concurrency`). When Telegram answers 429, the send is retried
+   * automatically after exactly the `retry_after` delay Telegram ordered, so
+   * bursts deliver completely instead of failing.
+   */
+  async broadcast(chatIds: readonly ChatId[], send: (chatId: ChatId) => Promise<unknown>, options?: BroadcastOptions): Promise<BroadcastReport> {
+    return runBroadcast(chatIds, send, options);
+  }
+
+  /** Runs init() once even when many updates arrive concurrently. */
+  private ensureInitialized(): Promise<void> {
+    if (this.me) return Promise.resolve();
+    if (!this.initOnce) {
+      this.initOnce = this.init().then(() => { this.initOnce = undefined; }, (error: unknown) => {
+        this.initOnce = undefined;
+        throw error;
+      });
+    }
+    return this.initOnce;
+  }
+
+  private async processUpdate(update: Update): Promise<void> {
+    await this.updateLimiter.run(() => this.runUpdate(update));
+  }
+
+  private async runUpdate(update: Update): Promise<void> {
     this.logger.incoming(describeIncomingUpdate(update));
     const message = update.message
       ?? update.edited_message
@@ -225,7 +304,7 @@ export class Bot<S extends object = Record<string, unknown>> {
       ?? update.callback_query?.message;
     const key = this.conversationKey(update);
     const session = await this.session.get(key) ?? ({} as S);
-    if (!this.me) await this.init();
+    if (!this.me) await this.ensureInitialized();
     if (!this.me) return;
     const ctx = new Context<S>({ update, api: this.api, session, services: this.services, me: this.me });
     await this.events.emit("update", { update });
@@ -306,15 +385,12 @@ export class Bot<S extends object = Record<string, unknown>> {
       try {
         const updates = await this.api.request("getUpdates", { offset: this.offset, limit: this.pollingOptions.limit, timeout, allowed_updates: allowedUpdates }, signal, { timeoutMs: requestTimeoutMs });
         delay = this.pollingOptions.retryDelayMs;
+        // Confirm the whole batch first, then process it: updates run in
+        // parallel across chats (ordered per chat) instead of one by one.
         for (const update of updates) {
           this.offset = Math.max(this.offset, update.update_id + 1);
-          try {
-            await this.handleUpdate(update);
-          } catch {
-            // The update has already advanced the offset. Continue with the rest of
-            // the batch instead of reconnecting or replaying a failed handler.
-          }
         }
+        await this.handleUpdates(updates);
       } catch (error) {
         if (signal.aborted) break;
         const attempt = Math.max(1, Math.round(Math.log2(delay / this.pollingOptions.retryDelayMs) + 1));
