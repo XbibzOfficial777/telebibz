@@ -141,6 +141,19 @@ console.log(`Terkirim ${report.delivered}/${report.total} dalam ${report.duratio
 
 Batasi pekerjaan simultan dengan `new Bot({ ..., updates: { concurrency: 64 } })` atau `broadcast(..., { concurrency: 64 })` jika downstream Anda (database, API) membutuhkannya — secara default keduanya berjalan sepenuhnya paralel.
 
+## Paritas penuh Telegraf di permukaan context
+
+Semua shortcut context Telegraf tersedia, ditambah bagian yang di Telegraf diserahkan ke plugin:
+
+- **Moderasi & admin** — `ctx.banChatMember`, `ctx.unbanChatMember`, `ctx.restrictChatMember`, `ctx.promoteChatMember`, `ctx.banChatSenderChat`, `ctx.unbanChatSenderChat`
+- **Manajemen chat** — `ctx.setChatTitle/Description/Photo`, `ctx.setChatPermissions`, `ctx.leaveChat`, `ctx.unpinAllChatMessages`, `ctx.setChatStickerSet`, `ctx.deleteChatStickerSet`
+- **Info** — `ctx.getChatAdministrators`, `ctx.getChatMemberCount`, `ctx.getChatMember`
+- **Invite link & join request** — `ctx.exportChatInviteLink`, `ctx.createChatInviteLink`, `ctx.editChatInviteLink`, `ctx.revokeChatInviteLink`, `ctx.approveChatJoinRequest`, `ctx.declineChatJoinRequest`
+- **Poll, game, pembayaran** — `ctx.replyWithQuiz`, `ctx.stopPoll`, `ctx.editMessageLiveLocation`, `ctx.stopMessageLiveLocation`, `ctx.replyWithGame`, `ctx.setGameScore`, `ctx.getGameHighScores`, `ctx.replyWithInvoice`
+- **Forum topic** — `ctx.createForumTopic`, `ctx.closeForumTopic`, `ctx.editGeneralForumTopic`, dan sembilan lainnya
+- **Opsi launch** — `handlerTimeout` (default 90 detik, seperti Telegraf) melempar `UpdateTimeoutError` untuk update yang menggantung sementara handler tetap berjalan; `contextType` memasang subclass `Context` Anda sendiri; `dropPendingUpdates` di `start()`/`launch()`
+- **Webhook reply** — opt-in `webhookReply: true` menjawab panggilan API pertama lewat respons HTTP webhook itu sendiri (ala Telegraf), dengan `getMe` malas yang tidak pernah mengklaim slot
+
 ## State, queue, scheduler, dan cache
 
 Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, session bot, conversation dan form berbasis Storage, menu berbasis permission, pagination `MenuController`, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan cron lima field lengkap. Adapter Redis, SQL, dan Mongo memakai driver kecil sehingga core package tetap tanpa runtime dependency vendor.

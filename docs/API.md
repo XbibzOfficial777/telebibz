@@ -74,6 +74,8 @@ type BotStatus =
 | `polling.retryDelayMs` | `number` | `500` | Initial delay when polling fails. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Maximum reconnect delay. |
 | `updates.concurrency` | `number` | `Infinity` | Cap on how many updates are processed at the same time. Updates always run in parallel across chats and stay ordered within a single chat, so bursts of 1000+ messages are handled at once. |
+| `handlerTimeout` | `number` | `90000` | Per-update processing timeout in ms (`Infinity` disables). On timeout the update error flow runs (`update:error`, `bot:error`, `catch()` boundary) and `handleUpdate()` rejects with `UpdateTimeoutError`, while the handler keeps running to completion in the background. |
+| `contextType` | `new (options: ContextOptions<S>) => Context<S>` | `Context` | Custom `Context` subclass instantiated for every update (Telegraf's `contextType`). |
 
 ### Constructor `Bot`
 
@@ -216,10 +218,11 @@ launch(options?: {
   mode: "polling";
   timeout?: number;
   allowedUpdates?: string[];
+  dropPendingUpdates?: boolean;
 }): Promise<void>
 ```
 
-Runs the bot in polling mode. On start, the lifecycle moves through `starting` to `running`, then the `getUpdates()` loop processes each batch of updates concurrently: updates for different chats run in parallel while updates for the same chat keep their arrival order. Polling failures emit `polling:reconnect` and use exponential backoff.
+Runs the bot in polling mode. On start, the lifecycle moves through `starting` to `running`, then the `getUpdates()` loop processes each batch of updates concurrently: updates for different chats run in parallel while updates for the same chat keep their arrival order. Polling failures emit `polling:reconnect` and use exponential backoff. `dropPendingUpdates: true` (also on `bot.start()`) drops everything Telegram is holding for the bot before the first `getUpdates` call, using the same `deleteWebhook({ drop_pending_updates: true })` mechanism Telegraf uses.
 
 Modes other than `"polling"` throw an error and suggest using `createWebhookHandler()` for webhooks.
 
@@ -291,12 +294,14 @@ Shortcut to `deleteMyCommands`.
 ### `bot.handleUpdate(update)`
 
 ```ts
-handleUpdate(update: Update): Promise<void>
+handleUpdate(update: Update, options?: { webhookReply?: WebhookReplySink }): Promise<void>
 ```
 
-Processes a single update manually. The method determines the session key from `chat.id` and `from.id`, creates a `Context`, emits `update` and `message` events, runs middleware then the router, and saves the session after the pipeline completes.
+Processes a single update manually. The method determines the session key from `chat.id` and `from.id`, creates a `Context` (of the configured `contextType`), emits `update` and `message` events, runs middleware then the router, and saves the session after the pipeline completes.
 
-Updates for different chats are processed in parallel; updates for the same chat are serialized in arrival order, so sessions, wizards, and conversations never interleave and session writes are never lost. A burst of concurrent updates triggers exactly one `getMe` initialization.
+Updates for different chats are processed in parallel; updates for the same chat are serialized in arrival order, so sessions, wizards, and conversations never interleave and session writes are never lost. A burst of concurrent updates triggers exactly one `getMe` initialization. The whole per-update run is guarded by `handlerTimeout` (default 90s, matching Telegraf): on timeout the error flows through `update:error`/`bot:error` and the `catch()` boundary, and `handleUpdate()` rejects with `UpdateTimeoutError` while the handler keeps running in the background.
+
+`options.webhookReply` installs a Telegraf-style responder: the first outgoing API call during this update is answered through the webhook HTTP response instead of a separate request, and resolves with `true` (Telegram never sends the method result back to a webhook response).
 
 Pipeline errors set the bot status to `error`, emit `bot:error`, and then rethrow the error.
 
@@ -343,6 +348,25 @@ for (const failure of report.failures) console.warn(`Failed: ${failure.chatId} �
 | `BroadcastReport.failed` | `number` | — | Chats that did not. |
 | `BroadcastReport.durationMs` | `number` | — | Wall-clock duration of the run. |
 | `BroadcastReport.failures` | `BroadcastFailure[]` | — | Per-chat `{ chatId, attempts, error, errorKind }` records. |
+
+### `UpdateTimeoutError` and webhook-reply helpers
+
+```ts
+class UpdateTimeoutError extends Error {
+  readonly name = "UpdateTimeoutError";
+  readonly updateId: number;
+}
+```
+
+Rejected by `handleUpdate()` when a single update exceeds `handlerTimeout`. The handler itself keeps running; the error also flows through `update:error`, `bot:error`, and the `catch()` boundary.
+
+```ts
+type WebhookReplySink = (payload: Record<string, unknown>) => void;
+runWithWebhookReply(sink, fn): Promise<T>   // sets the responder for every API call inside fn
+runWithoutWebhookReply(fn): Promise<T>      // library-internal calls that never claim the slot
+```
+
+Exported so custom webhook servers can wire webhook replies the same way `createWebhookHandler` does.
 
 ### Minimal bot example
 
@@ -754,6 +778,23 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 
 All `replyWith*` senders accept the native Telegram parameters as `extra` and automatically quote the incoming message. Passing `reply_parameters` in `extra` merges with the automatic `message_id` instead of replacing it. `reply`, `send`, `getChat`, and some other helpers throw an error when the update does not have the required chat. `edit` and `delete` require both chat and message.
 
+### Context admin, chat, and forum methods (full Telegraf parity)
+
+Every method below acts on the update's chat (`ctx.chat`) and accepts native Telegram parameters through `extra`; they throw a clear error when the update has no chat. Use `ctx.api.methods.*` to target a different chat.
+
+| Group | Methods |
+|---|---|
+| Moderation | `banChatMember(userId, untilDate?, extra?)`, `unbanChatMember(userId, onlyIfBanned?, extra?)`, `restrictChatMember(userId, permissions, untilDate?, extra?)`, `promoteChatMember(userId, extra?)`, `banChatSenderChat(senderChatId, extra?)`, `unbanChatSenderChat(senderChatId, extra?)` |
+| Chat management | `setChatTitle(title)`, `setChatDescription(description?)`, `setChatPhoto(photo)`, `deleteChatPhoto()`, `setChatPermissions(permissions, extra?)`, `leaveChat()`, `unpinAllChatMessages(extra?)`, `setChatStickerSet(name)`, `deleteChatStickerSet()` |
+| Chat & member info | `getChatAdministrators(): Promise<ChatMember[]>`, `getChatMemberCount(): Promise<number>`, `getChatMember(userId): Promise<ChatMember>` |
+| Invite links | `exportChatInviteLink(): Promise<string>`, `createChatInviteLink(extra?)`, `editChatInviteLink(inviteLink, extra?)`, `revokeChatInviteLink(inviteLink)` |
+| Join requests | `approveChatJoinRequest(userId)`, `declineChatJoinRequest(userId)` |
+| Polls & live location | `replyWithQuiz(question, options, extra?)` (sendPoll with `type: "quiz"`), `stopPoll(messageId?, extra?)`, `editMessageLiveLocation(latitude?, longitude?, extra?)`, `stopMessageLiveLocation(extra?)` |
+| Games & payments | `replyWithGame(gameShortName, extra?)`, `setGameScore(userId, score, extra?)`, `getGameHighScores(userId?, extra?)`, `replyWithInvoice(title, description, payload, providerToken, currency, prices, extra?)` |
+| Forum topics | `createForumTopic(name, extra?)`, `editForumTopic(extra?)`, `closeForumTopic(threadId?)`, `reopenForumTopic(threadId?)`, `deleteForumTopic(threadId?)`, `unpinAllForumTopicMessages(threadId?)`, `getForumTopicIconStickers()`, `editGeneralForumTopic(name)`, `closeGeneralForumTopic()`, `reopenGeneralForumTopic()`, `hideGeneralForumTopic()`, `unhideGeneralForumTopic()` |
+
+`threadId` defaults to the context message's `message_thread_id`. `replyWithQuiz`, `replyWithGame`, and `replyWithInvoice` quote the incoming message like every `replyWith*` sender.
+
 ---
 
 ## 5. Middleware and router
@@ -1149,8 +1190,11 @@ interface WebhookOptions {
   secretToken?: string;
   maxBodyBytes?: number;
   onError?: (error: unknown) => void | Promise<void>;
+  webhookReply?: boolean;
 }
 ```
+
+`webhookReply` (default `false`) enables Telegraf-style webhook replies: while handling an update, the first outgoing API call is answered through the webhook HTTP response itself (`{"method":"sendMessage", ...}`), so Telegram executes the method without a second request. That call resolves with `true` because Telegram never sends the method result back to a webhook response; every later call goes through the transport as usual. The lazy `getMe` initialization never claims the slot. Unlike Telegraf, this is opt-in so existing webhook deployments keep their exact behavior.
 
 ### `createWebhookHandler(bot, options?)`
 

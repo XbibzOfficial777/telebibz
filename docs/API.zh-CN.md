@@ -75,6 +75,8 @@ type BotStatus =
 | `polling.retryDelayMs` | `number` | `500` | 轮询失败时的初始延迟（毫秒）。 |
 | `polling.maxRetryDelayMs` | `number` | `30000` | 重连延迟的最大值（毫秒）。 |
 | `updates.concurrency` | `number` | `Infinity` | 同时处理的 update 数量上限。不同 chat 的 update 始终并行，同一 chat 内保持顺序，因此 1000+ 条消息的突发可一次性处理。 |
+| `handlerTimeout` | `number` | `90000` | 单个 update 的处理超时（毫秒，`Infinity` 表示禁用）。超时后走 update 错误流程（`update:error`、`bot:error`、`catch()` 边界），`handleUpdate()` 以 `UpdateTimeoutError` 拒绝，而 handler 仍在后台继续运行直至完成。 |
+| `contextType` | `new (options: ContextOptions<S>) => Context<S>` | `Context` | 为每个 update 实例化的自定义 `Context` 子类（Telegraf 的 `contextType`）。 |
 
 ### `Bot` constructor
 
@@ -199,10 +201,11 @@ launch(options?: {
   mode: "polling";
   timeout?: number;
   allowedUpdates?: string[];
+  dropPendingUpdates?: boolean;
 }): Promise<void>
 ```
 
-以 polling 模式运行 bot。启动时生命周期依次变为 `starting` 然后 `running`，之后 `getUpdates()` 循环并发处理每一批 update：不同 chat 的 update 并行执行，同一 chat 的 update 保持到达顺序。轮询失败会触发 `polling:reconnect` 并使用指数退避。
+以 polling 模式运行 bot。启动时生命周期依次变为 `starting` 然后 `running`，之后 `getUpdates()` 循环并发处理每一批 update：不同 chat 的 update 并行执行，同一 chat 的 update 保持到达顺序。轮询失败会触发 `polling:reconnect` 并使用指数退避。`dropPendingUpdates: true`（`bot.start()` 同样支持）会在第一次 `getUpdates` 之前丢弃 Telegram 为该 bot 持有的全部更新，使用与 Telegraf 相同的 `deleteWebhook({ drop_pending_updates: true })` 机制。
 
 除 `"polling"` 外的模式会抛出错误，并建议对 webhook 使用 `createWebhookHandler()`。
 
@@ -274,12 +277,14 @@ deleteCommands(
 ### `bot.handleUpdate(update)`
 
 ```ts
-handleUpdate(update: Update): Promise<void>
+handleUpdate(update: Update, options?: { webhookReply?: WebhookReplySink }): Promise<void>
 ```
 
-手动处理单个 update。该方法根据 `chat.id` 和 `from.id` 确定会话 key，创建 `Context`，触发 `update` 和 `message` 事件，执行 middleware 然后路由器，并在流水线完成后保存会话。
+手动处理单个 update。该方法根据 `chat.id` 和 `from.id` 确定会话 key，创建 `Context`（由配置的 `contextType` 实例化），触发 `update` 和 `message` 事件，执行 middleware 然后路由器，并在流水线完成后保存会话。
 
-不同 chat 的 update 并行处理；同一 chat 的 update 按到达顺序串行处理，因此会话、wizard 和 conversation 永远不会交错，会话写入也不会丢失。并发的 update 突发只会触发一次 `getMe` 初始化。
+不同 chat 的 update 并行处理；同一 chat 的 update 按到达顺序串行处理，因此会话、wizard 和 conversation 永远不会交错，会话写入也不会丢失。并发的 update 突发只会触发一次 `getMe` 初始化。整个单 update 流程受 `handlerTimeout` 保护（默认 90 秒，与 Telegraf 一致）：超时后错误会流经 `update:error`/`bot:error` 和 `catch()` 边界，`handleUpdate()` 以 `UpdateTimeoutError` 拒绝，而 handler 仍在后台继续运行。
+
+`options.webhookReply` 安装一个 Telegraf 风格的响应器：该 update 期间第一个外发 API 调用通过 webhook HTTP 响应本身来应答（而不是单独发请求），并且以 `true` resolve（Telegram 从不把方法结果发回 webhook 响应）。
 
 流水线错误会将 bot 状态置为 `error`，触发 `bot:error`，然后重新抛出错误。
 
@@ -326,6 +331,25 @@ for (const failure of report.failures) console.warn(`Failed: ${failure.chatId} �
 | `BroadcastReport.failed` | `number` | — | 未收到消息的 chat 数。 |
 | `BroadcastReport.durationMs` | `number` | — | 本次广播的实际耗时（毫秒）。 |
 | `BroadcastReport.failures` | `BroadcastFailure[]` | — | 按 chat 记录的 `{ chatId, attempts, error, errorKind }`。 |
+
+### `UpdateTimeoutError` 与 webhook-reply 辅助函数
+
+```ts
+class UpdateTimeoutError extends Error {
+  readonly name = "UpdateTimeoutError";
+  readonly updateId: number;
+}
+```
+
+当单个 update 超过 `handlerTimeout` 时由 `handleUpdate()` 拒绝抛出。handler 本身继续运行；错误同样会流经 `update:error`、`bot:error` 和 `catch()` 边界。
+
+```ts
+type WebhookReplySink = (payload: Record<string, unknown>) => void;
+runWithWebhookReply(sink, fn): Promise<T>   // 为 fn 内的所有 API 调用设置响应器
+runWithoutWebhookReply(fn): Promise<T>      // 永不占用槽位的库内部调用
+```
+
+导出这些函数，让自定义 webhook 服务器能够以与 `createWebhookHandler` 相同的方式接入 webhook 应答。
 
 ### 最小 bot 示例
 
@@ -736,6 +760,23 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 
 `reply`、`send`、`getChat` 以及其他一些辅助方法在更新缺少所需聊天时会抛出错误。`edit` 和 `delete` 需要同时有聊天和消息。
 
+### Context 管理员、聊天与论坛方法（与 Telegraf 完全对齐）
+
+以下方法均作用于本次更新的聊天（`ctx.chat`），并通过 `extra` 接受原生 Telegram 参数；当更新没有聊天时都会抛出清晰的错误。要操作其他聊天请使用 `ctx.api.methods.*`。
+
+| 分组 | 方法 |
+|---|---|
+| 管理/封禁 | `banChatMember(userId, untilDate?, extra?)`、`unbanChatMember(userId, onlyIfBanned?, extra?)`、`restrictChatMember(userId, permissions, untilDate?, extra?)`、`promoteChatMember(userId, extra?)`、`banChatSenderChat(senderChatId, extra?)`、`unbanChatSenderChat(senderChatId, extra?)` |
+| 聊天管理 | `setChatTitle(title)`、`setChatDescription(description?)`、`setChatPhoto(photo)`、`deleteChatPhoto()`、`setChatPermissions(permissions, extra?)`、`leaveChat()`、`unpinAllChatMessages(extra?)`、`setChatStickerSet(name)`、`deleteChatStickerSet()` |
+| 聊天与成员信息 | `getChatAdministrators(): Promise<ChatMember[]>`、`getChatMemberCount(): Promise<number>`、`getChatMember(userId): Promise<ChatMember>` |
+| 邀请链接 | `exportChatInviteLink(): Promise<string>`、`createChatInviteLink(extra?)`、`editChatInviteLink(inviteLink, extra?)`、`revokeChatInviteLink(inviteLink)` |
+| 加群申请 | `approveChatJoinRequest(userId)`、`declineChatJoinRequest(userId)` |
+| 投票与实时位置 | `replyWithQuiz(question, options, extra?)`（`type: "quiz"` 的 sendPoll）、`stopPoll(messageId?, extra?)`、`editMessageLiveLocation(latitude?, longitude?, extra?)`、`stopMessageLiveLocation(extra?)` |
+| 游戏与支付 | `replyWithGame(gameShortName, extra?)`、`setGameScore(userId, score, extra?)`、`getGameHighScores(userId?, extra?)`、`replyWithInvoice(title, description, payload, providerToken, currency, prices, extra?)` |
+| 论坛主题 | `createForumTopic(name, extra?)`、`editForumTopic(extra?)`、`closeForumTopic(threadId?)`、`reopenForumTopic(threadId?)`、`deleteForumTopic(threadId?)`、`unpinAllForumTopicMessages(threadId?)`、`getForumTopicIconStickers()`、`editGeneralForumTopic(name)`、`closeGeneralForumTopic()`、`reopenGeneralForumTopic()`、`hideGeneralForumTopic()`、`unhideGeneralForumTopic()` |
+
+`threadId` 默认取上下文消息的 `message_thread_id`。`replyWithQuiz`、`replyWithGame` 和 `replyWithInvoice` 与所有 `replyWith*` 发送者一样自动引用回复。
+
 ---
 
 ## 5. 中间件与路由器
@@ -1125,8 +1166,11 @@ interface WebhookOptions {
   secretToken?: string;
   maxBodyBytes?: number;
   onError?: (error: unknown) => void | Promise<void>;
+  webhookReply?: boolean;
 }
 ```
+
+`webhookReply`（默认 `false`）启用 Telegraf 风格的 webhook 应答：处理 update 期间，第一个外发 API 调用直接通过 webhook HTTP 响应本身应答（`{"method":"sendMessage", ...}`），Telegram 因此无需第二次请求即可执行该方法。该调用以 `true` resolve，因为 Telegram 从不把方法结果发回 webhook 响应；之后的每个调用都照常走 transport。懒加载的 `getMe` 初始化永远不会占用该槽位。与 Telegraf 不同，此功能为 opt-in，已有的 webhook 部署行为保持完全不变。
 
 ### `createWebhookHandler(bot, options?)`
 

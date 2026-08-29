@@ -1,4 +1,5 @@
 import { TELEGRAM_METHOD_NAMES, type TelegramMethodName } from "../../generated/api.js";
+import { claimWebhookReply } from "../core/webhook-reply.js";
 import { TelegramError, telegramErrorFromResponse } from "./errors.js";
 import type { ApiCallArgs, ApiParams, ApiResult, TelegramResponse } from "./types.js";
 import type { Transport, TransportRequest } from "./transport.js";
@@ -26,6 +27,17 @@ export class ApiClient {
   }
   async call<M extends TelegramMethodName>(method: M, ...args: ApiCallArgs<M>): Promise<ApiResult<M>> { return this.request<M>(method, args[0] as ApiParams<M> | undefined); }
   async request<M extends TelegramMethodName>(method: M, payload?: ApiParams<M>, signal?: AbortSignal, options?: { timeoutMs?: number }): Promise<ApiResult<M>> {
+    // Webhook reply mode: the first call while handling a webhook update is
+    // answered through the webhook HTTP response instead of the transport.
+    const webhookReply = claimWebhookReply(method, payload as Record<string, unknown> | undefined);
+    if (webhookReply) {
+      const context: ApiHookContext = { method, payload, startedAt: Date.now() };
+      await this.hooks.onRequest?.(context);
+      context.durationMs = Date.now() - context.startedAt;
+      context.response = webhookReply.data as unknown as TelegramResponse<unknown>;
+      await this.hooks.onResponse?.(context);
+      return webhookReply.data.result as ApiResult<M>;
+    }
     const context: ApiHookContext = { method, payload, startedAt: Date.now() };
     await this.hooks.onRequest?.(context);
     try {

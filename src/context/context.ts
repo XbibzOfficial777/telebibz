@@ -1,5 +1,5 @@
 import type { ApiClient } from "../api/client.js";
-import type { Chat, ChatId, InputFile, Message, ReplyMarkup, Update, User } from "../api/types.js";
+import type { Chat, ChatId, ChatMember, InputFile, Message, ReplyMarkup, Update, User } from "../api/types.js";
 
 export interface ContextOptions<S extends object = Record<string, unknown>> {
   update: Update;
@@ -203,5 +203,121 @@ export class Context<S extends object = Record<string, unknown>> {
   async getChat(): Promise<Chat> { if (!this.chat) throw new Error("No chat in this update."); return this.api.methods.getChat({ chat_id: this.chat.id }); }
   async getUserProfilePhotos(userId = this.from?.id, extra: Record<string, unknown> = {}): Promise<unknown> { if (!userId) throw new Error("No user in this update."); return this.api.call("getUserProfilePhotos", { user_id: userId, ...extra } as never); }
   async getFile(fileId: string): Promise<unknown> { return this.api.methods.getFile({ file_id: fileId }); }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Admin & moderation (full Telegraf-parity surface; chat defaults to ctx.chat)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  private requireChatId(): ChatId { if (this.chat?.id === undefined) throw new Error("This update has no chat to act on."); return this.chat.id; }
+
+  async banChatMember(userId: number, untilDate?: number, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("banChatMember", { chat_id: this.requireChatId(), user_id: userId, ...(untilDate !== undefined ? { until_date: untilDate } : {}), ...extra } as never) as Promise<true>;
+  }
+  async unbanChatMember(userId: number, onlyIfBanned?: boolean, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("unbanChatMember", { chat_id: this.requireChatId(), user_id: userId, ...(onlyIfBanned !== undefined ? { only_if_banned: onlyIfBanned } : {}), ...extra } as never) as Promise<true>;
+  }
+  async restrictChatMember(userId: number, permissions: Record<string, unknown>, untilDate?: number, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("restrictChatMember", { chat_id: this.requireChatId(), user_id: userId, permissions, ...(untilDate !== undefined ? { until_date: untilDate } : {}), ...extra } as never) as Promise<true>;
+  }
+  async promoteChatMember(userId: number, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("promoteChatMember", { chat_id: this.requireChatId(), user_id: userId, ...extra } as never) as Promise<true>;
+  }
+  async banChatSenderChat(senderChatId: ChatId, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("banChatSenderChat", { chat_id: this.requireChatId(), sender_chat_id: senderChatId, ...extra } as never) as Promise<true>;
+  }
+  async unbanChatSenderChat(senderChatId: ChatId, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("unbanChatSenderChat", { chat_id: this.requireChatId(), sender_chat_id: senderChatId, ...extra } as never) as Promise<true>;
+  }
+
+  // ── Chat management ──
+
+  async setChatTitle(title: string): Promise<true> { return this.api.call("setChatTitle", { chat_id: this.requireChatId(), title } as never) as Promise<true>; }
+  async setChatDescription(description?: string): Promise<true> { return this.api.call("setChatDescription", { chat_id: this.requireChatId(), description } as never) as Promise<true>; }
+  async setChatPhoto(photo: InputFile): Promise<true> { return this.api.call("setChatPhoto", { chat_id: this.requireChatId(), photo } as never) as Promise<true>; }
+  async deleteChatPhoto(): Promise<true> { return this.api.call("deleteChatPhoto", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+  async setChatPermissions(permissions: Record<string, unknown>, extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("setChatPermissions", { chat_id: this.requireChatId(), permissions, ...extra } as never) as Promise<true>;
+  }
+  async leaveChat(): Promise<true> { return this.api.call("leaveChat", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+  async unpinAllChatMessages(extra: Record<string, unknown> = {}): Promise<true> { return this.api.call("unpinAllChatMessages", { chat_id: this.requireChatId(), ...extra } as never) as Promise<true>; }
+  async setChatStickerSet(stickerSetName: string): Promise<true> { return this.api.call("setChatStickerSet", { chat_id: this.requireChatId(), sticker_set_name: stickerSetName } as never) as Promise<true>; }
+  async deleteChatStickerSet(): Promise<true> { return this.api.call("deleteChatStickerSet", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+
+  // ── Chat & member info ──
+
+  async getChatAdministrators(): Promise<ChatMember[]> { return this.api.call("getChatAdministrators", { chat_id: this.requireChatId() } as never) as Promise<ChatMember[]>; }
+  async getChatMemberCount(): Promise<number> { return this.api.call("getChatMemberCount", { chat_id: this.requireChatId() } as never) as Promise<number>; }
+  async getChatMember(userId: number): Promise<ChatMember> { return this.api.call("getChatMember", { chat_id: this.requireChatId(), user_id: userId } as never) as Promise<ChatMember>; }
+
+  // ── Invite links ──
+
+  async exportChatInviteLink(): Promise<string> { return this.api.call("exportChatInviteLink", { chat_id: this.requireChatId() } as never) as Promise<string>; }
+  async createChatInviteLink(extra: Record<string, unknown> = {}): Promise<unknown> { return this.api.call("createChatInviteLink", { chat_id: this.requireChatId(), ...extra } as never); }
+  async editChatInviteLink(inviteLink: string, extra: Record<string, unknown> = {}): Promise<unknown> { return this.api.call("editChatInviteLink", { chat_id: this.requireChatId(), invite_link: inviteLink, ...extra } as never); }
+  async revokeChatInviteLink(inviteLink: string): Promise<unknown> { return this.api.call("revokeChatInviteLink", { chat_id: this.requireChatId(), invite_link: inviteLink } as never); }
+
+  // ── Join requests ──
+
+  async approveChatJoinRequest(userId: number): Promise<true> { return this.api.call("approveChatJoinRequest", { chat_id: this.requireChatId(), user_id: userId } as never) as Promise<true>; }
+  async declineChatJoinRequest(userId: number): Promise<true> { return this.api.call("declineChatJoinRequest", { chat_id: this.requireChatId(), user_id: userId } as never) as Promise<true>; }
+
+  // ── Polls, live location, games, invoices ──
+
+  async replyWithQuiz(question: string, options: string[], extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendPoll", { question, options, type: "quiz" }, extra) as Promise<Message>;
+  }
+  async stopPoll(messageId = this.message?.message_id, extra: Record<string, unknown> = {}): Promise<unknown> {
+    if (messageId === undefined) throw new Error("Cannot stop a poll without a message id.");
+    return this.api.call("stopPoll", { chat_id: this.requireChatId(), message_id: messageId, ...extra } as never);
+  }
+  async editMessageLiveLocation(latitude?: number, longitude?: number, extra: Record<string, unknown> = {}): Promise<Message | true> {
+    return this.api.call("editMessageLiveLocation", { chat_id: this.chat?.id, message_id: this.message?.message_id, latitude, longitude, ...extra } as never) as Promise<Message | true>;
+  }
+  async stopMessageLiveLocation(extra: Record<string, unknown> = {}): Promise<Message | true> {
+    return this.api.call("stopMessageLiveLocation", { chat_id: this.chat?.id, message_id: this.message?.message_id, ...extra } as never) as Promise<Message | true>;
+  }
+  async replyWithGame(gameShortName: string, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendGame", { game_short_name: gameShortName }, extra) as Promise<Message>;
+  }
+  async setGameScore(userId: number, score: number, extra: Record<string, unknown> = {}): Promise<Message | true> {
+    return this.api.call("setGameScore", { chat_id: this.chat?.id, message_id: this.message?.message_id, user_id: userId, score, ...extra } as never) as Promise<Message | true>;
+  }
+  async getGameHighScores(userId = this.from?.id, extra: Record<string, unknown> = {}): Promise<unknown[]> {
+    if (userId === undefined) throw new Error("No user in this update; pass a user_id explicitly.");
+    return this.api.call("getGameHighScores", { chat_id: this.chat?.id, message_id: this.message?.message_id, user_id: userId, ...extra } as never) as Promise<unknown[]>;
+  }
+  async replyWithInvoice(title: string, description: string, payload: string, providerToken: string, currency: string, prices: Array<Record<string, unknown>>, extra: Record<string, unknown> = {}): Promise<Message> {
+    return this.sendMethod("sendInvoice", { title, description, payload, provider_token: providerToken, currency, prices }, extra) as Promise<Message>;
+  }
+
+  // ── Forum topics ──
+
+  async createForumTopic(name: string, extra: Record<string, unknown> = {}): Promise<unknown> { return this.api.call("createForumTopic", { chat_id: this.requireChatId(), name, ...extra } as never); }
+  async editForumTopic(extra: Record<string, unknown> = {}): Promise<true> {
+    return this.api.call("editForumTopic", { chat_id: this.requireChatId(), message_thread_id: this.message?.message_thread_id, ...extra } as never) as Promise<true>;
+  }
+  async closeForumTopic(messageThreadId = this.message?.message_thread_id): Promise<true> {
+    if (messageThreadId === undefined) throw new Error("Cannot act on a forum topic without a message_thread_id.");
+    return this.api.call("closeForumTopic", { chat_id: this.requireChatId(), message_thread_id: messageThreadId } as never) as Promise<true>;
+  }
+  async reopenForumTopic(messageThreadId = this.message?.message_thread_id): Promise<true> {
+    if (messageThreadId === undefined) throw new Error("Cannot act on a forum topic without a message_thread_id.");
+    return this.api.call("reopenForumTopic", { chat_id: this.requireChatId(), message_thread_id: messageThreadId } as never) as Promise<true>;
+  }
+  async deleteForumTopic(messageThreadId = this.message?.message_thread_id): Promise<true> {
+    if (messageThreadId === undefined) throw new Error("Cannot act on a forum topic without a message_thread_id.");
+    return this.api.call("deleteForumTopic", { chat_id: this.requireChatId(), message_thread_id: messageThreadId } as never) as Promise<true>;
+  }
+  async unpinAllForumTopicMessages(messageThreadId = this.message?.message_thread_id): Promise<true> {
+    if (messageThreadId === undefined) throw new Error("Cannot act on a forum topic without a message_thread_id.");
+    return this.api.call("unpinAllForumTopicMessages", { chat_id: this.requireChatId(), message_thread_id: messageThreadId } as never) as Promise<true>;
+  }
+  async getForumTopicIconStickers(): Promise<unknown[]> { return this.api.call("getForumTopicIconStickers", {} as never) as Promise<unknown[]>; }
+  async editGeneralForumTopic(name: string): Promise<true> { return this.api.call("editGeneralForumTopic", { chat_id: this.requireChatId(), name } as never) as Promise<true>; }
+  async closeGeneralForumTopic(): Promise<true> { return this.api.call("closeGeneralForumTopic", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+  async reopenGeneralForumTopic(): Promise<true> { return this.api.call("reopenGeneralForumTopic", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+  async hideGeneralForumTopic(): Promise<true> { return this.api.call("hideGeneralForumTopic", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+  async unhideGeneralForumTopic(): Promise<true> { return this.api.call("unhideGeneralForumTopic", { chat_id: this.requireChatId() } as never) as Promise<true>; }
+
   withReplyMarkup(markup: ReplyMarkup): this { this.state.reply_markup = markup; return this; }
 }

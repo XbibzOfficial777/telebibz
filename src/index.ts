@@ -1,4 +1,5 @@
 export * from "./core/bot.js";
+export * from "./core/webhook-reply.js";
 export * from "./core/events.js";
 export * from "./api/index.js";
 export * from "./context/context.js";

@@ -2,9 +2,33 @@ import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Bot } from "../core/bot.js";
 import type { Update } from "../api/types.js";
+import type { WebhookReplyPayload, WebhookReplySink } from "../core/webhook-reply.js";
 
-export interface WebhookOptions { secretToken?: string; maxBodyBytes?: number; onError?: (error: unknown) => void | Promise<void> }
+export interface WebhookOptions {
+  secretToken?: string;
+  maxBodyBytes?: number;
+  onError?: (error: unknown) => void | Promise<void>;
+  /**
+   * Telegraf-style webhook replies (default `false`). When enabled, the first
+   * outgoing API call while handling an update is answered through the webhook
+   * HTTP response instead of a separate request to Telegram — Telegram then
+   * executes the method for you. That call resolves with `true`, since Telegram
+   * never sends the method result back to a webhook response.
+   */
+  webhookReply?: boolean;
+}
 export type WebhookFramework = "express" | "http" | "fastify" | "koa";
+
+/** Runs the update, optionally claiming the webhook response for the first API call. */
+async function processWithOptionalReply(bot: Bot<never>, update: Update, sink: WebhookReplySink | undefined): Promise<void> {
+  if (sink === undefined) { await bot.handleUpdate(update); return; }
+  await bot.handleUpdate(update, { webhookReply: sink });
+}
+
+function replyResponse(payload: WebhookReplyPayload | undefined): Response {
+  if (payload !== undefined) return new Response(JSON.stringify(payload), { status: 200, headers: { "content-type": "application/json" } });
+  return new Response("OK", { status: 200 });
+}
 
 export function createWebhookHandler<S extends object>(bot: Bot<S>, options: WebhookOptions = {}): (request: Request) => Promise<Response> {
   const maxBodyBytes = options.maxBodyBytes ?? 1_048_576;
@@ -20,8 +44,10 @@ export function createWebhookHandler<S extends object>(bot: Bot<S>, options: Web
       if (raw.byteLength > maxBodyBytes) return new Response("Payload Too Large", { status: 413 });
       const update = JSON.parse(new TextDecoder().decode(raw)) as Update;
       if (!Number.isInteger(update.update_id)) return new Response("Bad Request", { status: 400 });
-      await bot.handleUpdate(update);
-      return new Response("OK", { status: 200 });
+      let replyPayload: WebhookReplyPayload | undefined;
+      const sink: WebhookReplySink | undefined = options.webhookReply === true ? (payload) => { replyPayload = payload; } : undefined;
+      await processWithOptionalReply(bot as unknown as Bot<never>, update, sink);
+      return replyResponse(replyPayload);
     } catch (error) {
       await options.onError?.(error);
       return new Response("Internal Server Error", { status: 500 });
@@ -40,9 +66,9 @@ export function webhookCallback<S extends object>(
     const rawReq = req as IncomingMessage & { body?: unknown; headers?: Record<string, string | string[] | undefined> };
     const rawRes = res as ServerResponse | undefined;
 
-    const sendResponse = (status: number, message: string) => {
+    const sendResponse = (status: number, message: string, contentType = "text/plain") => {
       if (rawRes && typeof rawRes.writeHead === "function" && typeof rawRes.end === "function") {
-        rawRes.writeHead(status, { "Content-Type": "text/plain" });
+        rawRes.writeHead(status, { "Content-Type": contentType });
         rawRes.end(message);
         return;
       }
@@ -105,8 +131,11 @@ export function webhookCallback<S extends object>(
         return;
       }
 
-      await bot.handleUpdate(update);
-      sendResponse(200, "OK");
+      let replyPayload: WebhookReplyPayload | undefined;
+      const sink: WebhookReplySink | undefined = options.webhookReply === true ? (payload) => { replyPayload = payload; } : undefined;
+      await processWithOptionalReply(bot as unknown as Bot<never>, update, sink);
+      if (replyPayload !== undefined) sendResponse(200, JSON.stringify(replyPayload), "application/json");
+      else sendResponse(200, "OK");
     } catch (error) {
       await options.onError?.(error);
       sendResponse(500, "Internal Server Error");
