@@ -13,6 +13,7 @@ import { conversationKeyFromContext, type Wizard } from "../state/conversation.j
 import { runBroadcast, type BroadcastOptions, type BroadcastReport } from "../broadcast/broadcast.js";
 import { Limiter } from "../utils/concurrency.js";
 import { runWithWebhookReply, runWithoutWebhookReply, type WebhookReplySink } from "./webhook-reply.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { ContextOptions } from "../context/context.js";
 
 /** Thrown when a single update exceeds `handlerTimeout`; the handler keeps running in the background. */
@@ -82,6 +83,12 @@ export class Bot<S extends object = Record<string, unknown>> {
   private readonly contextType: new (options: ContextOptions<S>) => Context<S>;
   /** Per-chat processing chains: parallel across chats, ordered within a chat. */
   private readonly chatChains = new Map<string, Promise<void>>();
+  /**
+   * Identifies the update chain executing in the current async context so
+   * `stop()` called from inside a handler never deadlocks waiting on itself
+   * (Telegraf allows `bot.stop()` from within a handler).
+   */
+  private readonly currentUpdateChain = new AsyncLocalStorage<Promise<void>>();
   /** Memoized init so a burst of updates triggers exactly one getMe call. */
   private initOnce: Promise<void> | undefined;
   private readonly brandingEnabled: boolean;
@@ -136,6 +143,8 @@ export class Bot<S extends object = Record<string, unknown>> {
   use(...middleware: Middleware<Context<S>>[]): this { this.middlewares.push(...middleware); return this; }
   command(name: string, handler: Middleware<Context<S>>): this { this.router.command(name, handler); return this; }
   callback(pattern: string | RegExp, handler: Middleware<Context<S>>): this { this.router.callback(pattern, handler); return this; }
+  /** Telegraf-style alias for `callback()`: registers a handler for callback-query button data. */
+  action(pattern: string | RegExp, handler: Middleware<Context<S>>): this { this.router.callback(pattern, handler); return this; }
   onText(text: string, handler: Middleware<Context<S>>): this { this.router.text(text, handler); return this; }
   onRegex(expression: RegExp, handler: Middleware<Context<S>>): this { this.router.regex(expression, handler); return this; }
   /** Registers a handler for update types: `bot.on("message:photo", handler)` or `bot.on(["message:text", "callback_query:data"], handler)`. */
@@ -242,12 +251,26 @@ export class Bot<S extends object = Record<string, unknown>> {
     await this.events.emit("bot:stopping", { bot: this });
     this.pollingAbort?.abort();
     this.pollingAbort = undefined;
+    // Graceful shutdown: wait for updates still being processed (bounded by
+    // handlerTimeout) so sessions finish writing before plugins are disposed.
+    await this.drainInFlightUpdates();
     await this.plugins.stop();
     await this.plugins.dispose();
     this.statusValue = "stopped";
     if (this.brandingActive) printStatusLine("Bot stopped.");
     else this.logger.info("bot.stopped");
     await this.events.emit("bot:stopped", { bot: this });
+  }
+
+  /** Waits (bounded by `handlerTimeout`) for updates that are still processing. */
+  private async drainInFlightUpdates(): Promise<void> {
+    // A handler calling stop() must not wait on its own chain (deadlock); it
+    // keeps running in the background, exactly like Telegraf.
+    const current = this.currentUpdateChain.getStore();
+    const inFlight = [...this.chatChains.values()].filter((chain) => chain !== current);
+    if (inFlight.length === 0) return;
+    this.logger.info("bot.draining_updates", { inFlight: inFlight.length });
+    await this.withTimeout(Promise.allSettled(inFlight), this.handlerTimeoutMs, -1);
   }
 
   async restart(): Promise<void> { await this.stop(); await this.start(); }
@@ -279,9 +302,11 @@ export class Bot<S extends object = Record<string, unknown>> {
       ? () => this.processUpdate(update)
       : () => runWithWebhookReply(options.webhookReply!, () => this.processUpdate(update));
     // The chain waits for the real completion so same-chat ordering holds
-    // even when the caller-facing await below is released by a timeout.
-    const run = (previous ?? Promise.resolve()).catch(() => undefined).then(execute);
-    const tail = run.then(() => undefined, () => undefined);
+    // even when the caller-facing await below is released by a timeout. The
+    // chain is installed as the current AsyncLocalStorage value so a handler
+    // calling bot.stop() is excluded from the drain set.
+    const run: Promise<void> = (previous ?? Promise.resolve()).catch(() => undefined).then(() => this.currentUpdateChain.run(tail, execute));
+    const tail: Promise<void> = run.then(() => undefined, () => undefined);
     this.chatChains.set(key, tail);
     void tail.then(() => {
       if (this.chatChains.get(key) === tail) this.chatChains.delete(key);
@@ -303,9 +328,9 @@ export class Bot<S extends object = Record<string, unknown>> {
     }
   }
 
-  /** Rejects with `UpdateTimeoutError` after `timeoutMs` unless `promise` settles first. */
+  /** Rejects with `UpdateTimeoutError` after `timeoutMs` unless `promise` settles first; `timeoutMs <= 0` or a non-finite value disables the guard. */
   private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, updateId: number): Promise<T> {
-    if (!Number.isFinite(timeoutMs)) return promise;
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new UpdateTimeoutError(updateId, timeoutMs)), timeoutMs);

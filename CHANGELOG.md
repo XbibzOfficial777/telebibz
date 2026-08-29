@@ -1,6 +1,24 @@
 # Changelog
 
-## 0.4.0 — 2026-08-29
+## 0.4.2 — 2026-08-29
+
+### Added
+
+- `bot.action(pattern, handler)` as a drop-in Telegraf alias for `bot.callback(...)`, so handlers written for Telegraf register unchanged.
+- Graceful shutdown: `bot.stop()` drains in-flight update handlers (bounded by `handlerTimeout`) before stopping the plugin manager, so active conversations are never truncated mid-write. A handler calling `stop()` from inside itself is excluded from the drain set, so Telegraf-style stop-from-handler never deadlocks.
+- Library-only benchmark suite: `npm run benchmark` measures the update pipeline, per-chat serialization, router dispatch, webhook round trips, and broadcast fan-out against `MockTransport` — no token or network required.
+
+### Fixed
+
+- Logger level `silent` printed every message (including errors) because its priority sorted above all message levels; it now emits nothing.
+- `printTeleBibzBanner()` and the other branding helpers documented as exported (`runStartupSequence()`, `startTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()`) are now actually exported from the package entry point.
+- `handlerTimeout` of `0` (or any non-finite value) now disables the timeout guard, alongside `Infinity`.
+
+### Changed
+
+- README (all three languages): new complete "API surface" index, a Wizards section in the Indonesian and Simplified Chinese READMEs, the `imgbs.com` banner everywhere, fully localized code examples and sections, and a rewritten release-automation section describing the Conventional Commits versioning rules.
+
+## 0.4.1 — 2026-08-29
 
 ### Added
 

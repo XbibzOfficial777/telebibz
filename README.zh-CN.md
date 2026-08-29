@@ -1,6 +1,6 @@
 # telebibz
 
-![telebibz 徽标](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-logo.png)
+![telebibz 徽标](https://imgbs.com/uploads/telebibz-d7b30671.png)
 
 [![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
@@ -36,7 +36,7 @@ import { Bot } from "@xbibzlibrary/telebibz";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-bot.command("start", async (ctx) => { await ctx.reply("Bot aktif."); });
+bot.command("start", async (ctx) => { await ctx.reply("机器人已启动。"); });
 bot.onText("ping", async (ctx) => { await ctx.reply("pong"); });
 
 await bot.start();
@@ -64,9 +64,10 @@ bot.use(async (ctx, next) => {
   console.log(`processed in ${Date.now() - started}ms`);
 });
 
-bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
-bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
-bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
+bot.command("help", async (ctx) => { await ctx.reply("可以查看帮助。"); });
+bot.onRegex(/^order:(\d+)$/, async (ctx) => { await ctx.reply("订单已收到。"); });
+bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("已打开。"); });
+bot.action("menu:open", async (ctx) => { await ctx.answerCallbackQuery("菜单已打开。"); });
 bot.on("message:photo", async (ctx) => { await ctx.reply("照片不错。"); });
 bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("收到。"); });
 bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
@@ -81,8 +82,8 @@ bot.catch(async (error, ctx) => { await ctx.reply("出错了。"); });
 
 ```ts
 await bot.api.methods.getMe();
-await bot.api.methods.sendMessage({ chat_id: 123456789, text: "Halo." });
-await bot.api.call("sendMessage", { chat_id: 123456789, text: "Halo." });
+await bot.api.methods.sendMessage({ chat_id: 123456789, text: "你好。" });
+await bot.api.call("sendMessage", { chat_id: 123456789, text: "你好。" });
 await bot.api.raw("futureTelegramMethod", { value: true });
 ```
 
@@ -96,18 +97,38 @@ await bot.api.raw("futureTelegramMethod", { value: true });
 import { InlineKeyboard } from "@xbibzlibrary/telebibz";
 
 const keyboard = new InlineKeyboard()
-  .text("Profil", "profile")
-  .url("Dokumentasi", "https://core.telegram.org/bots/api")
+  .text("个人资料", "profile")
+  .url("文档", "https://core.telegram.org/bots/api")
   .build();
 
-await ctx.reply("Pilih menu:", { reply_markup: keyboard });
+await ctx.reply("请选择菜单：", { reply_markup: keyboard });
 ```
 
 构造器仅生成 Telegram 原生键盘的 payload。HTML/CSS 的 UI 需要单独的 Mini App 或 Web App。
 
-## Startup and terminal logs
+## 启动与终端日志
 
-The logger emits compact, readable terminal lines with colored levels and structured context. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted; errors print in red with the full stack. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
+Logger 输出紧凑易读的终端日志行，带彩色级别和结构化上下文。日志级别为 `silent`、`error`、`warn`、`info`、`debug` 和 `trace`；敏感值会被 redact；错误以红色打印并带完整堆栈。使用 `format: "json"` 做机器摄取，仅在明确需要消息文本或回调数据时才开启 `includeUpdateContent: true`。
+
+## Wizard 与多步会话
+
+将 `Wizard` 与 `bot.useWizard()` 配合使用，来自同一 chat/user 的后续每条文本回复都会自动路由到当前步骤。Key 由 Telegram chat 和发送者生成，无需手动指定。
+
+```ts
+import { Bot, Wizard } from "@xbibzlibrary/telebibz";
+
+const wizard = new Wizard()
+  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("你叫什么名字？"); } })
+  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("你多大了？"); } })
+  .step({ id: "age", run: (flow) => { const age = Number(flow.ctx.message?.text?.trim()); if (!Number.isInteger(age)) return; flow.set("age", age); flow.next(); } });
+
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+bot.useWizard(wizard);
+bot.command("start", async (ctx) => { await wizard.run(ctx); });
+await bot.start();
+```
+
+`Wizard` 在 update 之间保持其默认的 `ConversationManager`，并在最后一步完成后立即标记会话完成。使用 `/cancel` 可取消正在进行的 wizard。
 
 ## Webhook
 
@@ -126,9 +147,10 @@ const handler = createWebhookHandler(bot, {
 
 telebibz 为 1000+ 条消息的突发场景而生，没有任何人为冷却：
 
-- **跨 chat 并行，同一 chat 内按序。** 每个 `getUpdates` 批次（以及每个 webhook 请求）都并发处理——不同 chat 的 update 不会互相排队，而同一 chat 的 update 保持到达顺序，因此会话、wizard 和 conversation 始终正确，会话写入永不丢失。并发突发只触发一次 `getMe` 初始化。
-- **没有主动限流。** 库永远不会延迟外发请求。当 Telegram 返回 429 时，transport 会严格按照 Telegram 指定的 `retry_after` 窗口等待（全局 "flood gate" 保护所有进行中的流量）并自动重试——因此突发流量会完整送达而不是失败。
+- **跨 chat 并行，同一 chat 内按序。** 每个 `getUpdates` 批次（以及每个 webhook 请求）都并发处理——不同 chat 的 update 不会互相排队，而同一 chat 的 update 保持到达顺序，因此会话、wizard 和 conversation 始终正确，会话写入永不丢失。并发突发只触发一次 `getMe` 初始化。如果你自己持有轮询循环，可用 `bot.handleUpdates()` 直接喂入已拉取的批次。
+- **没有主动限流。** 库永远不会延迟外发请求。当 Telegram 返回 429 时，transport 会严格按照 Telegram 指定的 `retry_after` 窗口等待（全局 "flood gate" 保护所有进行中的流量）并自动重试——因此突发流量会完整送达而不是失败。针对你自己的下游限制，`Limiter` 与 `mapWithConcurrency()` 可为任意工作负载整形速率。
 - **一次性向 1000+ 用户广播。** `bot.broadcast()` 立即尝试所有 chat，按照 Telegram 自己的 `retry_after` 重试 429，并返回完整报告。
+- **优雅停机。** `bot.stop()` 会先等待进行中的 handler 完成（受 `handlerTimeout` 约束），然后才停止 plugin manager——进行中的会话绝不会在写入途中被截断。
 
 ```ts
 const report = await bot.broadcast(
@@ -143,7 +165,7 @@ console.log(`Delivered ${report.delivered}/${report.total} in ${report.durationM
 
 ## Context 表面与 Telegraf 完全对齐
 
-Telegraf 的每一个 context 快捷方法都可用，还包含 Telegraf 交给插件实现的部分：
+Telegraf 的每一个 context 快捷方法都可用，还包含补齐 Telegraf 核心交给其插件生态的部分：
 
 - **管理与封禁** — `ctx.banChatMember`、`ctx.unbanChatMember`、`ctx.restrictChatMember`、`ctx.promoteChatMember`、`ctx.banChatSenderChat`、`ctx.unbanChatSenderChat`
 - **聊天管理** — `ctx.setChatTitle/Description/Photo`、`ctx.setChatPermissions`、`ctx.leaveChat`、`ctx.unpinAllChatMessages`、`ctx.setChatStickerSet`、`ctx.deleteChatStickerSet`
@@ -151,8 +173,9 @@ Telegraf 的每一个 context 快捷方法都可用，还包含 Telegraf 交给�
 - **邀请链接与加群申请** — `ctx.exportChatInviteLink`、`ctx.createChatInviteLink`、`ctx.editChatInviteLink`、`ctx.revokeChatInviteLink`、`ctx.approveChatJoinRequest`、`ctx.declineChatJoinRequest`
 - **投票、游戏、支付** — `ctx.replyWithQuiz`、`ctx.stopPoll`、`ctx.editMessageLiveLocation`、`ctx.stopMessageLiveLocation`、`ctx.replyWithGame`、`ctx.setGameScore`、`ctx.getGameHighScores`、`ctx.replyWithInvoice`
 - **论坛主题** — `ctx.createForumTopic`、`ctx.closeForumTopic`、`ctx.editGeneralForumTopic` 等九个
-- **启动选项** — `handlerTimeout`（默认 90 秒，与 Telegraf 一致）以 `UpdateTimeoutError` 拒绝挂起的 update，同时 handler 继续运行；`contextType` 接入你自己的 `Context` 子类；`start()`/`launch()` 的 `dropPendingUpdates`
+- **启动选项** — `handlerTimeout`（默认 90 秒，与 Telegraf 一致）以 `UpdateTimeoutError` 拒绝挂起的 update，同时 handler 继续运行；传 `0` 可禁用超时；`contextType` 接入你自己的 `Context` 子类；`start()`/`launch()` 的 `dropPendingUpdates`
 - **Webhook 应答** — 选择性开启的 `webhookReply: true` 让第一个 API 调用直接通过 webhook HTTP 响应本身应答（Telegraf 风格），懒加载的 `getMe` 永远不会占用槽位
+- **即插即用的 handler 别名** — `bot.action(...)` 与 `bot.callback(...)` 一样注册回调查询 handler，为 Telegraf 编写的 handler 可以原样迁移
 
 ## 状态、队列、调度器和缓存
 
@@ -211,13 +234,37 @@ npm run release:check
 
 `validateWebAppInitData()` 会验证 Telegram Web App 的 signature 和 expiration。`PaymentsClient` 提供 invoice link、invoice、pre-checkout answer、Web App query answer、Stars transactions 和 Stars refunds 的 wrapper。使用 `TelegramTypes` 以及 `TelegramUser`、`TelegramMessage`、`TelegramUpdate` 等 alias 来访问完整的 vendored Telegram declaration surface。
 
+## API 表面
+
+除注明 subpath 外，以下所有内容都从 package 入口导出。每个导出的完整签名见 [docs/API.zh-CN.md](docs/API.zh-CN.md)（另有 [docs/API.md](docs/API.md) 与 [docs/API.id.md](docs/API.id.md)）。
+
+| 领域 | 导出 |
+|---|---|
+| Bot 与生命周期 | `Bot` 的 `on`、`onText`、`onRegex`、`command`、`hears`、`callback`、`action`、`catch`、`use`、`usePlugin`、`useWizard`、`handleUpdate`、`handleUpdates`、`start`/`launch`、`stop`、`restart`、`init`、`health`、`broadcast`、`getMe`、`setCommands`、`deleteCommands`；`UpdateTimeoutError` |
+| Context | `Context`、`ContextOptions`、launch 选项 `contextType`；`ctx` 上约 80 个快捷方法，覆盖回复、管理员操作、聊天管理、邀请链接、投票、游戏、支付与论坛主题 |
+| Telegram API | `ApiClient` 的 `call()`、`request()`、`raw()` 与 `methods`（全部生成的 Bot API 方法）；`FetchTransport` 自带 429/5xx 自动重试和全局 flood gate |
+| 错误 | `TelegramError` 带 `kind` 分类（`retryable`、`rate-limit`、`authentication`、`validation`、`network`、`server`、`unknown`）与 `retryAfter`，另有 `TelegramRateLimitError`、`TelegramAuthError`、`TelegramValidationError`、`TelegramNetworkError` |
+| 路由器与中间件 | `Router`、`compose`、24 个 update 过滤器（`message:photo`、`callback_query:data` 等）、`matchMode`（`first`/`all`） |
+| 键盘 | `InlineKeyboard`、`ReplyKeyboard`、`removeKeyboard()`、`forceReply()` |
+| 存储 | `MemoryStorage`（TTL、按 key 串行化）、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`，以及它们所基于的小型 driver interface |
+| 缓存与限流 | `MemoryCache`、`TokenBucketLimiter`、`Limiter`、`mapWithConcurrency()` |
+| 队列与调度器 | `TaskQueue`（优先级、重试、退避、延迟、取消）、`Scheduler`（间隔、一次性、cron）、`parseCronExpression()`、`nextCronOccurrence()` |
+| 状态与对话 | `Wizard`、`ConversationManager`、`ConversationFlow`、带 `validators` 的 `Form`、基于 permission 的 `Menu`、`MenuController`、`paginate()` |
+| Webhook | `createWebhookHandler()`（Web `Request`/`Response`）、面向 Express/Koa/Fastify/Node `http` 的 `webhookCallback()`、`runWithWebhookReply()`、`claimWebhookReply()` |
+| Web App 与支付 | `parseWebAppInitData()`、`validateWebAppInitData()`、`PaymentsClient`、`TelegramTypes`（内置的 Telegram 声明） |
+| 可观测性 | `Logger`（级别、redaction、JSON 格式）、带 `update:*`、`bot:*`、`broadcast:*` 事件映射的 `EventBus`、`redact()` |
+| 终端 | `printTeleBibzBanner()`、`printTerminalBranding()`、`buildTerminalBranding()`、`runStartupSequence()`、`startTeleBibzBanner()`、`paintRainbow()`、`printStatusLine()` |
+| 文本工具 | `splitMessage()`、`splitCaption()`、`escapeMarkdownV2()`、`escapeHtml()`、`md`、`html`、`template()` |
+| 测试（`@xbibzlibrary/telebibz/testing`） | `MockTransport`、`createTestBot()`、`createMockUpdate()`、`createMockCallbackUpdate()`、`createMockContext()` |
+| CLI（`telebibz …`） | `init`、`doctor`、`build`、`test`、`start`、`webhook`、`generate` |
+
 ## API 目标与限制
 
 方法列表会在 schema 更新时根据 Telegram Bot API 文档生成。检测到的官方方法都可以运行时访问，而专门的参数/结果推断主要集中在 core method map。完整的 Telegram object、union、enum 和 method declaration 可通过 `TelegramTypes` 使用。有关实现状态请参见 [FEATURE_MATRIX.md](FEATURE_MATRIX.md)，完整 API 请参见 `docs/API.zh-CN.md`。
 
 ## 发布自动化
 
-GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，选择尚未使用的 patch version，创建 commit 和 tag，将 package 发布到 npmjs，然后创建 GitHub Release。由于 source repository 是 private，npmjs 发布使用 `--provenance=false`。如果以后创建了 scope 为 `xbibzlibrary` 的 GitHub organization，GitHub Packages 可以作为独立选项启用。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) 和 [GitHub Packages 指南](docs/GITHUB_PACKAGES.zh-CN.md)。
+GitHub repository 提供 CI 和自动发布 workflow。每次推送到 `main` 都会运行 quality gates，并从推送的 Conventional Commits 推导下一个版本：`feat:` 提交和破坏性变更在 package 处于 1.0 之前提升 minor（`BREAKING-CHANGE` footer 或 `type!:` 主题自 1.0.0 起提升 major），其余提升 patch。`package.json` 中已声明且高于 npm 的版本会按声明原样发布，workflow 绝不会发布低于或等于 npm 最新版的版本。workflow 会创建版本 commit 和 tag，发布到 npm（通过 `--provenance=false` 禁用 provenance），并创建 GitHub Release。包含 `[skip release]` 的提交不会触发发布。依赖自动发布前，请在 GitHub Actions 中配置 `NPM_TOKEN` secret。请参阅 [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) 和 [GitHub Packages 指南](docs/GITHUB_PACKAGES.zh-CN.md)。
 
 ## 项目 policy 和贡献
 

@@ -157,6 +157,18 @@ describe("incoming log rendering", () => {
     expect(entries).toHaveLength(0);
   });
 
+  it("silent level emits nothing, not even errors", () => {
+    const entries: LogEntry[] = [];
+    const logger = createLogger({ level: "silent", sink: (entry) => entries.push(entry) });
+    logger.error("boom", { code: 1 });
+    logger.warn("careful");
+    logger.info("hello");
+    logger.debug("detail");
+    logger.trace("noise");
+    logger.incoming(sample);
+    expect(entries).toHaveLength(0);
+  });
+
   it("formats local timestamps as dd/mm/yyyy hh:mm:ss", () => {
     expect(formatLocalStamp(new Date(2026, 7, 29, 15, 4, 5))).toBe("29/08/2026 15:04:05");
   });

@@ -18,5 +18,5 @@ export * from "./state/conversation.js";
 export * from "./state/forms.js";
 export * from "./state/menu.js";
 export * from "./telegram-features.js";
-export { buildTerminalBranding, printTerminalBranding } from "./branding/terminal.js";
+export { buildTerminalBranding, printTerminalBranding, printTeleBibzBanner, paintRainbow, printStatusLine, runStartupSequence, startTeleBibzBanner } from "./branding/terminal.js";
 export * from "./observability/logger.js";
