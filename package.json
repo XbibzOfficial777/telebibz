@@ -1,6 +1,6 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Telegram Bot framework for Node.js and TypeScript with a typed API client, routing, middleware, webhooks, keyboards, conversations, plugins, queues, and a polished terminal experience.",
   "keywords": [
     "telegram",
