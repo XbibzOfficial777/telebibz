@@ -12,6 +12,7 @@ export * from "./queue/queue.js";
 export * from "./plugins/plugin.js";
 export * from "./webhook/handler.js";
 export * from "./utils/text.js";
+export * from "./utils/files.js";
 export * from "./utils/concurrency.js";
 export * from "./broadcast/broadcast.js";
 export * from "./state/conversation.js";

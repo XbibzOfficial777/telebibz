@@ -274,6 +274,22 @@ deleteCommands(
 
 Jalan pintas ke `deleteMyCommands`.
 
+### `bot.downloadFile(fileId, options?)`
+
+```ts
+downloadFile(
+  fileId: string,
+  options?: { signal?: AbortSignal; destination?: string },
+): Promise<DownloadedFile>
+```
+
+Me-resolve `fileId` lewat `getFile`, lalu mengunduh byte mentahnya melalui endpoint download transport. Berikan `destination` untuk juga menyimpan byte ke path file lokal (`savedTo` terisi pada hasil). Melempar `TelegramError` (kind `validation`) saat Telegram tidak mengembalikan `file_path` atau transport tidak bisa mengunduh, dan `TelegramNetworkError` saat unduhan gagal. Telegram membatasi unduhan pada 20 MB; `url` hasilnya tetap valid minimal satu jam.
+
+```ts
+const file = await bot.downloadFile(photoFileId, { destination: "downloads/photo.jpg" });
+console.log(file.fileName, file.sizeBytes, file.url, file.savedTo);
+```
+
 ### `bot.handleUpdate(update)`
 
 ```ts
@@ -592,6 +608,37 @@ raw(
 ```
 
 Memanggil method string sembarang di transport. Gunakan ini untuk method Telegram atau parameter baru yang belum masuk `TelegramMethodMap`. Response `ok: false` tetap diubah menjadi `TelegramError`.
+
+### `api.downloadFile(fileId, options?)`
+
+```ts
+downloadFile(fileId: string, options?: { signal?: AbortSignal }): Promise<DownloadedFile>
+```
+
+Inti `bot.downloadFile` di level API client: me-resolve `getFile`, memvalidasi `file_path` tersedia, lalu mengunduh byte melalui transport.
+
+### `DownloadedFile`
+
+```ts
+interface DownloadedFile {
+  file: File;            // objek File Telegram dari getFile
+  bytes: Uint8Array;     // byte mentah file (maks 20 MB sesuai Telegram)
+  filePath: string;      // file_path yang dipakai untuk unduhan
+  url: string;           // URL unduhan langsung, valid minimal satu jam
+  fileName: string;      // segmen path terakhir dari filePath
+  sizeBytes: number;     // panjang byte
+  savedTo?: string;      // terisi saat Bot.downloadFile menyimpan file ke disk
+}
+```
+
+### `fetchTransport.fileUrl(filePath)` dan `fetchTransport.download(filePath, signal?)`
+
+```ts
+fileUrl(filePath: string): string
+download(filePath: string, signal?: AbortSignal): Promise<Uint8Array>
+```
+
+`FetchTransport` memetakan base URL `/bot<token>` ke endpoint download `/file/bot<token>`; `download` melakukan GET byte (batas bawah timeout 120 detik untuk file besar) dan melempar `TelegramNetworkError` saat HTTP gagal. Keduanya member opsional pada interface `Transport`, jadi transport kustom boleh menghilangkannya — `downloadFile` lalu gagal dengan error validasi yang jelas, bukan crash.
 
 ### Parameter dan hasil bertipe yang tersedia
 
@@ -1498,6 +1545,27 @@ template("Halo {{ user.name }}", { user: { name: "Ayu" } });
 
 ---
 
+### `validateUpload(upload, rules)`
+
+```ts
+validateUpload(upload: UploadLike, rules: UploadRules): UploadValidationIssue[]
+```
+
+Memvalidasi unggahan sebelum dikirim: `maxBytes` (batas ukuran), `allowedMimeTypes` (persis atau wildcard seperti `image/*`), dan `allowedExtensions` (case-insensitive, dengan atau tanpa titik awal). Mengembalikan semua pelanggaran yang ditemukan — array kosong berarti unggahan diterima.
+
+### `assertValidUpload(upload, rules)`
+
+Aturan yang sama, tetapi melempar `UploadValidationError` (dengan seluruh `issues` terlampir) alih-alih mengembalikannya.
+
+```ts
+import { assertValidUpload } from "@xbibzlibrary/telebibz";
+
+assertValidUpload(
+  { sizeBytes: fileBytes.length, mimeType: "image/png", fileName: "logo.png" },
+  { maxBytes: 5_000_000, allowedMimeTypes: ["image/png", "image/jpeg"], allowedExtensions: [".png", ".jpg"] },
+);
+```
+
 ## 14. Testing utilities
 
 Import dari `@xbibzlibrary/telebibz/testing` atau root package.
@@ -1523,6 +1591,8 @@ const transport = new MockTransport()
     result: { id: 1, is_bot: true, first_name: "Test" },
   });
 ```
+
+`MockTransport` juga mengimplementasikan member download opsional: `download(filePath)` mencatat path ke `downloads` dan mengembalikan `downloadBytes` (default: encoding UTF-8 dari path), serta `fileUrl(filePath)` mengembalikan `mock://files/<filePath>` — sehingga `bot.downloadFile()` sepenuhnya bisa dites tanpa jaringan.
 
 ### `createMockUpdate(overrides?)`
 

@@ -17,6 +17,8 @@ Complete API references: [English](docs/API.md) · [Indonesia](docs/API.id.md) �
 
 GitHub Packages guide: [English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
 
+Storage quick start (Memory/JSON/Redis/SQL/Mongo): [English](docs/STORAGE.md) · [Bahasa Indonesia](docs/STORAGE.id.md) · [简体中文](docs/STORAGE.zh-CN.md)
+
 Getting started: [English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
 
 Community showcase: [SHOWCASE.md](SHOWCASE.md)
@@ -249,9 +251,9 @@ Everything below ships from the package entry point unless a subpath is given. F
 
 | Area | Exports |
 |---|---|
-| Bot & lifecycle | `Bot` with `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`; `UpdateTimeoutError` |
+| Bot & lifecycle | `Bot` with `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`, `downloadFile`; `UpdateTimeoutError` |
 | Context | `Context`, `ContextOptions`, `contextType` launch option; ~80 shortcuts on `ctx` for replies, admin actions, chat management, invite links, polls, games, payments, and forum topics |
-| Telegram API | `ApiClient` with `call()`, `request()`, `raw()`, and `methods` (all generated Bot API methods); `FetchTransport` with automatic 429/5xx retries and a global flood gate |
+| Telegram API | `ApiClient` with `call()`, `request()`, `raw()`, `downloadFile()`, and `methods` (all generated Bot API methods); `FetchTransport` with automatic 429/5xx retries, a global flood gate, multipart uploads (Blob/bytes/path/streams), and file downloads |
 | Errors | `TelegramError` with a `kind` taxonomy (`retryable`, `rate-limit`, `authentication`, `validation`, `network`, `server`, `unknown`) and `retryAfter`, plus `TelegramRateLimitError`, `TelegramAuthError`, `TelegramValidationError`, `TelegramNetworkError` |
 | Router & middleware | `Router`, `compose`, 24 update filters (`message:photo`, `callback_query:data`, …), `matchMode` (`first`/`all`) |
 | Keyboards | `InlineKeyboard`, `ReplyKeyboard`, `removeKeyboard()`, `forceReply()` |
@@ -264,7 +266,8 @@ Everything below ships from the package entry point unless a subpath is given. F
 | Observability | `Logger` (levels, redaction, JSON format), `EventBus` with the `update:*`, `bot:*`, and `broadcast:*` event maps, `redact()` |
 | Terminal | `printTeleBibzBanner()`, `printTerminalBranding()`, `buildTerminalBranding()`, `runStartupSequence()`, `startTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()` |
 | Text utilities | `splitMessage()`, `splitCaption()`, `escapeMarkdownV2()`, `escapeHtml()`, `md`, `html`, `template()` |
-| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport`, `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
+| File utilities | `validateUpload()`, `assertValidUpload()`, `UploadValidationError` (size, MIME, extension rules) |
+| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport` (with mock downloads), `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
 | CLI (`telebibz …`) | `init`, `doctor`, `build`, `test`, `start`, `webhook`, `generate` |
 
 ## API targets and limitations
