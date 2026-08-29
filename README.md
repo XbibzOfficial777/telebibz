@@ -7,7 +7,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![Node.js](https://img.shields.io/node/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 
-**`@xbibzlibrary/telebibz`** is a full-scale Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
+**`@xbibzlibrary/telebibz`** is a Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
 
 ## Documentation languages
 
@@ -29,7 +29,7 @@ Community showcase: [SHOWCASE.md](SHOWCASE.md)
 npm install @xbibzlibrary/telebibz
 ```
 
-Node.js **20 or newer** is required.
+Node.js **22 or newer** is required.
 
 ## Minimal bot
 
@@ -69,9 +69,13 @@ bot.use(async (ctx, next) => {
 bot.command("help", async (ctx) => { await ctx.reply("Help is available."); });
 bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order received."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Opened."); });
+bot.on("message:photo", async (ctx) => { await ctx.reply("Nice photo."); });
+bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Got it."); });
+bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
+bot.catch(async (error, ctx) => { await ctx.reply("Something went wrong."); });
 ```
 
-The router supports commands, exact text, regular expressions, callback patterns, custom predicates, nested routers, per-route middleware, and route priority.
+The router supports commands, exact text, regular expressions, callback patterns, update-type filters (`on`), custom predicates, nested routers, per-route middleware, and route priority. `bot.catch()` registers an error boundary: handler failures are routed there instead of rejecting the update.
 
 ## Telegram API
 
@@ -103,7 +107,7 @@ Builders produce native Telegram keyboard payloads. HTML/CSS interfaces require 
 
 ## Colorful runtime logging
 
-Runtime logging is enabled by default. The CLI prints a colored boxed attribution, an animated startup status on TTY terminals, and compact structured lines for lifecycle, API, polling, webhook, and update events. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
+The logger emits compact, readable terminal lines with colored levels and structured context. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted; errors print in red with the full stack. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
 
 ```ts
 const bot = new Bot({
@@ -150,9 +154,24 @@ const handler = createWebhookHandler(bot, {
 
 The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
 
+## Terminal experience
+
+When the bot starts on an interactive terminal (`npm start`, `node index.js`, `telebibz start`), telebibz plays a startup sequence: a typing effect for `Installing Dependencies......`, a glass progress bar with a sweeping highlight, and the animated rainbow ASCII banner **Tele Bibz** (figlet `Speed` font) that keeps flowing until the bot connects, then freezes with `✓ Connected as @<username>`.
+
+Afterwards, every incoming update is logged on a human-readable line, and errors are printed in red with the full stack:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Message and command text is truncated to 50 characters; callback button data is shown in full. Pass `branding: false` to `Bot` to disable the sequence, or set `logger.format: "json"` for structured log ingestion. Non-interactive stdout (pipes, Docker, CI) automatically falls back to plain output without animations.
+
 ## CLI
 
-Every `telebibz` CLI command starts with a colored Unicode branding box containing `Library Bot Telegram By @xbibzofficial`. Startup animation automatically falls back to clean static output when stdout is not a TTY.
+CLI commands such as `telebibz doctor`, `init`, and `webhook` start with the rainbow `Tele Bibz` banner. Startup animation automatically falls back to clean static output when stdout is not a TTY.
 
 ```bash
 npm start
@@ -165,8 +184,9 @@ npx telebibz test
 Applications can print the same terminal branding explicitly:
 
 ```ts
-import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+import { printTeleBibzBanner, printTerminalBranding } from "@xbibzlibrary/telebibz";
 
+printTeleBibzBanner({ subtitle: "My bot" });
 printTerminalBranding();
 ```
 

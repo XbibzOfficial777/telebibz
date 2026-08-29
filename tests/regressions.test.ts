@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Router } from "../src/router/router.js";
 import { ConversationManager } from "../src/state/conversation.js";
 import { EventBus } from "../src/core/events.js";
+import { Bot } from "../src/core/bot.js";
+import type { Transport, TransportRequest, TransportResponse } from "../src/api/transport.js";
+import type { TelegramResponse } from "../src/api/types.js";
+import { webhookCallback } from "../src/webhook/handler.js";
 import { createMockCallbackUpdate, createMockUpdate, createMockContext, createTestBot } from "../src/testing.js";
 
 describe("callback context regressions", () => {
@@ -210,5 +214,75 @@ describe("context enhancements and text formatting regressions", () => {
     if (first.success) expect(first.data.username).toBe("alice");
 
     expect(second.success).toBe(false);
+  });
+});
+
+describe("polling request lifecycle", () => {
+  class HangingPollingTransport implements Transport {
+    calls: TransportRequest[] = [];
+    async request<T>(request: TransportRequest): Promise<TransportResponse<T>> {
+      this.calls.push(request);
+      if (request.method === "getMe") {
+        return { status: 200, headers: new Headers(), data: { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } } as TelegramResponse<T> };
+      }
+      return new Promise((_resolve, reject) => {
+        request.signal?.addEventListener("abort", () => reject(request.signal?.reason ?? new Error("aborted")), { once: true });
+      });
+    }
+  }
+
+  it("long-polls with a timeout buffer above the polling timeout and an abort signal", async () => {
+    const transport = new HangingPollingTransport();
+    const bot = new Bot({ token: "123456:TEST_TOKEN", transport });
+    const launchPromise = bot.launch({ mode: "polling", timeout: 25 });
+    await vi.waitFor(() => expect(transport.calls.filter((call) => call.method === "getUpdates")).toHaveLength(1));
+
+    const getUpdates = transport.calls.find((call) => call.method === "getUpdates");
+    expect(getUpdates?.signal).toBeInstanceOf(AbortSignal);
+    expect(getUpdates?.timeoutMs).toBe(35_000);
+
+    await bot.stop();
+    await launchPromise;
+    expect(bot.status).toBe("stopped");
+  });
+
+  it("resolves launch promptly when stopping mid long-poll instead of waiting for the full timeout", async () => {
+    const transport = new HangingPollingTransport();
+    const bot = new Bot({ token: "123456:TEST_TOKEN", transport });
+    const launchPromise = bot.launch({ mode: "polling", timeout: 30 });
+    await vi.waitFor(() => expect(transport.calls.filter((call) => call.method === "getUpdates")).toHaveLength(1));
+
+    const stoppedAt = Date.now();
+    await bot.stop();
+    await launchPromise;
+    expect(bot.status).toBe("stopped");
+    expect(Date.now() - stoppedAt).toBeLessThan(2_000);
+  });
+});
+
+describe("webhookCallback framework adapters", () => {
+  it("responds through koa-style context objects", async () => {
+    const { bot } = createTestBot();
+    const callback = webhookCallback(bot, "koa");
+    const koaContext: Record<string, unknown> = {};
+    const request = new Request("https://example.test", { method: "POST", body: JSON.stringify(createMockUpdate()), headers: { "content-type": "application/json" } });
+    await callback(request as never, koaContext);
+    expect(koaContext.status).toBe(200);
+    expect(koaContext.body).toBe("OK");
+  });
+
+  it("reads the secret token header from fetch Request headers", async () => {
+    const { bot } = createTestBot();
+    const callback = webhookCallback(bot, "http", { secretToken: "secret" });
+    const koaContext: Record<string, unknown> = {};
+
+    const missing = new Request("https://example.test", { method: "POST", body: JSON.stringify(createMockUpdate()), headers: { "content-type": "application/json" } });
+    await callback(missing as never, koaContext);
+    expect(koaContext.status).toBe(401);
+
+    const valid = new Request("https://example.test", { method: "POST", body: JSON.stringify(createMockUpdate()), headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": "secret" } });
+    await callback(valid as never, koaContext);
+    expect(koaContext.status).toBe(200);
+    expect(koaContext.body).toBe("OK");
   });
 });

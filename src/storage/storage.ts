@@ -22,7 +22,6 @@ function expiration(ttlMs: number | undefined): number | undefined {
   if (!Number.isFinite(ttlMs) || ttlMs < 0) throw new RangeError("ttlMs must be a finite non-negative number");
   return Date.now() + ttlMs;
 }
-
 export class MemoryStorage<K, V> implements Storage<K, V> {
   private readonly valuesMap = new Map<K, Entry<V>>();
   private readonly locks = new Map<K, Promise<void>>();
@@ -32,6 +31,17 @@ export class MemoryStorage<K, V> implements Storage<K, V> {
     if (!entry) return undefined;
     if (entry.expiresAt !== undefined && entry.expiresAt <= Date.now()) { this.valuesMap.delete(key); return undefined; }
     return entry.value;
+  }
+
+  /**
+   * Reads the raw entry including expiry metadata. Intended for storage adapters
+   * (such as `JsonFileStorage`) that need to persist TTL information across restarts.
+   */
+  async readEntry(key: K): Promise<Entry<V> | undefined> {
+    const entry = this.valuesMap.get(key);
+    if (!entry) return undefined;
+    if (entry.expiresAt !== undefined && entry.expiresAt <= Date.now()) { this.valuesMap.delete(key); return undefined; }
+    return entry.expiresAt === undefined ? { value: entry.value } : { value: entry.value, expiresAt: entry.expiresAt };
   }
 
   async set(key: K, value: V, options: StorageOptions = {}): Promise<void> {
@@ -87,7 +97,11 @@ export class JsonFileStorage<V> implements Storage<string, V> {
     await this.ready;
     this.writeChain = this.writeChain.then(async () => {
       const output: Record<string, Entry<V>> = {};
-      for await (const [key, value] of this.memory.entries()) output[key] = { value };
+      for await (const key of this.memory.keys()) {
+        const entry = await this.memory.readEntry(key);
+        if (entry === undefined) continue;
+        output[key] = entry.expiresAt === undefined ? { value: entry.value } : { value: entry.value, expiresAt: entry.expiresAt };
+      }
       await mkdir(dirname(this.filePath), { recursive: true });
       const temporary = `${this.filePath}.${process.pid}.tmp`;
       await writeFile(temporary, JSON.stringify(output, null, 2), "utf8");

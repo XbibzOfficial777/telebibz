@@ -10,7 +10,7 @@ Check existing issues and pull requests before opening a new one. For a defect, 
 
 ## Local setup
 
-The project requires Node.js `>=20` and uses npm for release-compatible commands. Install dependencies and run the baseline checks:
+The project requires Node.js `>=22` and uses npm for release-compatible commands. Install dependencies and run the baseline checks:
 
 ```bash
 npm ci
@@ -32,7 +32,7 @@ Create a focused branch from `main`. Keep unrelated refactors out of a feature o
 
 ## Implementation expectations
 
-Public behavior must be implemented in TypeScript with strict typing. Do not add fake responses, silent stubs, undocumented breaking behavior, or untested branches. Preserve ESM and CommonJS builds, zero runtime vendor dependencies in the core package, Node.js `>=20` compatibility, and the existing package export map.
+Public behavior must be implemented in TypeScript with strict typing. Do not add fake responses, silent stubs, undocumented breaking behavior, or untested branches. Preserve ESM and CommonJS builds, zero runtime vendor dependencies in the core package, Node.js `>=22` compatibility, and the existing package export map.
 
 Changes to routing, context, lifecycle, transport, storage, queue, scheduler, approval, generated API declarations, or release automation require regression tests. Changes to a public function, class, method, option, error, event, or generated method require a corresponding API documentation update. Changes to examples require `npm run test:examples` and must use placeholders instead of credentials. Changes that affect package contents must pass `release:check` and `npm pack --dry-run`.
 

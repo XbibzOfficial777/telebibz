@@ -27,7 +27,7 @@ Showcase komunitas: [SHOWCASE.md](SHOWCASE.md)
 npm install @xbibzlibrary/telebibz
 ```
 
-Node.js **20 atau lebih baru** diperlukan.
+Node.js **22 atau lebih baru** diperlukan.
 
 ## Bot sederhana
 
@@ -67,9 +67,13 @@ bot.use(async (ctx, next) => {
 bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
 bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
+bot.on("message:photo", async (ctx) => { await ctx.reply("Foto yang bagus."); });
+bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Diterima."); });
+bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
+bot.catch(async (error, ctx) => { await ctx.reply("Terjadi kesalahan."); });
 ```
 
-Router mendukung command, text, regex, pola callback, predikat kustom, router bersarang, middleware per rute, dan prioritas rute.
+Router mendukung command, text, regex, pola callback, filter tipe update (`on`), predikat kustom, router bersarang, middleware per rute, dan prioritas rute. `bot.catch()` mendaftarkan error boundary: kegagalan handler diarahkan ke sana alih-alih menolak update.
 
 ## Telegram API
 
@@ -103,7 +107,7 @@ Builder hanya menghasilkan payload keyboard native Telegram. UI HTML/CSS memerlu
 
 ## Startup dan log terminal
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+Logger mengeluarkan baris terminal yang ringkas dan mudah dibaca dengan level berwarna serta konteks terstruktur. Level log: `silent`, `error`, `warn`, `info`, `debug`, dan `trace`; nilai sensitif di-redact; error dicetak merah lengkap dengan stack. Gunakan `format: "json"` untuk log terstruktur, dan `includeUpdateContent: true` hanya bila teks pesan atau data callback memang diperlukan.
 
 ## Webhook
 
@@ -122,9 +126,24 @@ const handler = createWebhookHandler(bot, {
 
 Paket menyediakan `MemoryStorage` dengan TTL dan pembaruan atomik, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, session bot, conversation dan form berbasis Storage, menu berbasis permission, pagination `MenuController`, `MemoryCache`, token-bucket limiter, task queue dengan retry/backoff/concurrency/delay/cancel, serta scheduler interval, one-shot, dan cron lima field lengkap. Adapter Redis, SQL, dan Mongo memakai driver kecil sehingga core package tetap tanpa runtime dependency vendor.
 
+## Pengalaman terminal
+
+Saat bot dinyalakan di terminal interaktif (`npm start`, `node index.js`, `telebibz start`), telebibz memainkan urutan startup: efek ketik `Installing Dependencies......`, glass progress bar dengan kilau menyapu, dan banner ASCII rainbow animasi **Tele Bibz** (font figlet `Speed`) yang terus mengalir sampai bot terhubung, lalu diam dengan `✓ Connected as @<username>`.
+
+Setelah itu, setiap update yang masuk ditampilkan dalam baris log yang mudah dibaca, dan error otomatis berwarna merah lengkap dengan stack-nya:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Teks pesan/command biasa dibatasi 50 karakter; data tombol callback ditampilkan penuh. Matikan dengan `branding: false` pada `Bot`, atau pakai `logger.format: "json"` untuk log terstruktur. Output non-interaktif (pipe, Docker, CI) otomatis fallback ke teks polos tanpa animasi.
+
 ## CLI
 
-Setiap command `telebibz` menampilkan kotak branding Unicode berwarna dengan tulisan `Library Bot Telegram By @xbibzofficial`. CLI tidak mencetak target developer.
+Command CLI seperti `telebibz doctor`, `init`, dan `webhook` diawali banner rainbow `Tele Bibz`. Animasi startup otomatis fallback ke output statis bersih saat stdout bukan TTY.
 
 ```bash
 npx telebibz init my-bot
@@ -136,8 +155,9 @@ npx telebibz test
 Branding terminal juga dapat dicetak dari aplikasi:
 
 ```ts
-import { printTerminalBranding } from "@xbibzlibrary/telebibz";
+import { printTeleBibzBanner, printTerminalBranding } from "@xbibzlibrary/telebibz";
 
+printTeleBibzBanner({ subtitle: "Bot saya" });
 printTerminalBranding();
 ```
 

@@ -2,12 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(new URL("..", import.meta.url).pathname);
-const candidates = [
-  path.join(root, "schema", "telegram-api.md"),
-  "/home/ubuntu/upload/core.telegram.org_bots_api_1787126043839.md"
-];
-const source = candidates.find((file) => fs.existsSync(file));
-if (!source) {
+const source = path.join(root, "schema", "telegram-api.md");
+if (!fs.existsSync(source)) {
   throw new Error("Telegram API documentation not found. Run npm run update:telegram first.");
 }
 const markdown = fs.readFileSync(source, "utf8");

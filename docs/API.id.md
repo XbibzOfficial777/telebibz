@@ -68,6 +68,7 @@ type BotStatus =
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, dan fetch implementation. |
 | `session` | `Storage<string, S>` | storage baru | Penyimpanan session berdasarkan kunci chat/user; dapat memakai adapter persistent. |
 | `services` | `Record<string, unknown>` | `{}` | Dependency/service yang tersedia melalui `ctx.services`. |
+| `branding` | `boolean` | `true` | Pengalaman startup terminal: efek ketik, glass progress bar, banner rainbow animasi `Tele Bibz`, dan baris update yang mudah dibaca. Hanya dirender pada TTY interaktif. |
 | `polling.timeout` | `number` | `30` | Long-poll timeout dalam detik untuk `getUpdates`. |
 | `polling.limit` | `number` | `100` | Jumlah maksimum update per request polling. |
 | `polling.allowedUpdates` | `string[]` | `[]` | Filter update Telegram. |
@@ -139,6 +140,30 @@ onRegex(expression: RegExp, handler: Middleware<Context<S>>): this
 ```
 
 Menangani message text menggunakan `RegExp`. Parameter route tidak diekstrak otomatis ke `ctx.params`; gunakan predicate atau middleware custom jika memerlukan ekstraksi.
+
+### `bot.on(filter, handler)`
+
+```ts
+on(filter: UpdateFilter | UpdateFilter[], handler: Middleware<Context<S>>): this
+```
+
+Mendaftarkan handler untuk tipe update, opsional dipersempit dengan field payload. Contoh: `"message"`, `"message:text"`, `"message:photo"`, `"edited_message"`, `"channel_post"`, `"callback_query"`, `"callback_query:data"`, `"inline_query"`, `"chat_member"`, `"message_reaction"`, atau array seperti `["message:text", "callback_query:data"]`. Tipe update tidak valid melempar `TypeError` saat registrasi.
+
+### `bot.hears(trigger, handler)`
+
+```ts
+hears(trigger: string | RegExp, handler: Middleware<Context<S>>): this
+```
+
+Menangani message text yang sama persis (string) atau yang cocok dengan `RegExp`.
+
+### `bot.catch(handler)`
+
+```ts
+catch(handler: (error: unknown, ctx: Context<S>) => void | Promise<void>): this
+```
+
+Mendaftarkan error boundary untuk handler update. Jika dipasang, kegagalan handler dicatat, dipancarkan sebagai `update:error`/`bot:error`, dan diteruskan ke handler ini alih-alih menolak `handleUpdate()` — webhook menjawab `200` dan polling berlanjut. Tanpa boundary, error dilempar ulang.
 
 ### `bot.usePlugin(plugin)`
 
@@ -633,6 +658,22 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 | `send` | `send(text, extra?): Promise<Message>` | Mengirim message ke chat update tanpa reply reference. |
 | `edit` | `edit(text, extra?): Promise<Message \| true>` | Mengedit message update menggunakan `editMessageText`. |
 | `delete` | `delete(): Promise<true>` | Menghapus message update. |
+| `replyWithHTML` | `replyWithHTML(text, extra?): Promise<Message>` | Membalas dengan `parse_mode: "HTML"`. |
+| `replyWithMarkdown` | `replyWithMarkdown(text, extra?): Promise<Message>` | Membalas dengan `parse_mode: "MarkdownV2"`. |
+| `replyWithPhoto` | `replyWithPhoto(photo, extra?): Promise<Message>` | Mengirim `sendPhoto` dengan quote-reply otomatis. |
+| `replyWithDocument` | `replyWithDocument(document, extra?): Promise<Message>` | Mengirim `sendDocument` dengan quote-reply otomatis. |
+| `replyWithAudio` | `replyWithAudio(audio, extra?): Promise<Message>` | Mengirim `sendAudio` dengan quote-reply otomatis. |
+| `replyWithVideo` | `replyWithVideo(video, extra?): Promise<Message>` | Mengirim `sendVideo` dengan quote-reply otomatis. |
+| `replyWithVoice` | `replyWithVoice(voice, extra?): Promise<Message>` | Mengirim `sendVoice` dengan quote-reply otomatis. |
+| `replyWithAnimation` | `replyWithAnimation(animation, extra?): Promise<Message>` | Mengirim `sendAnimation` dengan quote-reply otomatis. |
+| `replyWithVideoNote` | `replyWithVideoNote(videoNote, extra?): Promise<Message>` | Mengirim `sendVideoNote` dengan quote-reply otomatis. |
+| `replyWithSticker` | `replyWithSticker(sticker, extra?): Promise<Message>` | Mengirim `sendSticker` dengan quote-reply otomatis. |
+| `replyWithMediaGroup` | `replyWithMediaGroup(media, extra?): Promise<Message[]>` | Mengirim album via `sendMediaGroup` dengan quote-reply otomatis. |
+| `replyWithLocation` | `replyWithLocation(latitude, longitude, extra?): Promise<Message>` | Mengirim `sendLocation` dengan quote-reply otomatis. |
+| `replyWithVenue` | `replyWithVenue(latitude, longitude, title, address, extra?): Promise<Message>` | Mengirim `sendVenue` dengan quote-reply otomatis. |
+| `replyWithContact` | `replyWithContact(phoneNumber, firstName, extra?): Promise<Message>` | Mengirim `sendContact` dengan quote-reply otomatis. |
+| `replyWithPoll` | `replyWithPoll(question, options, extra?): Promise<Message>` | Mengirim `sendPoll` dengan quote-reply otomatis. |
+| `replyWithDice` | `replyWithDice(emoji?, extra?): Promise<Message>` | Mengirim `sendDice` dengan quote-reply otomatis. |
 | `copy` | `copy(fromChatId, messageId, extra?): Promise<unknown>` | Memanggil `copyMessage` ke chat context. |
 | `forward` | `forward(fromChatId, messageId, extra?): Promise<Message>` | Memanggil `forwardMessage` ke chat context. |
 | `pin` | `pin(messageId?, extra?): Promise<true>` | Memanggil `pinChatMessage`, default message id dari context. |
@@ -645,7 +686,7 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 | `getFile` | `getFile(fileId): Promise<unknown>` | Mengambil file berdasarkan id. |
 | `withReplyMarkup` | `withReplyMarkup(markup): this` | Menyimpan markup di `ctx.state.reply_markup` dan mengembalikan context. Metode ini tidak otomatis mengirim message. |
 
-`reply`, `send`, `getChat`, dan beberapa helper lain melempar error ketika update tidak memiliki chat yang diperlukan. `edit` dan `delete` membutuhkan chat serta message.
+Semua pengirim `replyWith*` menerima parameter native Telegram sebagai `extra` dan otomatis me-quote message yang masuk. `reply_parameters` pada `extra` digabung dengan `message_id` otomatis, bukan menggantikannya. `reply`, `send`, `getChat`, dan beberapa helper lain melempar error ketika update tidak memiliki chat yang diperlukan. `edit` dan `delete` membutuhkan chat serta message.
 
 ---
 
@@ -1263,7 +1304,20 @@ new Menu(id: string): Menu
 
 ## 12. Logging Terminal
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+Saat stdout adalah TTY interaktif, setiap `bot.start()` / `bot.launch()` memainkan urutan startup: efek ketik `Installing Dependencies......`, glass progress bar dengan kilau menyapu, dan banner ASCII rainbow animasi `Tele Bibz` (font figlet `Speed`) yang terus mengalir sampai bot terhubung, lalu diam dengan `✓ Connected as @<username>`.
+
+Setiap update yang ditangani bot dicatat dalam baris yang mudah dibaca:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Teks pesan/command dibatasi 50 karakter; data tombol callback ditampilkan penuh. Error dicetak merah lengkap dengan stack. Nonaktifkan dengan `branding: false` pada `Bot`, atau set `logger.format: "json"` untuk log terstruktur — pada mode itu update masuk dikeluarkan sebagai entry `update.received`. Stdout non-interaktif (pipe, Docker, CI) otomatis fallback ke teks polos tanpa animasi.
+
+Helper branding tambahan yang diekspor untuk aplikasi: `runStartupSequence()`, `startTeleBibzBanner()`, `printTeleBibzBanner()`, `paintRainbow()`, dan `printStatusLine()`.
 
 ## 13. Utilitas Teks
 
@@ -1691,7 +1745,7 @@ Package memvendorkan declaration Telegram berlisensi MIT dan mengeksposnya sebag
 
 ## 19. Kompatibilitas dan batasan yang perlu diketahui
 
-Perpustakaan menargetkan Node.js `>=20`, menggunakan ESM sebagai module utama, serta menyediakan build CommonJS. Webhook membutuhkan runtime yang menyediakan Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, dan `AbortController`; Node.js modern menyediakannya secara native.
+Perpustakaan menargetkan Node.js `>=22`, menggunakan ESM sebagai module utama, serta menyediakan build CommonJS. Webhook membutuhkan runtime yang menyediakan Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, dan `AbortController`; Node.js modern menyediakannya secara native.
 
 Daftar method yang dihasilkan API dan peta method API bukanlah hal yang sama. `TelegramMethodName` mencakup 184 nama runtime, tetapi `TelegramMethodMap` hanya memiliki parameter/hasil yang bertipe khusus untuk subset yang tercantum pada bagian API client. Untuk method lain, gunakan `api.raw()` atau tambahkan deklarasi tipe di sisi aplikasi.
 

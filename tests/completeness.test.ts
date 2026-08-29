@@ -28,6 +28,24 @@ describe("persistent storage adapters", () => {
     expect((await readFile(path, "utf8"))).toContain('"count": 1');
   });
 
+  it("persists TTL expiry metadata so expiring values do not become permanent after restart", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "telebibz-storage-"));
+    temporaryDirectories.push(directory);
+    const path = join(directory, "state.json");
+    const before = Date.now();
+    const storage = new JsonFileStorage<{ value: string }>(path);
+    await storage.set("ephemeral", { value: "a" }, { ttlMs: 3_600_000 });
+    await storage.set("permanent", { value: "b" });
+
+    const persisted = JSON.parse(await readFile(path, "utf8")) as Record<string, { value: { value: string }; expiresAt?: number }>;
+    expect(persisted.ephemeral?.expiresAt).toBeGreaterThan(before + 3_000_000);
+    expect(persisted.permanent?.expiresAt).toBeUndefined();
+
+    const reloaded = new JsonFileStorage<{ value: string }>(path);
+    await expect(reloaded.get("ephemeral")).resolves.toEqual({ value: "a" });
+    await expect(reloaded.get("permanent")).resolves.toEqual({ value: "b" });
+  });
+
   it("supports Redis, SQL, and Mongo driver contracts without vendor dependencies", async () => {
     const redisMap = new Map<string, string>();
     const redis = new RedisStorage<{ value: number }>({

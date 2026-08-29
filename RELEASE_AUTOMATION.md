@@ -8,16 +8,28 @@ Setiap push ke branch `main` menjalankan workflow `.github/workflows/auto-publis
 
 | Tahap | Perilaku |
 |---|---|
-| Checkout | Mengambil seluruh history agar tag dapat dibuat dengan benar. |
+| Checkout | Mengambil seluruh history beserta tag (`fetch-depth: 0` + `fetch-tags: true`) agar analisis commit dan pembuatan tag akurat. |
 | Install | Menjalankan `npm ci --ignore-scripts`. |
-| Version | Membaca versi dari `package.json`, membaca versi latest npm, lalu memilih patch version berikutnya yang lebih tinggi dari keduanya. |
+| Version | Membaca versi `package.json`, versi latest npm, dan commit sejak tag release terakhir, lalu memilih versi berikutnya (lihat aturan di bawah). |
 | Verification | Menjalankan typecheck, type-level tests, lint, runtime tests, build ESM/CommonJS, security audit, dan release check. |
 | Immutable guard | Menolak publish jika versi target sudah ada di npmjs. |
-| Git sync | Commit otomatis `chore(release): vX.Y.Z [skip release]`, membuat annotated tag `vX.Y.Z`, lalu push commit dan tag ke GitHub. |
+| Git sync | Commit otomatis `chore(release): vX.Y.Z [skip release]` (dilewati bila `package.json` sudah berada di versi target), membuat annotated tag `vX.Y.Z`, lalu push commit dan tag ke GitHub. |
 | npmjs publish | Menerbitkan package public menggunakan `NPM_TOKEN`; provenance dinonaktifkan karena npm menolak provenance dari source repository private. |
 | GitHub Release | Membuat GitHub Release dengan generated notes. |
 
 Push commit version otomatis tidak memicu release kedua karena mengandung `[skip release]`. Workflow menggunakan concurrency sehingga release berjalan satu per satu.
+
+## Aturan penomoran versi
+
+Versi berikutnya dihitung dari `max(package.json, npm latest)` dengan bump berdasarkan Conventional Commits sejak tag release terakhir:
+
+| Commit sejak tag terakhir | 0.x | >=1.0.0 |
+|---|---|---|
+| `BREAKING CHANGE:` atau `feat!:` / `fix!:` | minor (`0.1.19` → `0.2.0`) | major (`1.2.3` → `2.0.0`) |
+| `feat:` / `feat(scope):` | minor | minor |
+| lainnya (`fix:`, `docs:`, `chore:`, …) | patch | patch |
+
+Jika `package.json` sudah dideklarasikan lebih tinggi daripada versi npm (misalnya dipersiapkan manual untuk `0.2.0`), workflow memakai versi tersebut apa adanya. Hasil perhitungan tidak pernah boleh lebih rendah daripada versi npm yang sudah terbit; jika demikian, workflow gagal dengan pesan yang jelas.
 
 ## Secret dan permission yang wajib tersedia
 
@@ -33,9 +45,9 @@ Jangan menyimpan token di repository, `.npmrc`, source code, issue, commit, atau
 
 ## Aturan penggunaan
 
-Perubahan source biasa dapat dipush ke `main`; workflow akan menghasilkan patch release baru setelah seluruh quality gates lulus. Karena versi npm immutable, workflow tidak pernah menimpa versi yang telah ada.
+Perubahan source biasa dapat dipush ke `main`; workflow menghitung versi baru berdasarkan Conventional Commits (`feat:` → minor, `fix:`/lainnya → patch, `feat!:`/`BREAKING CHANGE:` → minor pada 0.x / major pada 1.x) setelah seluruh quality gates lulus. Karena versi npm immutable, workflow tidak pernah menimpa versi yang telah ada.
 
-Untuk perubahan besar, ubah `package.json` ke major/minor version yang diinginkan sebelum push. Workflow tetap memastikan hasil akhir lebih tinggi daripada versi npm yang sudah terbit, lalu menaikkan patch dari versi tertinggi tersebut.
+Untuk rilis yang dipersiapkan secara eksplisit (misalnya `0.2.0` atau `1.0.0`), deklarasikan versi tersebut langsung di `package.json` sebelum push; workflow akan memakainya apa adanya selama lebih tinggi daripada versi npm yang sudah terbit.
 
 Untuk perubahan dokumentasi atau perubahan internal yang tidak boleh menerbitkan npm, gunakan commit message yang memuat marker berikut:
 

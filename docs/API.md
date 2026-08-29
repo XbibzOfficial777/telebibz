@@ -67,6 +67,7 @@ type BotStatus =
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | Timeout, retry, backoff, jitter, headers, and fetch implementation. |
 | `session` | `Storage<string, S>` | new storage | Session storage keyed by chat/user; any storage adapter may be used. |
 | `services` | `Record<string, unknown>` | `{}` | Dependencies/services available via `ctx.services`. |
+| `branding` | `boolean` | `true` | Terminal startup experience: typing effect, glass progress bar, animated rainbow "Tele Bibz" banner, and human-readable update lines. Only renders on an interactive TTY. |
 | `polling.timeout` | `number` | `30` | Long-poll timeout in seconds for `getUpdates`. |
 | `polling.limit` | `number` | `100` | Maximum number of updates per polling request. |
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram update filters. |
@@ -138,6 +139,30 @@ onRegex(expression: RegExp, handler: Middleware<Context<S>>): this
 ```
 
 Handles message text using a `RegExp`. Route parameters are not automatically extracted into `ctx.params`; use a predicate or custom middleware if extraction is needed.
+
+### `bot.on(filter, handler)`
+
+```ts
+on(filter: UpdateFilter | UpdateFilter[], handler: Middleware<Context<S>>): this
+```
+
+Registers a handler for update types, optionally narrowed by a payload field. Examples: `"message"`, `"message:text"`, `"message:photo"`, `"edited_message"`, `"channel_post"`, `"callback_query"`, `"callback_query:data"`, `"inline_query"`, `"chat_member"`, `"message_reaction"`, or an array such as `["message:text", "callback_query:data"]`. Invalid update types throw a `TypeError` at registration time.
+
+### `bot.hears(trigger, handler)`
+
+```ts
+hears(trigger: string | RegExp, handler: Middleware<Context<S>>): this
+```
+
+Handles exact message text (string) or message text matching a `RegExp`.
+
+### `bot.catch(handler)`
+
+```ts
+catch(handler: (error: unknown, ctx: Context<S>) => void | Promise<void>): this
+```
+
+Registers the error boundary for update handlers. When set, a handler failure is logged, emitted as `update:error`/`bot:error`, and passed to this handler instead of rejecting `handleUpdate()` — webhook requests answer `200` and polling continues. Without a boundary, the error is rethrown.
 
 ### `bot.usePlugin(plugin)`
 
@@ -650,6 +675,23 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 | `send` | `send(text, extra?): Promise<Message>` | Sends a message to the update chat without a reply reference. |
 | `edit` | `edit(text, extra?): Promise<Message \| true>` | Edits the update message using `editMessageText`. |
 | `delete` | `delete(): Promise<true>` | Deletes the update message. |
+| `replyWithHTML` | `replyWithHTML(text, extra?): Promise<Message>` | Replies with `parse_mode: "HTML"`. |
+| `replyWithMarkdown` | `replyWithMarkdown(text, extra?): Promise<Message>` | Replies with `parse_mode: "MarkdownV2"`. |
+| `replyWithPhoto` | `replyWithPhoto(photo, extra?): Promise<Message>` | Sends `sendPhoto` with automatic quote-reply. |
+| `replyWithDocument` | `replyWithDocument(document, extra?): Promise<Message>` | Sends `sendDocument` with automatic quote-reply. |
+| `replyWithAudio` | `replyWithAudio(audio, extra?): Promise<Message>` | Sends `sendAudio` with automatic quote-reply. |
+| `replyWithVideo` | `replyWithVideo(video, extra?): Promise<Message>` | Sends `sendVideo` with automatic quote-reply. |
+| `replyWithVoice` | `replyWithVoice(voice, extra?): Promise<Message>` | Sends `sendVoice` with automatic quote-reply. |
+| `replyWithAnimation` | `replyWithAnimation(animation, extra?): Promise<Message>` | Sends `sendAnimation` with automatic quote-reply. |
+| `replyWithVideoNote` | `replyWithVideoNote(videoNote, extra?): Promise<Message>` | Sends `sendVideoNote` with automatic quote-reply. |
+| `replyWithSticker` | `replyWithSticker(sticker, extra?): Promise<Message>` | Sends `sendSticker` with automatic quote-reply. |
+| `replyWithMediaGroup` | `replyWithMediaGroup(media, extra?): Promise<Message[]>` | Sends an album via `sendMediaGroup` with automatic quote-reply. |
+| `replyWithLocation` | `replyWithLocation(latitude, longitude, extra?): Promise<Message>` | Sends `sendLocation` with automatic quote-reply. |
+| `replyWithVenue` | `replyWithVenue(latitude, longitude, title, address, extra?): Promise<Message>` | Sends `sendVenue` with automatic quote-reply. |
+| `replyWithContact` | `replyWithContact(phoneNumber, firstName, extra?): Promise<Message>` | Sends `sendContact` with automatic quote-reply. |
+| `replyWithPoll` | `replyWithPoll(question, options, extra?): Promise<Message>` | Sends `sendPoll` with automatic quote-reply. |
+| `replyWithDice` | `replyWithDice(emoji?, extra?): Promise<Message>` | Sends `sendDice` with automatic quote-reply. |
+| `sendChatAction` | `sendChatAction(action, extra?): Promise<true>` | Sends a chat action such as `typing`. |
 | `copy` | `copy(fromChatId, messageId, extra?): Promise<unknown>` | Calls `copyMessage` to the context chat. |
 | `forward` | `forward(fromChatId, messageId, extra?): Promise<Message>` | Calls `forwardMessage` to the context chat. |
 | `pin` | `pin(messageId?, extra?): Promise<true>` | Calls `pinChatMessage`; defaults to the context message id. |
@@ -662,7 +704,7 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 | `getFile` | `getFile(fileId): Promise<unknown>` | Fetches a file by id. |
 | `withReplyMarkup` | `withReplyMarkup(markup): this` | Stores markup in `ctx.state.reply_markup` and returns the context. This method does not automatically send a message. |
 
-`reply`, `send`, `getChat`, and some other helpers throw an error when the update does not have the required chat. `edit` and `delete` require both chat and message.
+All `replyWith*` senders accept the native Telegram parameters as `extra` and automatically quote the incoming message. Passing `reply_parameters` in `extra` merges with the automatic `message_id` instead of replacing it. `reply`, `send`, `getChat`, and some other helpers throw an error when the update does not have the required chat. `edit` and `delete` require both chat and message.
 
 ---
 
@@ -1281,11 +1323,23 @@ new Menu(id: string): Menu
 
 ## 12. Terminal Logging
 
-The CLI prints a colored Unicode attribution box and an animated startup status when attached to a TTY. The default logger emits compact, readable terminal lines with colored levels and structured context. Use `format: "json"` for machine ingestion, `includeUpdateContent: true` when message text or callback data is explicitly required, and a custom `sink` for application monitoring.
+When stdout is an interactive TTY, every `bot.start()` / `bot.launch()` plays a startup sequence: a typing effect for `Installing Dependencies......`, a glass progress bar with a sweeping highlight, and the animated rainbow ASCII banner `Tele Bibz` (figlet `Speed` font) that keeps flowing until the bot connects, then freezes with `✓ Connected as @<username>`.
+
+Every update the bot handles is logged on a human-readable line:
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+Message and command text is truncated to 50 characters; callback button data is shown in full. Errors are printed in red and include the full stack. Pass `branding: false` to `Bot` to disable the startup sequence, and set `logger.format: "json"` for machine ingestion — in that mode incoming updates are emitted as structured `update.received` entries. Non-interactive stdout (pipes, Docker, CI) automatically falls back to plain, uncolored output without animations.
 
 ```ts
 const bot = new Bot({
   token: process.env.TELEGRAM_BOT_TOKEN!,
+  branding: false, // turn off the startup sequence
   logger: {
     level: "debug",
     format: "pretty",
@@ -1294,6 +1348,8 @@ const bot = new Bot({
   },
 });
 ```
+
+Additional branding helpers exported for applications: `runStartupSequence()`, `startTeleBibzBanner()`, `printTeleBibzBanner()`, `paintRainbow()`, and `printStatusLine()`.
 
 ---
 
@@ -1723,7 +1779,7 @@ The package vendors MIT-licensed Telegram declarations and exposes them as type-
 ---
 ## 19. Compatibility and limitations to be aware of
 
-The library targets Node.js `>=20`, uses ESM as the primary module, and also provides a CommonJS build. Webhooks require a runtime that provides Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, and `AbortController`; modern Node.js provides these natively.
+The library targets Node.js `>=22`, uses ESM as the primary module, and also provides a CommonJS build. Webhooks require a runtime that provides Web `Request`, `Response`, `Headers`, `FormData`, `Blob`, and `AbortController`; modern Node.js provides these natively.
 
 The list of generated API methods and the API method map are not the same. `TelegramMethodName` includes 184 runtime names, but `TelegramMethodMap` only has specially-typed parameters/results for the subset listed in the API client section. For other methods, use `api.raw()` or add a type declaration on the application side.
 

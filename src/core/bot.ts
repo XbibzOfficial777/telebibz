@@ -3,12 +3,12 @@ import { FetchTransport, type FetchTransportOptions, type Transport } from "../a
 import type { BotCommand, BotCommandScope, ChatId, Update, User } from "../api/types.js";
 import { Context } from "../context/context.js";
 import { compose, type Middleware } from "../middleware/compose.js";
-import { Router, type RouterOptions } from "../router/router.js";
+import { Router, type RouterOptions, type UpdateFilter } from "../router/router.js";
 import { EventBus, type EventMap } from "./events.js";
 import { MemoryStorage, type Storage } from "../storage/storage.js";
 import { PluginManager, type Plugin } from "../plugins/plugin.js";
-import { createLogger, Logger, type LoggerOptions, summarizeUpdate } from "../observability/logger.js";
-import { printTerminalBranding, startTerminalAnimation } from "../branding/terminal.js";
+import { createLogger, describeIncomingUpdate, Logger, type LogContext, type LoggerOptions, summarizeUpdate } from "../observability/logger.js";
+import { printStatusLine, printTeleBibzBanner, runStartupSequence, startTeleBibzBanner, startTerminalAnimation, type BannerHandle } from "../branding/terminal.js";
 import { conversationKeyFromContext, type Wizard } from "../state/conversation.js";
 
 export type BotStatus = "created" | "initialized" | "starting" | "running" | "stopping" | "stopped" | "error";
@@ -44,12 +44,18 @@ export class Bot<S extends object = Record<string, unknown>> {
   private pollingAbort: AbortController | undefined;
   private offset = 0;
   private me?: User;
+  private readonly brandingEnabled: boolean;
+  /** Branding effects run only on an interactive TTY; structured logs stay untouched otherwise. */
+  private readonly brandingActive: boolean;
+  private activeBanner: BannerHandle | undefined;
+  private errorHandler?: (error: unknown, ctx: Context<S>) => void | Promise<void>;
 
   constructor(options: string | BotOptions<S>) {
     const config = typeof options === "string" ? { token: options } : options;
     if (!config.token || !/^\d+:[\w-]+$/.test(config.token)) throw new Error("A valid Telegram bot token is required.");
     this.token = config.token;
-    if (config.branding) printTerminalBranding();
+    this.brandingEnabled = config.branding ?? true;
+    this.brandingActive = this.brandingEnabled && process.stdout.isTTY === true;
     this.logger = config.logger instanceof Logger ? config.logger : createLogger(config.logger);
     this.router = new Router<Context<S>>(config.router);
     this.session = config.session ?? new MemoryStorage<string, S>();
@@ -71,8 +77,14 @@ export class Bot<S extends object = Record<string, unknown>> {
       retryDelayMs: config.polling?.retryDelayMs ?? 500,
       timeout: config.polling?.timeout ?? 30,
     };
-    this.logger.info("bot.created", { status: this.statusValue });
+    this.startupLog("bot.created", { status: this.statusValue });
     void this.events.emit("bot:created", { bot: this });
+  }
+
+  /** Startup info logs are demoted to debug while the branding sequence owns the terminal. */
+  private startupLog(event: string, context: LogContext): void {
+    if (this.brandingActive) this.logger.debug(event, context);
+    else this.logger.info(event, context);
   }
 
   get status(): BotStatus { return this.statusValue; }
@@ -83,6 +95,19 @@ export class Bot<S extends object = Record<string, unknown>> {
   callback(pattern: string | RegExp, handler: Middleware<Context<S>>): this { this.router.callback(pattern, handler); return this; }
   onText(text: string, handler: Middleware<Context<S>>): this { this.router.text(text, handler); return this; }
   onRegex(expression: RegExp, handler: Middleware<Context<S>>): this { this.router.regex(expression, handler); return this; }
+  /** Registers a handler for update types: `bot.on("message:photo", handler)` or `bot.on(["message:text", "callback_query:data"], handler)`. */
+  on(filter: UpdateFilter | UpdateFilter[], handler: Middleware<Context<S>>): this { this.router.on(filter, handler); return this; }
+  /** Registers a handler for exact text or a regular expression, mirroring familiar frameworks. */
+  hears(trigger: string | RegExp, handler: Middleware<Context<S>>): this {
+    if (trigger instanceof RegExp) this.router.regex(trigger, handler);
+    else this.router.text(trigger, handler);
+    return this;
+  }
+  /**
+   * Sets the error boundary for update handlers. When set, handler failures are
+   * passed here instead of rejecting `handleUpdate()` (webhooks answer 200).
+   */
+  catch(handler: (error: unknown, ctx: Context<S>) => void | Promise<void>): this { this.errorHandler = handler; return this; }
   usePlugin(plugin: Plugin<Context<S>>): this { this.plugins.use(plugin); return this; }
 
   /**
@@ -109,19 +134,23 @@ export class Bot<S extends object = Record<string, unknown>> {
 
   async init(): Promise<this> {
     if (this.statusValue === "initialized" || this.statusValue === "running") return this;
-    this.logger.info("bot.initializing");
-    const animation = startTerminalAnimation("Connecting to Telegram and initializing bot");
+    this.startupLog("bot.initializing", {});
+    const standaloneBanner = this.brandingActive && !this.activeBanner;
+    const animation = this.brandingActive ? undefined : startTerminalAnimation("Connecting to Telegram and initializing bot");
+    if (standaloneBanner) printTeleBibzBanner({ subtitle: "Connecting to Telegram..." });
     try {
       this.me = await this.api.methods.getMe();
       this.statusValue = "initialized";
-      this.logger.info("bot.initialized", { botId: this.me.id, username: this.me.username });
+      this.startupLog("bot.initialized", { botId: this.me.id, username: this.me.username });
       await this.events.emit("bot:initialized", { bot: this });
       await this.plugins.setup();
       await this.plugins.start();
-      animation.stop("Bot initialized; ready to start");
+      if (standaloneBanner) printStatusLine(`✓ Bot initialized as @${this.me.username ?? this.me.id}`);
+      else animation?.stop("Bot initialized; ready to start");
       return this;
     } catch (error) {
-      animation.stop("Error: bot could not initialize");
+      if (standaloneBanner) printStatusLine(`✗ Bot could not initialize: ${error instanceof Error ? error.message : String(error)}`);
+      else animation?.stop("Error: bot could not initialize");
       throw error;
     }
   }
@@ -130,14 +159,32 @@ export class Bot<S extends object = Record<string, unknown>> {
 
   async launch(options: { mode: "polling"; timeout?: number; allowedUpdates?: string[] } = { mode: "polling" }): Promise<void> {
     if (options.mode !== "polling") throw new Error("Use createWebhookHandler() for webhook mode.");
-    await this.init();
+    const runBrandingSequence = this.brandingActive && !this.activeBanner && (this.statusValue === "created" || this.statusValue === "stopped");
+    if (runBrandingSequence) {
+      await runStartupSequence();
+      this.activeBanner = startTeleBibzBanner({ subtitle: "Connecting to Telegram..." });
+    }
+    try {
+      await this.init();
+    } catch (error) {
+      if (this.activeBanner) {
+        this.activeBanner.stop(`Connection failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+        this.activeBanner = undefined;
+      }
+      throw error;
+    }
+    if (this.activeBanner) {
+      this.activeBanner.stop(`Connected as @${this.me?.username ?? this.me?.id}`);
+      this.activeBanner = undefined;
+    }
     if (this.statusValue === "running") return;
     this.statusValue = "starting";
-    this.logger.info("bot.starting", { mode: options.mode });
+    this.startupLog("bot.starting", { mode: options.mode });
     await this.events.emit("bot:starting", { bot: this });
     this.pollingAbort = new AbortController();
     this.statusValue = "running";
     await this.events.emit("bot:started", { bot: this });
+    if (this.brandingActive) printStatusLine("Listening for updates...");
     await this.poll(options.timeout ?? this.pollingOptions.timeout, options.allowedUpdates ?? this.pollingOptions.allowedUpdates, this.pollingAbort.signal);
   }
 
@@ -150,7 +197,8 @@ export class Bot<S extends object = Record<string, unknown>> {
     await this.plugins.stop();
     await this.plugins.dispose();
     this.statusValue = "stopped";
-    this.logger.info("bot.stopped");
+    if (this.brandingActive) printStatusLine("Bot stopped.");
+    else this.logger.info("bot.stopped");
     await this.events.emit("bot:stopped", { bot: this });
   }
 
@@ -166,7 +214,7 @@ export class Bot<S extends object = Record<string, unknown>> {
   async deleteCommands(scope?: BotCommandScope, languageCode?: string): Promise<true> { return this.api.call("deleteMyCommands", { scope, language_code: languageCode } as never) as Promise<true>; }
 
   async handleUpdate(update: Update): Promise<void> {
-    this.logger.debug("update.received", { update: summarizeUpdate(update, this.logger.includeUpdateContent) });
+    this.logger.incoming(describeIncomingUpdate(update));
     const message = update.message
       ?? update.edited_message
       ?? update.channel_post
@@ -200,6 +248,12 @@ export class Bot<S extends object = Record<string, unknown>> {
       this.logger.error("update.handler_error", { update: summarizeUpdate(update, this.logger.includeUpdateContent), error });
       await this.events.emit("update:error", { update, error });
       await this.events.emit("bot:error", { bot: this, error });
+      if (this.errorHandler) {
+        // With an error boundary registered, the failure is considered handled:
+        // webhooks answer 200 and polling continues without rethrowing.
+        await this.errorHandler(error, ctx);
+        return;
+      }
       throw error;
     }
   }
@@ -245,9 +299,12 @@ export class Bot<S extends object = Record<string, unknown>> {
 
   private async poll(timeout: number, allowedUpdates: string[], signal: AbortSignal): Promise<void> {
     let delay = this.pollingOptions.retryDelayMs;
+    // Telegram holds a long-poll connection open for `timeout` seconds, so the
+    // request timeout must exceed it to avoid aborting a healthy connection.
+    const requestTimeoutMs = timeout * 1_000 + 10_000;
     while (!signal.aborted) {
       try {
-        const updates = await this.api.methods.getUpdates({ offset: this.offset, limit: this.pollingOptions.limit, timeout, allowed_updates: allowedUpdates });
+        const updates = await this.api.request("getUpdates", { offset: this.offset, limit: this.pollingOptions.limit, timeout, allowed_updates: allowedUpdates }, signal, { timeoutMs: requestTimeoutMs });
         delay = this.pollingOptions.retryDelayMs;
         for (const update of updates) {
           this.offset = Math.max(this.offset, update.update_id + 1);

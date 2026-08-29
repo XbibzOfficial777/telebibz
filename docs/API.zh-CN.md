@@ -68,6 +68,7 @@ type BotStatus =
 | `transportOptions` | `Omit<FetchTransportOptions, "baseUrl">` | `{}` | 超时、重试、退避、jitter、headers 和 fetch 实现。 |
 | `session` | `Storage<string, S>` | 新的存储 | 基于 chat/user key 的会话存储，可使用持久化适配器。 |
 | `services` | `Record<string, unknown>` | `{}` | 通过 `ctx.services` 可用的依赖/服务。 |
+| `branding` | `boolean` | `true` | 终端启动体验：打字效果、glass 进度条、动画彩虹 `Tele Bibz` 横幅以及易读的 update 日志行。仅在交互式 TTY 上渲染。 |
 | `polling.timeout` | `number` | `30` | 用于 `getUpdates` 的长轮询超时（秒）。 |
 | `polling.limit` | `number` | `100` | 每次轮询请求的最大 update 数量。 |
 | `polling.allowedUpdates` | `string[]` | `[]` | Telegram 更新过滤器。 |
@@ -139,6 +140,30 @@ onRegex(expression: RegExp, handler: Middleware<Context<S>>): this
 ```
 
 使用 `RegExp` 处理消息文本。路由参数不会自动提取到 `ctx.params`；如需提取请使用 predicate 或自定义 middleware。
+
+### `bot.on(filter, handler)`
+
+```ts
+on(filter: UpdateFilter | UpdateFilter[], handler: Middleware<Context<S>>): this
+```
+
+按更新类型注册处理器，并可用 payload 字段收窄。示例：`"message"`、`"message:text"`、`"message:photo"`、`"edited_message"`、`"channel_post"`、`"callback_query"`、`"callback_query:data"`、`"inline_query"`、`"chat_member"`、`"message_reaction"`，或数组如 `["message:text", "callback_query:data"]`。无效的更新类型会在注册时抛出 `TypeError`。
+
+### `bot.hears(trigger, handler)`
+
+```ts
+hears(trigger: string | RegExp, handler: Middleware<Context<S>>): this
+```
+
+处理完全匹配的文本（string）或匹配 `RegExp` 的消息文本。
+
+### `bot.catch(handler)`
+
+```ts
+catch(handler: (error: unknown, ctx: Context<S>) => void | Promise<void>): this
+```
+
+注册更新处理器的错误边界。设置后，处理器失败会被记录、以 `update:error`/`bot:error` 事件发出，并转发给该 handler，而不是让 `handleUpdate()` 拒绝 —— webhook 返回 `200`，轮询继续。未设置边界时错误会被重新抛出。
 
 ### `bot.usePlugin(plugin)`
 
@@ -633,6 +658,22 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 | `send` | `send(text, extra?): Promise<Message>` | 向更新的聊天发送消息，不带回复引用. |
 | `edit` | `edit(text, extra?): Promise<Message \| true>` | 使用 `editMessageText` 编辑更新的消息. |
 | `delete` | `delete(): Promise<true>` | 删除更新的消息. |
+| `replyWithHTML` | `replyWithHTML(text, extra?): Promise<Message>` | 以 `parse_mode: "HTML"` 回复. |
+| `replyWithMarkdown` | `replyWithMarkdown(text, extra?): Promise<Message>` | 以 `parse_mode: "MarkdownV2"` 回复. |
+| `replyWithPhoto` | `replyWithPhoto(photo, extra?): Promise<Message>` | 发送 `sendPhoto`，自动引用回复. |
+| `replyWithDocument` | `replyWithDocument(document, extra?): Promise<Message>` | 发送 `sendDocument`，自动引用回复. |
+| `replyWithAudio` | `replyWithAudio(audio, extra?): Promise<Message>` | 发送 `sendAudio`，自动引用回复. |
+| `replyWithVideo` | `replyWithVideo(video, extra?): Promise<Message>` | 发送 `sendVideo`，自动引用回复. |
+| `replyWithVoice` | `replyWithVoice(voice, extra?): Promise<Message>` | 发送 `sendVoice`，自动引用回复. |
+| `replyWithAnimation` | `replyWithAnimation(animation, extra?): Promise<Message>` | 发送 `sendAnimation`，自动引用回复. |
+| `replyWithVideoNote` | `replyWithVideoNote(videoNote, extra?): Promise<Message>` | 发送 `sendVideoNote`，自动引用回复. |
+| `replyWithSticker` | `replyWithSticker(sticker, extra?): Promise<Message>` | 发送 `sendSticker`，自动引用回复. |
+| `replyWithMediaGroup` | `replyWithMediaGroup(media, extra?): Promise<Message[]>` | 通过 `sendMediaGroup` 发送相册，自动引用回复. |
+| `replyWithLocation` | `replyWithLocation(latitude, longitude, extra?): Promise<Message>` | 发送 `sendLocation`，自动引用回复. |
+| `replyWithVenue` | `replyWithVenue(latitude, longitude, title, address, extra?): Promise<Message>` | 发送 `sendVenue`，自动引用回复. |
+| `replyWithContact` | `replyWithContact(phoneNumber, firstName, extra?): Promise<Message>` | 发送 `sendContact`，自动引用回复. |
+| `replyWithPoll` | `replyWithPoll(question, options, extra?): Promise<Message>` | 发送 `sendPoll`，自动引用回复. |
+| `replyWithDice` | `replyWithDice(emoji?, extra?): Promise<Message>` | 发送 `sendDice`，自动引用回复. |
 | `copy` | `copy(fromChatId, messageId, extra?): Promise<unknown>` | 向上下文聊天调用 `copyMessage`. |
 | `forward` | `forward(fromChatId, messageId, extra?): Promise<Message>` | 向上下文聊天调用 `forwardMessage`. |
 | `pin` | `pin(messageId?, extra?): Promise<true>` | 调用 `pinChatMessage`，默认消息 ID 来自上下文. |
@@ -1257,7 +1298,20 @@ new Menu(id: string): Menu
 
 ## 12. Terminal Logging
 
-This package starts directly after Telegram API connectivity is established. The terminal prints a boxed telebibz attribution, an animated startup status when attached to a TTY, and structured colorful logs for lifecycle, API, polling, webhook, and update events. Set logger format to `json` for machine ingestion.
+当 stdout 是交互式 TTY 时，每次 `bot.start()` / `bot.launch()` 都会播放启动序列：`Installing Dependencies......` 打字效果、带扫过高光的 glass 进度条，以及动画彩虹 ASCII 横幅 `Tele Bibz`（figlet `Speed` 字体）——持续流动直到 bot 连接成功，随后定格为 `✓ Connected as @<username>`。
+
+bot 处理的每条 update 都会以易读的行格式记录：
+
+```text
+[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
+        ↳ Text: /start
+[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
+        ↳ Data: menu:open
+```
+
+普通消息与命令文本截断为 50 个字符；回调按钮数据完整显示。错误以红色打印并附带完整堆栈。向 `Bot` 传入 `branding: false` 可关闭启动序列；设置 `logger.format: "json"` 时，进入的 update 会作为结构化 `update.received` entry 输出。非交互 stdout（管道、Docker、CI）自动回退为无动画的纯文本。
+
+面向应用导出的附加 branding helper：`runStartupSequence()`、`startTeleBibzBanner()`、`printTeleBibzBanner()`、`paintRainbow()` 和 `printStatusLine()`。
 
 ## 13. 文本工具
 
@@ -1685,7 +1739,7 @@ Package 内置 MIT 许可的 Telegram declaration，并通过 type-only export �
 
 ## 19. 兼容性和需要注意的限制
 
-Library menargetkan Node.js `>=20`，使用 ESM 作为主要模块，并提供 CommonJS 构建。Webhook 需要运行时提供 Web `Request`、`Response`、`Headers`、`FormData`、`Blob` 和 `AbortController`；现代 Node.js 原生提供了这些。
+本库面向 Node.js `>=22`，使用 ESM 作为主要模块，并提供 CommonJS 构建。Webhook 需要运行时提供 Web `Request`、`Response`、`Headers`、`FormData`、`Blob` 和 `AbortController`；现代 Node.js 原生提供了这些。
 
 API 生成的方法列表（generated method list）和 API 方法映射（API method map）并不相同。`TelegramMethodName` 包含 184 个运行时名称，但 `TelegramMethodMap` 仅对 API 客户端部分列出的子集提供了带类型的参数/结果。对于其他方法，使用 `api.raw()` 或在应用端添加类型声明。
 
