@@ -169,6 +169,19 @@ console.log(`Delivered ${report.delivered}/${report.total} in ${report.durationM
 
 Cap simultaneous work with `new Bot({ ..., updates: { concurrency: 64 } })` or `broadcast(..., { concurrency: 64 })` when your own downstream (database, API) needs it — by default both run fully parallel.
 
+## Full Telegraf parity on the context surface
+
+Every Telegraf context shortcut is available, plus the parts Telegraf leaves to plugins:
+
+- **Moderation & admin** — `ctx.banChatMember`, `ctx.unbanChatMember`, `ctx.restrictChatMember`, `ctx.promoteChatMember`, `ctx.banChatSenderChat`, `ctx.unbanChatSenderChat`
+- **Chat management** — `ctx.setChatTitle/Description/Photo`, `ctx.setChatPermissions`, `ctx.leaveChat`, `ctx.unpinAllChatMessages`, `ctx.setChatStickerSet`, `ctx.deleteChatStickerSet`
+- **Info** — `ctx.getChatAdministrators`, `ctx.getChatMemberCount`, `ctx.getChatMember`
+- **Invite links & join requests** — `ctx.exportChatInviteLink`, `ctx.createChatInviteLink`, `ctx.editChatInviteLink`, `ctx.revokeChatInviteLink`, `ctx.approveChatJoinRequest`, `ctx.declineChatJoinRequest`
+- **Polls, games, payments** — `ctx.replyWithQuiz`, `ctx.stopPoll`, `ctx.editMessageLiveLocation`, `ctx.stopMessageLiveLocation`, `ctx.replyWithGame`, `ctx.setGameScore`, `ctx.getGameHighScores`, `ctx.replyWithInvoice`
+- **Forum topics** — `ctx.createForumTopic`, `ctx.closeForumTopic`, `ctx.editGeneralForumTopic`, and nine more
+- **Launch options** — `handlerTimeout` (default 90s, like Telegraf) rejects hung updates with `UpdateTimeoutError` while the handler keeps running; `contextType` plugs in your own `Context` subclass; `dropPendingUpdates` on `start()/launch()`
+- **Webhook replies** — opt-in `webhookReply: true` answers the first API call through the webhook HTTP response itself (Telegraf-style), with the lazy `getMe` never claiming the slot
+
 ## State, queue, scheduler, and cache
 
 The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.

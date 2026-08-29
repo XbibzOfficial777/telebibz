@@ -141,6 +141,19 @@ console.log(`Delivered ${report.delivered}/${report.total} in ${report.durationM
 
 当你自己的下游（数据库、API）需要时，可以用 `new Bot({ ..., updates: { concurrency: 64 } })` 或 `broadcast(..., { concurrency: 64 })` 限制并发——默认情况下两者都完全并行。
 
+## Context 表面与 Telegraf 完全对齐
+
+Telegraf 的每一个 context 快捷方法都可用，还包含 Telegraf 交给插件实现的部分：
+
+- **管理与封禁** — `ctx.banChatMember`、`ctx.unbanChatMember`、`ctx.restrictChatMember`、`ctx.promoteChatMember`、`ctx.banChatSenderChat`、`ctx.unbanChatSenderChat`
+- **聊天管理** — `ctx.setChatTitle/Description/Photo`、`ctx.setChatPermissions`、`ctx.leaveChat`、`ctx.unpinAllChatMessages`、`ctx.setChatStickerSet`、`ctx.deleteChatStickerSet`
+- **信息** — `ctx.getChatAdministrators`、`ctx.getChatMemberCount`、`ctx.getChatMember`
+- **邀请链接与加群申请** — `ctx.exportChatInviteLink`、`ctx.createChatInviteLink`、`ctx.editChatInviteLink`、`ctx.revokeChatInviteLink`、`ctx.approveChatJoinRequest`、`ctx.declineChatJoinRequest`
+- **投票、游戏、支付** — `ctx.replyWithQuiz`、`ctx.stopPoll`、`ctx.editMessageLiveLocation`、`ctx.stopMessageLiveLocation`、`ctx.replyWithGame`、`ctx.setGameScore`、`ctx.getGameHighScores`、`ctx.replyWithInvoice`
+- **论坛主题** — `ctx.createForumTopic`、`ctx.closeForumTopic`、`ctx.editGeneralForumTopic` 等九个
+- **启动选项** — `handlerTimeout`（默认 90 秒，与 Telegraf 一致）以 `UpdateTimeoutError` 拒绝挂起的 update，同时 handler 继续运行；`contextType` 接入你自己的 `Context` 子类；`start()`/`launch()` 的 `dropPendingUpdates`
+- **Webhook 应答** — 选择性开启的 `webhookReply: true` 让第一个 API 调用直接通过 webhook HTTP 响应本身应答（Telegraf 风格），懒加载的 `getMe` 永远不会占用槽位
+
 ## 状态、队列、调度器和缓存
 
 该包提供带 TTL 和原子更新的 `MemoryStorage`、`JsonFileStorage`、`RedisStorage`、`SqlStorage`、`MongoStorage`、bot session、基于 Storage 的 conversation/form、基于 permission 的菜单、`MenuController` 分页、`MemoryCache`、令牌桶限流器、支持重试/退避/并发/延迟/取消的任务队列，以及间隔、一次性和完整五字段 cron 的调度器。Redis、SQL 和 Mongo 适配器使用小型 driver interface，因此 core package 不需要 vendor runtime dependency。

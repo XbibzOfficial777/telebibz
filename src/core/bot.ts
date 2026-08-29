@@ -12,6 +12,18 @@ import { printStatusLine, printTeleBibzBanner, runStartupSequence, startTeleBibz
 import { conversationKeyFromContext, type Wizard } from "../state/conversation.js";
 import { runBroadcast, type BroadcastOptions, type BroadcastReport } from "../broadcast/broadcast.js";
 import { Limiter } from "../utils/concurrency.js";
+import { runWithWebhookReply, runWithoutWebhookReply, type WebhookReplySink } from "./webhook-reply.js";
+import type { ContextOptions } from "../context/context.js";
+
+/** Thrown when a single update exceeds `handlerTimeout`; the handler keeps running in the background. */
+export class UpdateTimeoutError extends Error {
+  override readonly name: string = "UpdateTimeoutError";
+  readonly updateId: number;
+  constructor(updateId: number, timeoutMs: number) {
+    super(`Update ${updateId} handler timed out after ${timeoutMs}ms`);
+    this.updateId = updateId;
+  }
+}
 
 export type BotStatus = "created" | "initialized" | "starting" | "running" | "stopping" | "stopped" | "error";
 export type BotContext<S extends object = Record<string, unknown>> = Context<S>;
@@ -31,6 +43,15 @@ export interface BotOptions<S extends object = Record<string, unknown>> {
    * 1000+ messages are processed at once, with no artificial cooldown).
    */
   updates?: { concurrency?: number };
+  /**
+   * Per-update processing timeout in milliseconds (default `90000`, matching
+   * Telegraf; `Infinity` disables). On timeout the update error flow runs
+   * (`update:error`, `bot:error`, `catch()` boundary) and `handleUpdate()`
+   * rejects, while the handler keeps running to completion in the background.
+   */
+  handlerTimeout?: number;
+  /** Custom `Context` subclass instantiated for every update (Telegraf's `contextType`). */
+  contextType?: new (options: ContextOptions<S>) => Context<S>;
   router?: RouterOptions;
   logger?: Logger | LoggerOptions;
   branding?: boolean;
@@ -55,6 +76,10 @@ export class Bot<S extends object = Record<string, unknown>> {
   private me?: User;
   /** Caps how many updates run at once (default: unlimited). */
   private readonly updateLimiter: Limiter;
+  /** Per-update timeout in ms; `Infinity` disables. */
+  private readonly handlerTimeoutMs: number;
+  /** Context class instantiated per update (default `Context`). */
+  private readonly contextType: new (options: ContextOptions<S>) => Context<S>;
   /** Per-chat processing chains: parallel across chats, ordered within a chat. */
   private readonly chatChains = new Map<string, Promise<void>>();
   /** Memoized init so a burst of updates triggers exactly one getMe call. */
@@ -86,6 +111,8 @@ export class Bot<S extends object = Record<string, unknown>> {
     });
     this.plugins = new PluginManager<Context<S>>(this);
     this.updateLimiter = new Limiter(config.updates?.concurrency ?? Infinity);
+    this.handlerTimeoutMs = config.handlerTimeout ?? 90_000;
+    this.contextType = config.contextType ?? Context;
     this.pollingOptions = {
       allowedUpdates: config.polling?.allowedUpdates ?? [],
       limit: config.polling?.limit ?? 100,
@@ -171,9 +198,9 @@ export class Bot<S extends object = Record<string, unknown>> {
     }
   }
 
-  async start(): Promise<void> { await this.launch({ mode: "polling" }); }
+  async start(options: { timeout?: number; allowedUpdates?: string[]; dropPendingUpdates?: boolean } = {}): Promise<void> { await this.launch({ mode: "polling", ...options }); }
 
-  async launch(options: { mode: "polling"; timeout?: number; allowedUpdates?: string[] } = { mode: "polling" }): Promise<void> {
+  async launch(options: { mode: "polling"; timeout?: number; allowedUpdates?: string[]; dropPendingUpdates?: boolean } = { mode: "polling" }): Promise<void> {
     if (options.mode !== "polling") throw new Error("Use createWebhookHandler() for webhook mode.");
     const runBrandingSequence = this.brandingActive && !this.activeBanner && (this.statusValue === "created" || this.statusValue === "stopped");
     if (runBrandingSequence) {
@@ -194,6 +221,11 @@ export class Bot<S extends object = Record<string, unknown>> {
       this.activeBanner = undefined;
     }
     if (this.statusValue === "running") return;
+    if (options.dropPendingUpdates) {
+      // Same mechanism Telegraf uses: drop everything Telegram is holding for
+      // this bot before the first getUpdates call.
+      await this.api.call("deleteWebhook", { drop_pending_updates: true } as never);
+    }
     this.statusValue = "starting";
     this.startupLog("bot.starting", { mode: options.mode });
     await this.events.emit("bot:starting", { bot: this });
@@ -234,17 +266,55 @@ export class Bot<S extends object = Record<string, unknown>> {
    * updates for the same chat are processed strictly in arrival order so
    * sessions, wizards, and conversations never interleave. Rejects for this
    * update's failure (as before) without affecting other updates.
+   *
+   * `options.webhookReply` installs a Telegraf-style responder: the first
+   * outgoing API call during this update is answered through the webhook HTTP
+   * response instead of a separate request, and resolves with `true` because
+   * Telegram never sends the method result back to a webhook response.
    */
-  async handleUpdate(update: Update): Promise<void> {
+  async handleUpdate(update: Update, options: { webhookReply?: WebhookReplySink } = {}): Promise<void> {
     const key = this.conversationKey(update);
     const previous = this.chatChains.get(key);
-    const run = (previous ?? Promise.resolve()).catch(() => undefined).then(() => this.processUpdate(update));
+    const execute = options.webhookReply === undefined
+      ? () => this.processUpdate(update)
+      : () => runWithWebhookReply(options.webhookReply!, () => this.processUpdate(update));
+    // The chain waits for the real completion so same-chat ordering holds
+    // even when the caller-facing await below is released by a timeout.
+    const run = (previous ?? Promise.resolve()).catch(() => undefined).then(execute);
     const tail = run.then(() => undefined, () => undefined);
     this.chatChains.set(key, tail);
     void tail.then(() => {
       if (this.chatChains.get(key) === tail) this.chatChains.delete(key);
     });
-    await run;
+    try {
+      await this.withTimeout(run, this.handlerTimeoutMs, update.update_id);
+    } catch (error) {
+      if (!(error instanceof UpdateTimeoutError)) throw error;
+      // A timed-out update follows the same error flow as a failed handler;
+      // the handler itself keeps running to completion in the background.
+      this.logger.error("update.handler_timeout", { updateId: update.update_id, timeoutMs: this.handlerTimeoutMs });
+      await this.events.emit("update:error", { update, error });
+      await this.events.emit("bot:error", { bot: this, error });
+      if (this.errorHandler) {
+        await this.errorHandler(error, new Context<S>({ update, api: this.api, session: {} as S, services: this.services, me: this.me }));
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /** Rejects with `UpdateTimeoutError` after `timeoutMs` unless `promise` settles first. */
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, updateId: number): Promise<T> {
+    if (!Number.isFinite(timeoutMs)) return promise;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new UpdateTimeoutError(updateId, timeoutMs)), timeoutMs);
+    });
+    try {
+      return await Promise.race([promise, timeout]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   /**
@@ -276,11 +346,11 @@ export class Bot<S extends object = Record<string, unknown>> {
     return runBroadcast(chatIds, send, options);
   }
 
-  /** Runs init() once even when many updates arrive concurrently. */
+  /** Runs init() once even when many updates arrive concurrently; never claims a webhook reply slot. */
   private ensureInitialized(): Promise<void> {
     if (this.me) return Promise.resolve();
     if (!this.initOnce) {
-      this.initOnce = this.init().then(() => { this.initOnce = undefined; }, (error: unknown) => {
+      this.initOnce = runWithoutWebhookReply(() => this.init()).then(() => { this.initOnce = undefined; }, (error: unknown) => {
         this.initOnce = undefined;
         throw error;
       });
@@ -306,7 +376,7 @@ export class Bot<S extends object = Record<string, unknown>> {
     const session = await this.session.get(key) ?? ({} as S);
     if (!this.me) await this.ensureInitialized();
     if (!this.me) return;
-    const ctx = new Context<S>({ update, api: this.api, session, services: this.services, me: this.me });
+    const ctx = new this.contextType({ update, api: this.api, session, services: this.services, me: this.me });
     await this.events.emit("update", { update });
     if (message) {
       await this.events.emit("message", { message });

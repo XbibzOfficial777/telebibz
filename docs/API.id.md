@@ -75,6 +75,8 @@ type BotStatus =
 | `polling.retryDelayMs` | `number` | `500` | Delay awal ketika polling gagal. |
 | `polling.maxRetryDelayMs` | `number` | `30000` | Batas maksimum delay reconnect. |
 | `updates.concurrency` | `number` | `Infinity` | Batas jumlah update yang diproses bersamaan. Update selalu berjalan paralel antar chat dan tetap berurutan di dalam satu chat, sehingga burst 1000+ pesan tertangani sekaligus. |
+| `handlerTimeout` | `number` | `90000` | Timeout pemrosesan per update dalam ms (`Infinity` untuk menonaktifkan). Saat timeout, alur error update berjalan (`update:error`, `bot:error`, boundary `catch()`) dan `handleUpdate()` melempar `UpdateTimeoutError`, sementara handler tetap berjalan sampai selesai di background. |
+| `contextType` | `new (options: ContextOptions<S>) => Context<S>` | `Context` | Subclass `Context` kustom yang diinstansiasi untuk setiap update (`contextType` milik Telegraf). |
 
 ### Konstruktor `Bot`
 
@@ -199,10 +201,11 @@ launch(options?: {
   mode: "polling";
   timeout?: number;
   allowedUpdates?: string[];
+  dropPendingUpdates?: boolean;
 }): Promise<void>
 ```
 
-Menjalankan bot dalam mode polling. Saat mulai, lifecycle berpindah melalui `starting` lalu `running`, kemudian loop `getUpdates()` memproses setiap batch update secara konkuren: update dari chat berbeda berjalan paralel, sedangkan update dari chat yang sama menjaga urutan kedatangannya. Kegagalan polling memancarkan `polling:reconnect` dan menggunakan backoff eksponensial.
+Menjalankan bot dalam mode polling. Saat mulai, lifecycle berpindah melalui `starting` lalu `running`, kemudian loop `getUpdates()` memproses setiap batch update secara konkuren: update dari chat berbeda berjalan paralel, sedangkan update dari chat yang sama menjaga urutan kedatangannya. Kegagalan polling memancarkan `polling:reconnect` dan menggunakan backoff eksponensial. `dropPendingUpdates: true` (juga tersedia di `bot.start()`) membuang semua update yang ditahan Telegram sebelum panggilan `getUpdates` pertama, memakai mekanisme `deleteWebhook({ drop_pending_updates: true })` yang sama dengan Telegraf.
 
 Mode selain `"polling"` melempar error dan menyarankan penggunaan `createWebhookHandler()` untuk webhook.
 
@@ -274,12 +277,14 @@ Jalan pintas ke `deleteMyCommands`.
 ### `bot.handleUpdate(update)`
 
 ```ts
-handleUpdate(update: Update): Promise<void>
+handleUpdate(update: Update, options?: { webhookReply?: WebhookReplySink }): Promise<void>
 ```
 
-Memproses satu update secara manual. Method menentukan kunci session dari `chat.id` dan `from.id`, membuat `Context`, memancarkan event `update` dan `message`, menjalankan middleware lalu router, dan menyimpan session setelah pipeline selesai.
+Memproses satu update secara manual. Method menentukan kunci session dari `chat.id` dan `from.id`, membuat `Context` (dari `contextType` yang dikonfigurasi), memancarkan event `update` dan `message`, menjalankan middleware lalu router, dan menyimpan session setelah pipeline selesai.
 
-Update dari chat berbeda diproses paralel; update dari chat yang sama diserialisasi sesuai urutan kedatangan, sehingga session, wizard, dan conversation tidak pernah saling tumpang tindih dan penulisan session tidak pernah hilang. Burst update konkuren hanya memicu satu inisialisasi `getMe`.
+Update dari chat berbeda diproses paralel; update dari chat yang sama diserialisasi sesuai urutan kedatangan, sehingga session, wizard, dan conversation tidak pernah saling tumpang tindih dan penulisan session tidak pernah hilang. Burst update konkuren hanya memicu satu inisialisasi `getMe`. Seluruh proses per update dijaga `handlerTimeout` (default 90 detik, sama dengan Telegraf): saat timeout, error mengalir lewat `update:error`/`bot:error` dan boundary `catch()`, dan `handleUpdate()` melempar `UpdateTimeoutError` sementara handler tetap berjalan di background.
+
+`options.webhookReply` memasang responder ala Telegraf: panggilan API keluar pertama selama update ini dijawab lewat respons HTTP webhook, bukan request terpisah, dan resolve dengan `true` (Telegram tidak pernah mengirim hasil method kembali ke respons webhook).
 
 Error pipeline mengubah status bot menjadi `error`, memancarkan `bot:error`, lalu dilempar kembali.
 
@@ -326,6 +331,25 @@ for (const failure of report.failures) console.warn(`Gagal: ${failure.chatId} �
 | `BroadcastReport.failed` | `number` | — | Chat yang tidak menerima. |
 | `BroadcastReport.durationMs` | `number` | — | Durasi total sesi broadcast. |
 | `BroadcastReport.failures` | `BroadcastFailure[]` | — | Catatan per chat `{ chatId, attempts, error, errorKind }`. |
+
+### `UpdateTimeoutError` dan helper webhook-reply
+
+```ts
+class UpdateTimeoutError extends Error {
+  readonly name = "UpdateTimeoutError";
+  readonly updateId: number;
+}
+```
+
+Dilempar oleh `handleUpdate()` ketika satu update melebihi `handlerTimeout`. Handler itu sendiri tetap berjalan; error juga mengalir lewat `update:error`, `bot:error`, dan boundary `catch()`.
+
+```ts
+type WebhookReplySink = (payload: Record<string, unknown>) => void;
+runWithWebhookReply(sink, fn): Promise<T>   // memasang responder untuk semua panggilan API di dalam fn
+runWithoutWebhookReply(fn): Promise<T>      // panggilan internal library yang tidak pernah mengklaim slot
+```
+
+Diekspor agar webhook server kustom bisa memasang webhook reply dengan cara yang sama seperti `createWebhookHandler`.
 
 ### Contoh bot minimal
 
@@ -736,6 +760,23 @@ new Context<S>(options: ContextOptions<S>): Context<S>
 
 Semua pengirim `replyWith*` menerima parameter native Telegram sebagai `extra` dan otomatis me-quote message yang masuk. `reply_parameters` pada `extra` digabung dengan `message_id` otomatis, bukan menggantikannya. `reply`, `send`, `getChat`, dan beberapa helper lain melempar error ketika update tidak memiliki chat yang diperlukan. `edit` dan `delete` membutuhkan chat serta message.
 
+### Method admin, chat, dan forum pada Context (paritas penuh Telegraf)
+
+Semua method di bawah beraksi pada chat update (`ctx.chat`) dan menerima parameter native Telegram lewat `extra`; semuanya melempar error jelas bila update tidak memiliki chat. Gunakan `ctx.api.methods.*` untuk menargetkan chat lain.
+
+| Grup | Method |
+|---|---|
+| Moderasi | `banChatMember(userId, untilDate?, extra?)`, `unbanChatMember(userId, onlyIfBanned?, extra?)`, `restrictChatMember(userId, permissions, untilDate?, extra?)`, `promoteChatMember(userId, extra?)`, `banChatSenderChat(senderChatId, extra?)`, `unbanChatSenderChat(senderChatId, extra?)` |
+| Manajemen chat | `setChatTitle(title)`, `setChatDescription(description?)`, `setChatPhoto(photo)`, `deleteChatPhoto()`, `setChatPermissions(permissions, extra?)`, `leaveChat()`, `unpinAllChatMessages(extra?)`, `setChatStickerSet(name)`, `deleteChatStickerSet()` |
+| Info chat & member | `getChatAdministrators(): Promise<ChatMember[]>`, `getChatMemberCount(): Promise<number>`, `getChatMember(userId): Promise<ChatMember>` |
+| Invite link | `exportChatInviteLink(): Promise<string>`, `createChatInviteLink(extra?)`, `editChatInviteLink(inviteLink, extra?)`, `revokeChatInviteLink(inviteLink)` |
+| Join request | `approveChatJoinRequest(userId)`, `declineChatJoinRequest(userId)` |
+| Poll & live location | `replyWithQuiz(question, options, extra?)` (sendPoll dengan `type: "quiz"`), `stopPoll(messageId?, extra?)`, `editMessageLiveLocation(latitude?, longitude?, extra?)`, `stopMessageLiveLocation(extra?)` |
+| Game & pembayaran | `replyWithGame(gameShortName, extra?)`, `setGameScore(userId, score, extra?)`, `getGameHighScores(userId?, extra?)`, `replyWithInvoice(title, description, payload, providerToken, currency, prices, extra?)` |
+| Forum topic | `createForumTopic(name, extra?)`, `editForumTopic(extra?)`, `closeForumTopic(threadId?)`, `reopenForumTopic(threadId?)`, `deleteForumTopic(threadId?)`, `unpinAllForumTopicMessages(threadId?)`, `getForumTopicIconStickers()`, `editGeneralForumTopic(name)`, `closeGeneralForumTopic()`, `reopenGeneralForumTopic()`, `hideGeneralForumTopic()`, `unhideGeneralForumTopic()` |
+
+`threadId` default ke `message_thread_id` message context. `replyWithQuiz`, `replyWithGame`, dan `replyWithInvoice` me-quote message masuk seperti semua pengirim `replyWith*`.
+
 ---
 
 ## 5. Middleware dan router
@@ -1131,8 +1172,11 @@ interface WebhookOptions {
   secretToken?: string;
   maxBodyBytes?: number;
   onError?: (error: unknown) => void | Promise<void>;
+  webhookReply?: boolean;
 }
 ```
+
+`webhookReply` (default `false`) mengaktifkan webhook reply ala Telegraf: saat memproses update, panggilan API keluar pertama dijawab lewat respons HTTP webhook itu sendiri (`{"method":"sendMessage", ...}`), sehingga Telegram mengeksekusi method tanpa request kedua. Panggilan itu resolve dengan `true` karena Telegram tidak pernah mengirim hasil method kembali ke respons webhook; setiap panggilan berikutnya tetap lewat transport seperti biasa. Inisialisasi `getMe` malas tidak pernah mengklaim slot tersebut. Berbeda dengan Telegraf, fitur ini opt-in agar deployment webhook yang sudah ada mempertahankan perilakunya persis.
 
 ### `createWebhookHandler(bot, options?)`
 
