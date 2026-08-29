@@ -80,6 +80,10 @@ Use HTTPS for webhooks, verify the Telegram webhook secret, keep tokens in a sec
 
 - [Runnable examples](../examples/README.md)
 - [Complete API reference](API.md)
-- [Webhook API](API.md#10-webhook)
-- [Conversations and wizards](API.md#8-state-session-and-conversations)
+- [Files: upload and download](FILES.md)
+- [Error handling and rate limits](ERRORS.md)
+- [Webhook deployment](WEBHOOK.md)
+- [Testing your bot offline](TESTING.md)
+- [Migrating from Telegraf](MIGRATION_TELEGRAF.md)
+- [Production cookbook](COOKBOOK.md)
 - [Contribution guide](../CONTRIBUTING.md)

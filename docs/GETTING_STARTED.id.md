@@ -80,6 +80,10 @@ Gunakan HTTPS untuk webhook, validasi secret webhook Telegram, simpan token di s
 
 - [Runnable examples](../examples/README.md)
 - [Referensi API lengkap](API.id.md)
-- [Webhook API](API.id.md#10-webhook)
-- [Conversation dan wizard](API.id.md#8-state-session-and-conversations)
+- [File: upload dan download](FILES.id.md)
+- [Penanganan error dan rate limit](ERRORS.id.md)
+- [Deployment webhook](WEBHOOK.id.md)
+- [Testing bot secara offline](TESTING.id.md)
+- [Migrasi dari Telegraf](MIGRATION_TELEGRAF.id.md)
+- [Cookbook produksi](COOKBOOK.id.md)
 - [Panduan kontribusi](../CONTRIBUTING.md)

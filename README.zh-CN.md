@@ -19,6 +19,20 @@ GitHub Packages 指南：[English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia
 
 入门指南：[English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
 
+文件（上传与下载）：[English](docs/FILES.md) · [Bahasa Indonesia](docs/FILES.id.md) · [简体中文](docs/FILES.zh-CN.md)
+
+错误与限流：[English](docs/ERRORS.md) · [Bahasa Indonesia](docs/ERRORS.id.md) · [简体中文](docs/ERRORS.zh-CN.md)
+
+Webhook 部署：[English](docs/WEBHOOK.md) · [Bahasa Indonesia](docs/WEBHOOK.id.md) · [简体中文](docs/WEBHOOK.zh-CN.md)
+
+测试（用 MockTransport 离线进行）：[English](docs/TESTING.md) · [Bahasa Indonesia](docs/TESTING.id.md) · [简体中文](docs/TESTING.zh-CN.md)
+
+从 Telegraf 迁移：[English](docs/MIGRATION_TELEGRAF.md) · [Bahasa Indonesia](docs/MIGRATION_TELEGRAF.id.md) · [简体中文](docs/MIGRATION_TELEGRAF.zh-CN.md)
+
+生产实战手册（13 个配方）：[English](docs/COOKBOOK.md) · [Bahasa Indonesia](docs/COOKBOOK.id.md) · [简体中文](docs/COOKBOOK.zh-CN.md)
+
+完整文档目录：[docs/README.md](docs/README.md)
+
 社区 showcase：[SHOWCASE.md](SHOWCASE.md)
 
 ![telebibz 概览](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
