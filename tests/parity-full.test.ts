@@ -3,7 +3,7 @@ import type { Update } from "../src/api/types.js";
 import { Bot, UpdateTimeoutError } from "../src/core/bot.js";
 import { Context } from "../src/context/context.js";
 import { createMockContext, createMockUpdate, createTestBot, MockTransport } from "../src/testing.js";
-import { createWebhookHandler } from "../src/webhook/handler.js";
+import { createWebhookHandler, webhookCallback } from "../src/webhook/handler.js";
 
 function sleep(delayMs: number): Promise<void> { return new Promise((resolve) => setTimeout(resolve, delayMs)); }
 
@@ -77,6 +77,25 @@ describe("telegraf-parity context shortcuts", () => {
     const ctx = createMockContext(bot, update);
     await expect(ctx.banChatMember(42)).rejects.toThrow("no chat");
   });
+
+  it("registers callback handlers through the Telegraf-style bot.action() alias", async () => {
+    const { bot } = createTestBot();
+    const handler = vi.fn();
+    bot.action("menu:open", handler);
+    const base = createMockUpdate();
+    const update: Update = {
+      update_id: 7,
+      callback_query: {
+        id: "cb-1",
+        from: { id: 2, is_bot: false, first_name: "Test" },
+        message: { ...base.message!, message_id: 10, text: "Menu" },
+        chat_instance: "instance",
+        data: "menu:open",
+      },
+    };
+    await bot.handleUpdate(update);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("webhook replies", () => {
@@ -130,6 +149,22 @@ describe("webhook replies", () => {
     expect(captured[0]).toMatchObject({ method: "sendMessage", chat_id: 1 });
     expect(transport.calls.filter((call) => call.method === "sendMessage")).toHaveLength(0);
   });
+
+  it("answers webhookCallback (Node http style) with the method payload too", async () => {
+    const { bot, transport } = createTestBot();
+    bot.on("message", async (ctx) => { await ctx.reply("via-node"); });
+    const callback = webhookCallback(bot, "express", { webhookReply: true });
+    const written: { status?: number; body?: string; contentType?: string } = {};
+    const res = {
+      writeHead: (status: number, headers: Record<string, string>) => { written.status = status; written.contentType = headers["Content-Type"]; },
+      end: (body: string) => { written.body = body; },
+    };
+    await callback({ method: "POST", headers: {}, body: createMockUpdate() } as never, res as never);
+    expect(written.status).toBe(200);
+    expect(written.contentType).toBe("application/json");
+    expect(JSON.parse(written.body ?? "{}")).toMatchObject({ method: "sendMessage", text: "via-node" });
+    expect(transport.calls.filter((call) => call.method === "sendMessage")).toHaveLength(0);
+  });
 });
 
 describe("handlerTimeout", () => {
@@ -155,6 +190,72 @@ describe("handlerTimeout", () => {
     await expect(bot.handleUpdate(createMockUpdate())).resolves.toBeUndefined();
     expect(boundary).toHaveBeenCalledTimes(1);
     expect(boundary.mock.calls[0]?.[0]).toBeInstanceOf(UpdateTimeoutError);
+  });
+
+  it("treats handlerTimeout <= 0 as disabled", async () => {
+    const transport = new MockTransport();
+    transport.respond("getMe", { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } });
+    const bot = new Bot({ token: "123456:TEST_TOKEN", transport, handlerTimeout: 0 });
+    let finished = false;
+    bot.on("message", async () => { await sleep(40); finished = true; });
+    await expect(bot.handleUpdate(createMockUpdate())).resolves.toBeUndefined();
+    expect(finished).toBe(true);
+  });
+
+  it("drains in-flight updates on stop() before disposing plugins", async () => {
+    const transport = new MockTransport();
+    transport.respond("getMe", { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } });
+    const order: string[] = [];
+    const bot = new Bot({ token: "123456:TEST_TOKEN", transport, handlerTimeout: 2_000 });
+    bot.usePlugin({
+      name: "lifecycle-probe",
+      install: (api) => { api.registerMiddleware(async (_ctx, next) => { await next(); }); },
+      onStop: () => { order.push("plugin-stop"); },
+      dispose: () => { order.push("plugin-dispose"); },
+    });
+    bot.on("message", async () => { await sleep(50); order.push("handler-done"); });
+    await bot.init();
+    const processing = bot.handleUpdate(createMockUpdate());
+    await sleep(5);
+    await bot.stop();
+    await processing;
+    expect(order).toEqual(["handler-done", "plugin-stop", "plugin-dispose"]);
+  });
+
+  it("does not deadlock when a handler calls bot.stop() itself", async () => {
+    const transport = new MockTransport();
+    transport.respond("getMe", { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } });
+    const bot = new Bot({ token: "123456:TEST_TOKEN", transport, handlerTimeout: 2_000 });
+    const order: string[] = [];
+    bot.on("message", async () => {
+      await bot.stop();
+      order.push("stop-returned");
+    });
+    await bot.init();
+    await bot.handleUpdate(createMockUpdate());
+    expect(order).toEqual(["stop-returned"]);
+    expect(bot.status).toBe("stopped");
+  });
+
+  it("drains other chats while a handler stops the bot", async () => {
+    const transport = new MockTransport();
+    transport.respond("getMe", { ok: true, result: { id: 99, is_bot: true, first_name: "TestBot", username: "test_bot" } });
+    const order: string[] = [];
+    const bot = new Bot({ token: "123456:TEST_TOKEN", transport, handlerTimeout: 2_000 });
+    bot.usePlugin({ name: "probe", install: (api) => { api.registerMiddleware(async (_ctx, next) => { await next(); }); }, onStop: () => { order.push("plugin-stop"); } });
+    bot.on("message", async (ctx) => {
+      if (ctx.chat?.id === 1) { await bot.stop(); order.push("stopping-handler-done"); }
+      else { await sleep(50); order.push("other-chat-done"); }
+    });
+    await bot.init();
+    // The slow chat is in flight before the stopping handler runs, so the
+    // drain inside stop() must wait for it.
+    const other = bot.handleUpdate(createMockUpdate({ message: { ...createMockUpdate().message!, chat: { id: 2, type: "private" } } }));
+    await sleep(5);
+    const stopper = bot.handleUpdate(createMockUpdate({ message: { ...createMockUpdate().message!, chat: { id: 1, type: "private" } } }));
+    await Promise.all([stopper, other]);
+    expect(order).toEqual(["other-chat-done", "plugin-stop", "stopping-handler-done"]);
+    expect(bot.status).toBe("stopped");
   });
 });
 

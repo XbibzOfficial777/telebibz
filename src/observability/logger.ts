@@ -6,7 +6,10 @@ export type LogContext = Record<string, unknown>;
 export interface LogEntry { timestamp: string; level: Exclude<LogLevel, "silent">; event: string; context?: LogContext; /** Pre-rendered human line; the default sink writes it verbatim. */ text?: string }
 export type LoggerSink = (entry: LogEntry) => void;
 
-const priorities: Record<LogLevel, number> = { silent: 99, error: 0, warn: 1, info: 2, debug: 3, trace: 4 };
+// Higher number = more verbose. `silent` must sort BELOW `error` so that every
+// message level is filtered out (a value above all others would let every
+// message through, including errors).
+const priorities: Record<LogLevel, number> = { silent: -1, error: 0, warn: 1, info: 2, debug: 3, trace: 4 };
 const defaultRedactKeys = ["token", "secret", "password", "authorization", "cookie", "private_key", "api_key", "npm_token", "bot_token"];
 const ANSI = {
   reset: "\u001b[0m",

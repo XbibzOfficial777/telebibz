@@ -1,6 +1,6 @@
 # telebibz
 
-![telebibz logo](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-logo.png)
+![telebibz logo](https://imgbs.com/uploads/telebibz-d7b30671.png)
 
 [![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
@@ -65,8 +65,9 @@ bot.use(async (ctx, next) => {
 });
 
 bot.command("help", async (ctx) => { await ctx.reply("Bantuan tersedia."); });
-bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
+bot.onRegex(/^order:(\d+)$/, async (ctx) => { await ctx.reply("Order diterima."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Dibuka."); });
+bot.action("menu:open", async (ctx) => { await ctx.answerCallbackQuery("Menu dibuka."); });
 bot.on("message:photo", async (ctx) => { await ctx.reply("Foto yang bagus."); });
 bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Diterima."); });
 bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
@@ -109,6 +110,26 @@ Builder hanya menghasilkan payload keyboard native Telegram. UI HTML/CSS memerlu
 
 Logger mengeluarkan baris terminal yang ringkas dan mudah dibaca dengan level berwarna serta konteks terstruktur. Level log: `silent`, `error`, `warn`, `info`, `debug`, dan `trace`; nilai sensitif di-redact; error dicetak merah lengkap dengan stack. Gunakan `format: "json"` untuk log terstruktur, dan `includeUpdateContent: true` hanya bila teks pesan atau data callback memang diperlukan.
 
+## Wizard dan conversation multi-langkah
+
+Gunakan `Wizard` bersama `bot.useWizard()` sehingga setiap balasan teks berikutnya dari chat/user yang sama otomatis diarahkan ke langkah yang sedang aktif. Key dihasilkan dari chat dan pengirim Telegram; tidak perlu key manual.
+
+```ts
+import { Bot, Wizard } from "@xbibzlibrary/telebibz";
+
+const wizard = new Wizard()
+  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("Siapa nama kamu?"); } })
+  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("Berapa umur kamu?"); } })
+  .step({ id: "age", run: (flow) => { const age = Number(flow.ctx.message?.text?.trim()); if (!Number.isInteger(age)) return; flow.set("age", age); flow.next(); } });
+
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+bot.useWizard(wizard);
+bot.command("start", async (ctx) => { await wizard.run(ctx); });
+await bot.start();
+```
+
+`Wizard` mempertahankan `ConversationManager` defaultnya antar update dan menandai conversation selesai tepat setelah langkah terakhir. Gunakan `/cancel` untuk membatalkan wizard yang sedang berjalan.
+
 ## Webhook
 
 ```ts
@@ -126,9 +147,10 @@ const handler = createWebhookHandler(bot, {
 
 telebibz dibangun untuk burst 1000+ pesan tanpa cooldown buatan:
 
-- **Paralel antar chat, berurutan per chat.** Setiap batch `getUpdates` (dan setiap request webhook) diproses secara konkuren — update dari chat berbeda tidak pernah saling mengantre, sementara update dari chat yang sama menjaga urutan kedatangannya sehingga session, wizard, dan conversation tetap benar dan penulisan session tidak pernah hilang. Burst konkuren hanya memicu satu inisialisasi `getMe`.
-- **Tidak ada throttling proaktif.** Permintaan keluar tidak pernah ditunda oleh library. Ketika Telegram menjawab 429, transport menunggu tepat jendela `retry_after` yang diperintahkan Telegram ("flood gate" global melindungi seluruh trafik) lalu otomatis retry — sehingga burst tetap terkirim lengkap, bukan gagal.
+- **Paralel antar chat, berurutan per chat.** Setiap batch `getUpdates` (dan setiap request webhook) diproses secara konkuren — update dari chat berbeda tidak pernah saling mengantre, sementara update dari chat yang sama menjaga urutan kedatangannya sehingga session, wizard, dan conversation tetap benar dan penulisan session tidak pernah hilang. Burst konkuren hanya memicu satu inisialisasi `getMe`. Jika Anda mengelola loop polling sendiri, umpankan batch yang sudah diambil lewat `bot.handleUpdates()`.
+- **Tidak ada throttling proaktif.** Permintaan keluar tidak pernah ditunda oleh library. Ketika Telegram menjawab 429, transport menunggu tepat jendela `retry_after` yang diperintahkan Telegram ("flood gate" global melindungi seluruh trafik) lalu otomatis retry — sehingga burst tetap terkirim lengkap, bukan gagal. Untuk batasan downstream Anda sendiri, `Limiter` dan `mapWithConcurrency()` mengatur laju beban kerja apa pun.
 - **Broadcast ke 1000+ user sekaligus.** `bot.broadcast()` langsung mencoba semua chat, me-retry 429 sesuai `retry_after` dari Telegram sendiri, dan mengembalikan laporan lengkap.
+- **Shutdown yang anggun.** `bot.stop()` lebih dulu menunggu handler yang sedang berjalan selesai (dibatasi `handlerTimeout`) dan baru kemudian menghentikan plugin manager — conversation yang aktif tidak pernah terpotong di tengah penulisan.
 
 ```ts
 const report = await bot.broadcast(
@@ -143,7 +165,7 @@ Batasi pekerjaan simultan dengan `new Bot({ ..., updates: { concurrency: 64 } })
 
 ## Paritas penuh Telegraf di permukaan context
 
-Semua shortcut context Telegraf tersedia, ditambah bagian yang di Telegraf diserahkan ke plugin:
+Semua shortcut context Telegraf tersedia, ditambah tambahan yang menutupi apa yang oleh inti Telegraf diserahkan ke ekosistem plugin-nya:
 
 - **Moderasi & admin** — `ctx.banChatMember`, `ctx.unbanChatMember`, `ctx.restrictChatMember`, `ctx.promoteChatMember`, `ctx.banChatSenderChat`, `ctx.unbanChatSenderChat`
 - **Manajemen chat** — `ctx.setChatTitle/Description/Photo`, `ctx.setChatPermissions`, `ctx.leaveChat`, `ctx.unpinAllChatMessages`, `ctx.setChatStickerSet`, `ctx.deleteChatStickerSet`
@@ -151,8 +173,9 @@ Semua shortcut context Telegraf tersedia, ditambah bagian yang di Telegraf diser
 - **Invite link & join request** — `ctx.exportChatInviteLink`, `ctx.createChatInviteLink`, `ctx.editChatInviteLink`, `ctx.revokeChatInviteLink`, `ctx.approveChatJoinRequest`, `ctx.declineChatJoinRequest`
 - **Poll, game, pembayaran** — `ctx.replyWithQuiz`, `ctx.stopPoll`, `ctx.editMessageLiveLocation`, `ctx.stopMessageLiveLocation`, `ctx.replyWithGame`, `ctx.setGameScore`, `ctx.getGameHighScores`, `ctx.replyWithInvoice`
 - **Forum topic** — `ctx.createForumTopic`, `ctx.closeForumTopic`, `ctx.editGeneralForumTopic`, dan sembilan lainnya
-- **Opsi launch** — `handlerTimeout` (default 90 detik, seperti Telegraf) melempar `UpdateTimeoutError` untuk update yang menggantung sementara handler tetap berjalan; `contextType` memasang subclass `Context` Anda sendiri; `dropPendingUpdates` di `start()`/`launch()`
+- **Opsi launch** — `handlerTimeout` (default 90 detik, seperti Telegraf) melempar `UpdateTimeoutError` untuk update yang menggantung sementara handler tetap berjalan; `0` menonaktifkan timeout; `contextType` memasang subclass `Context` Anda sendiri; `dropPendingUpdates` di `start()`/`launch()`
 - **Webhook reply** — opt-in `webhookReply: true` menjawab panggilan API pertama lewat respons HTTP webhook itu sendiri (ala Telegraf), dengan `getMe` malas yang tidak pernah mengklaim slot
+- **Alias handler drop-in** — `bot.action(...)` mendaftarkan handler callback query sama seperti `bot.callback(...)`, sehingga handler yang ditulis untuk Telegraf bisa dipindahkan tanpa perubahan
 
 ## State, queue, scheduler, dan cache
 
@@ -211,13 +234,37 @@ E2E Telegram nyata memerlukan `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_TEST_CHAT_ID`. 
 
 `validateWebAppInitData()` memverifikasi signature dan expiration Telegram Web App. `PaymentsClient` menyediakan wrapper invoice link, invoice, jawaban pre-checkout, jawaban Web App query, transaksi Stars, dan refund Stars. Gunakan `TelegramTypes` serta alias seperti `TelegramUser`, `TelegramMessage`, dan `TelegramUpdate` untuk full Telegram declaration surface yang divendor.
 
+## Permukaan API
+
+Semua yang tercantum di bawah diekspor dari entry point package kecuali disebutkan subpath-nya. Signature lengkap setiap export terdokumentasi di [docs/API.id.md](docs/API.id.md) (juga [docs/API.md](docs/API.md) dan [docs/API.zh-CN.md](docs/API.zh-CN.md)).
+
+| Area | Export |
+|---|---|
+| Bot & lifecycle | `Bot` dengan `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`; `UpdateTimeoutError` |
+| Context | `Context`, `ContextOptions`, opsi launch `contextType`; ~80 shortcut di `ctx` untuk balasan, aksi admin, manajemen chat, invite link, poll, game, pembayaran, dan forum topic |
+| Telegram API | `ApiClient` dengan `call()`, `request()`, `raw()`, dan `methods` (seluruh generated Bot API method); `FetchTransport` dengan retry 429/5xx otomatis dan flood gate global |
+| Error | `TelegramError` dengan taksonomi `kind` (`retryable`, `rate-limit`, `authentication`, `validation`, `network`, `server`, `unknown`) dan `retryAfter`, plus `TelegramRateLimitError`, `TelegramAuthError`, `TelegramValidationError`, `TelegramNetworkError` |
+| Router & middleware | `Router`, `compose`, 24 filter update (`message:photo`, `callback_query:data`, …), `matchMode` (`first`/`all`) |
+| Keyboard | `InlineKeyboard`, `ReplyKeyboard`, `removeKeyboard()`, `forceReply()` |
+| Storage | `MemoryStorage` (TTL, serialisasi per-key), `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, beserta driver interface kecil yang menjadi dasarnya |
+| Cache & limiting | `MemoryCache`, `TokenBucketLimiter`, `Limiter`, `mapWithConcurrency()` |
+| Queue & scheduler | `TaskQueue` (prioritas, retry, backoff, delay, cancel), `Scheduler` (interval, one-shot, cron), `parseCronExpression()`, `nextCronOccurrence()` |
+| State & dialog | `Wizard`, `ConversationManager`, `ConversationFlow`, `Form` dengan `validators`, `Menu` berbasis permission, `MenuController`, `paginate()` |
+| Webhook | `createWebhookHandler()` (Request/Response Web), `webhookCallback()` untuk Express/Koa/Fastify/Node `http`, `runWithWebhookReply()`, `claimWebhookReply()` |
+| Web App & pembayaran | `parseWebAppInitData()`, `validateWebAppInitData()`, `PaymentsClient`, `TelegramTypes` (deklarasi Telegram yang dibundel) |
+| Observability | `Logger` (level, redaction, format JSON), `EventBus` dengan event map `update:*`, `bot:*`, `broadcast:*`, `redact()` |
+| Terminal | `printTeleBibzBanner()`, `printTerminalBranding()`, `buildTerminalBranding()`, `runStartupSequence()`, `startTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()` |
+| Utilitas teks | `splitMessage()`, `splitCaption()`, `escapeMarkdownV2()`, `escapeHtml()`, `md`, `html`, `template()` |
+| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport`, `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
+| CLI (`telebibz …`) | `init`, `doctor`, `build`, `test`, `start`, `webhook`, `generate` |
+
 ## API target dan batasan
 
 Daftar method dihasilkan dari dokumentasi Telegram Bot API saat skema diperbarui. Akses runtime tersedia untuk method resmi yang terdeteksi, sedangkan inferensi parameter/result khusus dipusatkan pada core method map. Full declaration Telegram untuk object, union, enum, dan method tersedia melalui `TelegramTypes`. Lihat [FEATURE_MATRIX.md](FEATURE_MATRIX.md) untuk status implementasi dan `docs/API.id.md` untuk referensi API lengkap.
 
 ## Otomatisasi release
 
-Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates, memilih patch version yang belum dipakai, membuat commit dan tag, menerbitkan package ke npmjs, lalu membuat GitHub Release. Karena source repository bersifat private, workflow menggunakan `--provenance=false`. GitHub Packages tersedia sebagai opsi terpisah jika organisasi GitHub dengan scope `xbibzlibrary` dibuat kemudian. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) dan panduan [GitHub Packages](docs/GITHUB_PACKAGES.id.md).
+Repository GitHub menyediakan CI dan workflow auto-publish. Setiap push ke `main` menjalankan quality gates lalu menurunkan versi berikutnya dari Conventional Commits yang didorong: commit `feat:` dan breaking change menaikkan minor selama package belum 1.0 (footer `BREAKING-CHANGE` atau subjek `type!:` menaikkan major mulai 1.0.0), sisanya menaikkan patch. Versi yang sudah dideklarasikan di `package.json` lebih tinggi dari npm diterbitkan persis apa adanya, dan workflow tidak pernah menerbitkan versi yang kurang dari atau sama dengan rilis npm terbaru. Workflow membuat commit versi, tag, menerbitkan ke npm (dengan provenance dinonaktifkan lewat `--provenance=false`), lalu membuat GitHub Release. Commit yang memuat `[skip release]` tidak memicu penerbitan. Konfigurasikan secret `NPM_TOKEN` pada GitHub Actions sebelum mengandalkan publish otomatis. Lihat [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) dan panduan [GitHub Packages](docs/GITHUB_PACKAGES.id.md).
 
 ## Policy project dan kontribusi
 

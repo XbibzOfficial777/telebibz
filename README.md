@@ -67,8 +67,9 @@ bot.use(async (ctx, next) => {
 });
 
 bot.command("help", async (ctx) => { await ctx.reply("Help is available."); });
-bot.onRegex(/^order:(\\d+)$/, async (ctx) => { await ctx.reply("Order received."); });
+bot.onRegex(/^order:(\d+)$/, async (ctx) => { await ctx.reply("Order received."); });
 bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Opened."); });
+bot.action("menu:open", async (ctx) => { await ctx.answerCallbackQuery("Menu opened."); });
 bot.on("message:photo", async (ctx) => { await ctx.reply("Nice photo."); });
 bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Got it."); });
 bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
@@ -125,8 +126,8 @@ Use `Wizard` with `bot.useWizard()` so every subsequent text reply from the same
 import { Bot, Wizard } from "@xbibzlibrary/telebibz";
 
 const wizard = new Wizard()
-  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("Siapa nama kamu?"); } })
-  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("Berapa umur kamu?"); } })
+  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("What is your name?"); } })
+  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("How old are you?"); } })
   .step({ id: "age", run: (flow) => { const age = Number(flow.ctx.message?.text?.trim()); if (!Number.isInteger(age)) return; flow.set("age", age); flow.next(); } });
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
@@ -154,9 +155,10 @@ const handler = createWebhookHandler(bot, {
 
 telebibz is built for bursts of 1000+ messages with no artificial cooldown:
 
-- **Parallel across chats, ordered per chat.** Every `getUpdates` batch (and every webhook request) is processed concurrently — updates from different chats never queue behind each other, while updates from the same chat keep their arrival order so sessions, wizards, and conversations stay correct and session writes are never lost. A concurrent burst triggers exactly one `getMe` initialization.
-- **No proactive throttling.** Outgoing requests are never delayed by the library. When Telegram answers 429, the transport waits exactly the `retry_after` window Telegram ordered (a global "flood gate" protects all in-flight traffic) and retries automatically — so bursts deliver completely instead of failing.
+- **Parallel across chats, ordered per chat.** Every `getUpdates` batch (and every webhook request) is processed concurrently — updates from different chats never queue behind each other, while updates from the same chat keep their arrival order so sessions, wizards, and conversations stay correct and session writes are never lost. A concurrent burst triggers exactly one `getMe` initialization. Feed pre-fetched batches yourself with `bot.handleUpdates()` when you own the polling loop.
+- **No proactive throttling.** Outgoing requests are never delayed by the library. When Telegram answers 429, the transport waits exactly the `retry_after` window Telegram ordered (a global "flood gate" protects all in-flight traffic) and retries automatically — so bursts deliver completely instead of failing. For your own downstream limits, `Limiter` and `mapWithConcurrency()` rate-shape any workload.
 - **Broadcast to 1000+ users at once.** `bot.broadcast()` attempts every chat immediately, retries 429s per Telegram's own `retry_after`, and returns a full report.
+- **Graceful shutdown.** `bot.stop()` first waits for in-flight handlers to finish (bounded by `handlerTimeout`) and only then stops the plugin manager — active conversations are never truncated mid-write.
 
 ```ts
 const report = await bot.broadcast(
@@ -171,7 +173,7 @@ Cap simultaneous work with `new Bot({ ..., updates: { concurrency: 64 } })` or `
 
 ## Full Telegraf parity on the context surface
 
-Every Telegraf context shortcut is available, plus the parts Telegraf leaves to plugins:
+Every Telegraf context shortcut is available, plus additions that cover what the Telegraf core leaves to its plugin ecosystem:
 
 - **Moderation & admin** — `ctx.banChatMember`, `ctx.unbanChatMember`, `ctx.restrictChatMember`, `ctx.promoteChatMember`, `ctx.banChatSenderChat`, `ctx.unbanChatSenderChat`
 - **Chat management** — `ctx.setChatTitle/Description/Photo`, `ctx.setChatPermissions`, `ctx.leaveChat`, `ctx.unpinAllChatMessages`, `ctx.setChatStickerSet`, `ctx.deleteChatStickerSet`
@@ -179,8 +181,9 @@ Every Telegraf context shortcut is available, plus the parts Telegraf leaves to 
 - **Invite links & join requests** — `ctx.exportChatInviteLink`, `ctx.createChatInviteLink`, `ctx.editChatInviteLink`, `ctx.revokeChatInviteLink`, `ctx.approveChatJoinRequest`, `ctx.declineChatJoinRequest`
 - **Polls, games, payments** — `ctx.replyWithQuiz`, `ctx.stopPoll`, `ctx.editMessageLiveLocation`, `ctx.stopMessageLiveLocation`, `ctx.replyWithGame`, `ctx.setGameScore`, `ctx.getGameHighScores`, `ctx.replyWithInvoice`
 - **Forum topics** — `ctx.createForumTopic`, `ctx.closeForumTopic`, `ctx.editGeneralForumTopic`, and nine more
-- **Launch options** — `handlerTimeout` (default 90s, like Telegraf) rejects hung updates with `UpdateTimeoutError` while the handler keeps running; `contextType` plugs in your own `Context` subclass; `dropPendingUpdates` on `start()/launch()`
+- **Launch options** — `handlerTimeout` (default 90s, like Telegraf) rejects hung updates with `UpdateTimeoutError` while the handler keeps running; `0` disables the timeout; `contextType` plugs in your own `Context` subclass; `dropPendingUpdates` on `start()/launch()`
 - **Webhook replies** — opt-in `webhookReply: true` answers the first API call through the webhook HTTP response itself (Telegraf-style), with the lazy `getMe` never claiming the slot
+- **Drop-in handler aliases** — `bot.action(...)` registers a callback-query handler just like `bot.callback(...)`, so handlers written for Telegraf migrate unchanged
 
 ## State, queue, scheduler, and cache
 
@@ -240,6 +243,30 @@ Real Telegram E2E tests require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_TEST_CHAT_ID`
 
 `validateWebAppInitData()` verifies Telegram Web App signatures and expiration. `PaymentsClient` provides wrappers for invoice links, invoices, pre-checkout answers, Web App query answers, Stars transactions, and Stars refunds. Use `TelegramTypes` and aliases such as `TelegramUser`, `TelegramMessage`, and `TelegramUpdate` for the vendored full Telegram declaration surface.
 
+## API surface
+
+Everything below ships from the package entry point unless a subpath is given. Full signatures for every export are documented in [docs/API.md](docs/API.md) (also [docs/API.id.md](docs/API.id.md) and [docs/API.zh-CN.md](docs/API.zh-CN.md)).
+
+| Area | Exports |
+|---|---|
+| Bot & lifecycle | `Bot` with `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`; `UpdateTimeoutError` |
+| Context | `Context`, `ContextOptions`, `contextType` launch option; ~80 shortcuts on `ctx` for replies, admin actions, chat management, invite links, polls, games, payments, and forum topics |
+| Telegram API | `ApiClient` with `call()`, `request()`, `raw()`, and `methods` (all generated Bot API methods); `FetchTransport` with automatic 429/5xx retries and a global flood gate |
+| Errors | `TelegramError` with a `kind` taxonomy (`retryable`, `rate-limit`, `authentication`, `validation`, `network`, `server`, `unknown`) and `retryAfter`, plus `TelegramRateLimitError`, `TelegramAuthError`, `TelegramValidationError`, `TelegramNetworkError` |
+| Router & middleware | `Router`, `compose`, 24 update filters (`message:photo`, `callback_query:data`, …), `matchMode` (`first`/`all`) |
+| Keyboards | `InlineKeyboard`, `ReplyKeyboard`, `removeKeyboard()`, `forceReply()` |
+| Storage | `MemoryStorage` (TTL, per-key serialization), `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, plus the small driver interfaces they build on |
+| Cache & limiting | `MemoryCache`, `TokenBucketLimiter`, `Limiter`, `mapWithConcurrency()` |
+| Queue & scheduler | `TaskQueue` (priority, retry, backoff, delay, cancel), `Scheduler` (intervals, one-shot, cron), `parseCronExpression()`, `nextCronOccurrence()` |
+| State & dialogs | `Wizard`, `ConversationManager`, `ConversationFlow`, `Form` with `validators`, permission-aware `Menu`, `MenuController`, `paginate()` |
+| Webhook | `createWebhookHandler()` (Web `Request`/`Response`), `webhookCallback()` for Express/Koa/Fastify/Node `http`, `runWithWebhookReply()`, `claimWebhookReply()` |
+| Web Apps & payments | `parseWebAppInitData()`, `validateWebAppInitData()`, `PaymentsClient`, `TelegramTypes` (vendored Telegram declarations) |
+| Observability | `Logger` (levels, redaction, JSON format), `EventBus` with the `update:*`, `bot:*`, and `broadcast:*` event maps, `redact()` |
+| Terminal | `printTeleBibzBanner()`, `printTerminalBranding()`, `buildTerminalBranding()`, `runStartupSequence()`, `startTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()` |
+| Text utilities | `splitMessage()`, `splitCaption()`, `escapeMarkdownV2()`, `escapeHtml()`, `md`, `html`, `template()` |
+| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport`, `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
+| CLI (`telebibz …`) | `init`, `doctor`, `build`, `test`, `start`, `webhook`, `generate` |
+
 ## API targets and limitations
 
 The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, while specialized request/result inference remains concentrated on the core method map. The complete vendored Telegram object, union, enum, and method declarations are available through `TelegramTypes`. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [docs/API.md](docs/API.md) for the complete API reference.
@@ -248,7 +275,7 @@ For every exported class, function, method, type, error, lifecycle hook, CLI com
 
 ## Release automation
 
-The GitHub repository includes CI and an auto-publish workflow. A push to `main` runs the quality gates, chooses the next unused patch version, commits the version, creates a tag, publishes to npm, and creates a GitHub Release. Because the source repository is private, the workflow uses `--provenance=false`, which npm requires for private source repositories. Configure the `NPM_TOKEN` GitHub Actions secret before relying on automatic publication. See [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
+The GitHub repository includes CI and an auto-publish workflow. A push to `main` runs the quality gates and derives the next version from the pushed Conventional Commits: `feat:` commits and breaking changes bump the minor version while the package is pre-1.0 (`BREAKING-CHANGE` footers or `type!:` subjects bump the major from 1.0.0 onward), everything else bumps the patch version. A version already declared in `package.json` ahead of npm publishes exactly as declared, and the workflow never publishes a version at or below the latest npm release. The workflow commits the version, creates the tag, publishes to npm (with provenance disabled via `--provenance=false`), and creates a GitHub Release. Commits containing `[skip release]` do not trigger a publication. Configure the `NPM_TOKEN` GitHub Actions secret before relying on automatic publication. See [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
 
 ## Project policies and contribution
 
