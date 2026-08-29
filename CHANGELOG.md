@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.3.0 — 2026-08-29
+## 0.4.0 — 2026-08-29
+
+### Added
+
+- Full Telegraf-parity context surface: moderation (`banChatMember`, `unbanChatMember`, `restrictChatMember`, `promoteChatMember`, `banChatSenderChat`, `unbanChatSenderChat`), chat management (`setChatTitle/Description/Photo`, `deleteChatPhoto`, `setChatPermissions`, `leaveChat`, `unpinAllChatMessages`, `setChatStickerSet`, `deleteChatStickerSet`), member info (`getChatAdministrators`, `getChatMemberCount`, `getChatMember`), invite links (`exportChatInviteLink`, `createChatInviteLink`, `editChatInviteLink`, `revokeChatInviteLink`), join requests (`approveChatJoinRequest`, `declineChatJoinRequest`), polls and live location (`replyWithQuiz`, `stopPoll`, `editMessageLiveLocation`, `stopMessageLiveLocation`), games and payments (`replyWithGame`, `setGameScore`, `getGameHighScores`, `replyWithInvoice`), and the full forum-topic set (`createForumTopic` through `unhideGeneralForumTopic`). Every method acts on `ctx.chat` and accepts native Telegram parameters via `extra`.
+- Opt-in Telegraf-style webhook replies: `createWebhookHandler(bot, { webhookReply: true })` (and `bot.handleUpdate(update, { webhookReply })` for custom servers) answers the first API call through the webhook HTTP response itself; the call resolves with `true`, later calls go through the transport, and the lazy `getMe` never claims the slot. Concurrency-safe via `AsyncLocalStorage`.
+- `handlerTimeout` (default `90000`, Telegraf's value; `Infinity` disables): hung updates reject `handleUpdate()` with `UpdateTimeoutError` and flow through `update:error`/`bot:error`/the `catch()` boundary while the handler keeps running; per-chat ordering is unaffected.
+- `contextType` bot option to plug in a custom `Context` subclass (Telegraf's `contextType`), and `dropPendingUpdates` on `start()`/`launch()` to drop Telegram-held updates before the first `getUpdates` call.
+
+## 0.3.2 — 2026-08-29
+
+### Changed
+
+- README logo image URL updated.
+
+## 0.3.1 — 2026-08-29
 
 ### Added
 
@@ -8,10 +23,6 @@
 - `bot.broadcast(chatIds, send, options)` for sending to 1000+ users at once: every chat is attempted immediately (no proactive cooldown, configurable `concurrency`), 429 answers are retried automatically after exactly the `retry_after` delay Telegram ordered, and the returned `BroadcastReport` lists delivered/failed counts with per-chat failure details plus `onProgress` streaming.
 - `FetchTransport` flood gate (`floodGate`, default on): when Telegram answers 429, new requests wait out the `retry_after` window Telegram ordered — the only delay ever introduced, never a proactive cooldown.
 - `Limiter` and `mapWithConcurrency` concurrency primitives (promise semaphore and ordered concurrent mapping) exported for applications.
-- Full Telegraf-parity context surface: moderation (`banChatMember`, `unbanChatMember`, `restrictChatMember`, `promoteChatMember`, `banChatSenderChat`, `unbanChatSenderChat`), chat management (`setChatTitle/Description/Photo`, `deleteChatPhoto`, `setChatPermissions`, `leaveChat`, `unpinAllChatMessages`, `setChatStickerSet`, `deleteChatStickerSet`), member info (`getChatAdministrators`, `getChatMemberCount`, `getChatMember`), invite links (`exportChatInviteLink`, `createChatInviteLink`, `editChatInviteLink`, `revokeChatInviteLink`), join requests (`approveChatJoinRequest`, `declineChatJoinRequest`), polls and live location (`replyWithQuiz`, `stopPoll`, `editMessageLiveLocation`, `stopMessageLiveLocation`), games and payments (`replyWithGame`, `setGameScore`, `getGameHighScores`, `replyWithInvoice`), and the full forum-topic set (`createForumTopic` through `unhideGeneralForumTopic`). Every method acts on `ctx.chat` and accepts native Telegram parameters via `extra`.
-- Opt-in Telegraf-style webhook replies: `createWebhookHandler(bot, { webhookReply: true })` (and `bot.handleUpdate(update, { webhookReply })` for custom servers) answers the first API call through the webhook HTTP response itself; the call resolves with `true`, later calls go through the transport, and the lazy `getMe` never claims the slot. Concurrency-safe via `AsyncLocalStorage`.
-- `handlerTimeout` (default `90000`, Telegraf's value; `Infinity` disables): hung updates reject `handleUpdate()` with `UpdateTimeoutError` and flow through `update:error`/`bot:error`/the `catch()` boundary while the handler keeps running; per-chat ordering is unaffected.
-- `contextType` bot option to plug in a custom `Context` subclass (Telegraf's `contextType`), and `dropPendingUpdates` on `start()`/`launch()` to drop Telegram-held updates before the first `getUpdates` call.
 
 ### Fixed
 
