@@ -1,315 +1,176 @@
-# telebibz
+# 🤖 telebibz
 
-![telebibz logo](https://imgbs.com/uploads/telebibz-d7b30671.png)
+**Library Telegram paling gampang untuk Node.js** — semua kekuatan [grammY](https://grammy.dev) (framework Telegram modern, Bot API 9.x), dengan API sekecil mungkin, log cantik, dan dokumentasi Bahasa Indonesia.
 
-[![CI](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml/badge.svg)](https://github.com/XbibzOfficial777/telebibz/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
-[![npm downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
-[![Node.js](https://img.shields.io/node/v/@xbibzlibrary/telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
-
-**`@xbibzlibrary/telebibz`** is a Telegram Bot SDK and framework for Node.js and TypeScript. It provides a typed API client, polling, routing, middleware, context helpers, keyboard builders, state/session primitives, webhooks, queues, scheduling, caching, plugin lifecycle, colorful terminal logging, CLI tooling, and testing utilities.
-
-## Documentation languages
-
-**English (default)** · [Bahasa Indonesia](README.id.md) · [简体中文](README.zh-CN.md)
-
-Complete API references: [English](docs/API.md) · [Indonesia](docs/API.id.md) · [中文](docs/API.zh-CN.md)
-
-GitHub Packages guide: [English](docs/GITHUB_PACKAGES.md) · [Bahasa Indonesia](docs/GITHUB_PACKAGES.id.md) · [简体中文](docs/GITHUB_PACKAGES.zh-CN.md)
-
-Storage quick start (Memory/JSON/Redis/SQL/Mongo): [English](docs/STORAGE.md) · [Bahasa Indonesia](docs/STORAGE.id.md) · [简体中文](docs/STORAGE.zh-CN.md)
-
-Getting started: [English](docs/GETTING_STARTED.md) · [Bahasa Indonesia](docs/GETTING_STARTED.id.md) · [简体中文](docs/GETTING_STARTED.zh-CN.md)
-
-Files (upload & download): [English](docs/FILES.md) · [Bahasa Indonesia](docs/FILES.id.md) · [简体中文](docs/FILES.zh-CN.md)
-
-Errors & rate limits: [English](docs/ERRORS.md) · [Bahasa Indonesia](docs/ERRORS.id.md) · [简体中文](docs/ERRORS.zh-CN.md)
-
-Webhook deployment: [English](docs/WEBHOOK.md) · [Bahasa Indonesia](docs/WEBHOOK.id.md) · [简体中文](docs/WEBHOOK.zh-CN.md)
-
-Testing (offline with MockTransport): [English](docs/TESTING.md) · [Bahasa Indonesia](docs/TESTING.id.md) · [简体中文](docs/TESTING.zh-CN.md)
-
-Migrating from Telegraf: [English](docs/MIGRATION_TELEGRAF.md) · [Bahasa Indonesia](docs/MIGRATION_TELEGRAF.id.md) · [简体中文](docs/MIGRATION_TELEGRAF.zh-CN.md)
-
-Production cookbook (13 recipes): [English](docs/COOKBOOK.md) · [Bahasa Indonesia](docs/COOKBOOK.id.md) · [简体中文](docs/COOKBOOK.zh-CN.md)
-
-Full documentation catalog: [docs/README.md](docs/README.md)
-
-Community showcase: [SHOWCASE.md](SHOWCASE.md)
-
-![telebibz overview](https://cdn.jsdelivr.net/npm/@xbibzlibrary/telebibz@latest/assets/telebibz-readme-preview.png)
-
-## Installation
-
-```bash
+```
 npm install @xbibzlibrary/telebibz
 ```
 
-Node.js **22 or newer** is required.
+> v1.0 adalah **recode total** dari framework TS lama (152 file, build step, API client sendiri)
+> menjadi **wrapper ramping**: 1 dependency, tanpa kompilasi, CommonJS murni.
 
-## Minimal bot
+---
 
-```ts
-import { Bot } from "@xbibzlibrary/telebibz";
+## 🚀 Mulai dalam 6 baris
 
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
+```js
+const { TeleBibz } = require('@xbibzlibrary/telebibz');
 
-bot.command("start", async (ctx) => { await ctx.reply("Bot is active."); });
-bot.onText("ping", async (ctx) => { await ctx.reply("pong"); });
+const bot = new TeleBibz('TOKEN_DARI_BOTFATHER');
 
-await bot.start();
+bot.cmd('start', (ctx) => ctx.reply('Halo!'));
+bot.hears(/halo/i, (ctx) => ctx.reply('halo juga 👋'));
+
+bot.launch();
 ```
 
-`Bot.start()` runs long polling. For manual lifecycle control, use `init()`, `launch({ mode: "polling" })`, `health()`, `stop()`, or `restart()`.
-
-## Official starter examples
-
-The repository includes runnable starters for a minimal bot, a multi-step registration wizard, and a Node.js webhook server. Browse [`examples/README.md`](examples/README.md), or run the minimal starter after setting `TELEGRAM_BOT_TOKEN`:
-
-```bash
-export TELEGRAM_BOT_TOKEN="<your-bot-token>"
-npx tsx examples/minimal.ts
+```
+BOT_TOKEN=123:abc node index.js
 ```
 
-The examples are typechecked in CI with `npm run test:examples` and never contain real credentials.
-
-## Router and middleware
-
-```ts
-bot.use(async (ctx, next) => {
-  const started = Date.now();
-  await next();
-  console.log(`processed in ${Date.now() - started}ms`);
-});
-
-bot.command("help", async (ctx) => { await ctx.reply("Help is available."); });
-bot.onRegex(/^order:(\d+)$/, async (ctx) => { await ctx.reply("Order received."); });
-bot.callback("profile:*", async (ctx) => { await ctx.answerCallbackQuery("Opened."); });
-bot.action("menu:open", async (ctx) => { await ctx.answerCallbackQuery("Menu opened."); });
-bot.on("message:photo", async (ctx) => { await ctx.reply("Nice photo."); });
-bot.on(["message:text", "callback_query:data"], async (ctx) => { await ctx.reply("Got it."); });
-bot.hears("ping", async (ctx) => { await ctx.reply("pong"); });
-bot.catch(async (error, ctx) => { await ctx.reply("Something went wrong."); });
+Output terminal:
+```
+┌────────────────────────┐
+│  🤖 TeleBibz ON        │
+│  bot      : @botkamu   │
+│  engine   : grammY 1.46│
+│  brand    : //—Xbibz Official—//
+└────────────────────────┘
+✔ menunggu update… (Ctrl+C untuk berhenti)
 ```
 
-The router supports commands, exact text, regular expressions, callback patterns, update-type filters (`on`), custom predicates, nested routers, per-route middleware, and route priority. `bot.catch()` registers an error boundary: handler failures are routed there instead of rejecting the update.
+> **Hidup di VPS:** kalau ada instance bot lain yang masih polling (409 Conflict — misal deploy
+> ganda atau hosting restart), telebibz **otomatis retry tiap 5 detik tanpa crash** dan menyalakan
+> diri begitu jalur bebas. Tidak perlu PM2 babysitter.
 
-## Telegram API
+---
 
-Generated method access and raw access are available through the API client:
+## 📚 API lengkap (semuanya!)
 
-```ts
-await bot.api.methods.getMe();
-await bot.api.methods.sendMessage({ chat_id: 123456789, text: "Hello." });
-await bot.api.call("sendMessage", { chat_id: 123456789, text: "Hello." });
-await bot.api.raw("futureTelegramMethod", { value: true });
+### Perintah & teks
+
+```js
+bot.cmd('ping',          (ctx) => ctx.reply('pong'));      // /ping
+bot.cmd(['a', 'b'],      handler);                          // /a ATAU /b
+bot.hears('daftar',      handler);                          // teks persis "daftar"
+bot.hears(/kampret/i,    handler);                          // regex bebas
+bot.on('message:photo',  handler);                          // filter grammY apa pun
+bot.use(middleware);                                       // middleware manual
 ```
 
-The built-in transport uses `fetch`, timeouts, retries, exponential backoff, JSON payloads, and multipart upload.
+### Tombol (keyboard) — berwarna & ikon animated
 
-## Keyboard builders
+```js
+const { btn, url, webApp, copy, kb } = require('@xbibzlibrary/telebibz');
 
-```ts
-import { InlineKeyboard } from "@xbibzlibrary/telebibz";
+bot.cmd('menu', (ctx) =>
+  ctx.reply('Pilih:', kb([
+    [btn('💎 Premium', 'prem', 'primary'),                // biru/ungu
+     btn('✅ Daftar', 'reg', 'success')],                 // hijau
+    [url('🌐 Web', 'https://situsmu.com')],
+    [btn('❌ Tutup', 'close', 'danger', '5408846744727334338')], // merah + IKON ANIMASI
+  ])));
 
-const keyboard = new InlineKeyboard()
-  .text("Profile", "profile")
-  .url("Documentation", "https://core.telegram.org/bots/api")
-  .build();
-
-await ctx.reply("Choose an option:", { reply_markup: keyboard });
-```
-
-Builders produce native Telegram keyboard payloads. HTML/CSS interfaces require a separate Mini App or Web App.
-
-## Colorful runtime logging
-
-The logger emits compact, readable terminal lines with colored levels and structured context. Log levels are `silent`, `error`, `warn`, `info`, `debug`, and `trace`; sensitive values are redacted; errors print in red with the full stack. Use `format: "json"` for machine ingestion and `includeUpdateContent: true` only when message text or callback data is explicitly required.
-
-```ts
-const bot = new Bot({
-  token: process.env.TELEGRAM_BOT_TOKEN!,
-  logger: { level: "debug", format: "pretty", color: true },
+bot.action('prem', async (ctx) => {
+  await ctx.answerCallbackQuery('Menuju premium…');
+  await ctx.reply('halaman premium');
 });
 ```
 
+- Warna (`primary`/`success`/`danger`) butuh aplikasi Telegram rilis ≥ Feb 2026 — versi lama tampil biasa, tidak error.
+- Ikon animated (`icon_custom_emoji_id`) butuh **owner bot ber-Premium** atau username Fragment. Cari ID-nya: kirim custom emoji ke bot + lihat entity `custom_emoji` di update (atau sediakan `/emojiid` sendiri, 5 baris lewat `bot.on('message')`).
 
-## Wizards and multi-step conversations
+### Wizard — form tanya-jawab tanpa boilerplate
 
-Use `Wizard` with `bot.useWizard()` so every subsequent text reply from the same chat/user is routed to the active step automatically. The key is generated from the Telegram chat and sender; no manual key is required.
-
-```ts
-import { Bot, Wizard } from "@xbibzlibrary/telebibz";
-
-const wizard = new Wizard()
-  .step({ id: "prompt-name", run: async (flow) => { flow.next(); await flow.ctx.reply("What is your name?"); } })
-  .step({ id: "name", run: async (flow) => { flow.set("name", flow.ctx.message?.text?.trim()); flow.next(); await flow.ctx.reply("How old are you?"); } })
-  .step({ id: "age", run: (flow) => { const age = Number(flow.ctx.message?.text?.trim()); if (!Number.isInteger(age)) return; flow.set("age", age); flow.next(); } });
-
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
-bot.useWizard(wizard);
-bot.command("start", async (ctx) => { await wizard.run(ctx); });
-await bot.start();
-```
-
-`Wizard` keeps its default `ConversationManager` across updates and marks the conversation completed immediately after the final step. Use `/cancel` to cancel an active wizard.
-
-## Webhook
-
-```ts
-import { Bot, createWebhookHandler } from "@xbibzlibrary/telebibz";
-
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
-const handler = createWebhookHandler(bot, {
-  secretToken: process.env.TELEGRAM_WEBHOOK_SECRET,
+```js
+bot.wizard('daftar', {
+  steps: [
+    { key: 'nama', ask: 'Siapa namamu?' },
+    { key: 'umur', ask: 'Umur?', parse: Number,
+      validate: (n) => (n > 0 && n < 120 ? null : 'Angka saja ya:') },
+  ],
+  done: async (ans, ctx) => ctx.reply(`Oke ${ans.nama} (${ans.umur})!`),
 });
+// user tinggal /daftar → bot bertanya-bertanya sampai selesai.
+// ketik "batal" kapan pun untuk berhenti. Sesi otomatis aktif, tak perlu setup.
 ```
 
-`createWebhookHandler` accepts a standard Web `Request` and returns a `Response`. It verifies the optional secret token, body size, JSON payload, and update shape before calling `bot.handleUpdate()`.
+### Broadcast aman rate-limit
 
-## High-load updates and broadcast
-
-telebibz is built for bursts of 1000+ messages with no artificial cooldown:
-
-- **Parallel across chats, ordered per chat.** Every `getUpdates` batch (and every webhook request) is processed concurrently — updates from different chats never queue behind each other, while updates from the same chat keep their arrival order so sessions, wizards, and conversations stay correct and session writes are never lost. A concurrent burst triggers exactly one `getMe` initialization. Feed pre-fetched batches yourself with `bot.handleUpdates()` when you own the polling loop.
-- **No proactive throttling.** Outgoing requests are never delayed by the library. When Telegram answers 429, the transport waits exactly the `retry_after` window Telegram ordered (a global "flood gate" protects all in-flight traffic) and retries automatically — so bursts deliver completely instead of failing. For your own downstream limits, `Limiter` and `mapWithConcurrency()` rate-shape any workload.
-- **Broadcast to 1000+ users at once.** `bot.broadcast()` attempts every chat immediately, retries 429s per Telegram's own `retry_after`, and returns a full report.
-- **Graceful shutdown.** `bot.stop()` first waits for in-flight handlers to finish (bounded by `handlerTimeout`) and only then stops the plugin manager — active conversations are never truncated mid-write.
-
-```ts
-const report = await bot.broadcast(
-  subscriberIds,
-  (chatId) => bot.api.methods.sendMessage({ chat_id: chatId, text: "Newsletter #42" }),
-  { onProgress: (p) => console.log(`${p.delivered}/${p.total} delivered`) },
-);
-console.log(`Delivered ${report.delivered}/${report.total} in ${report.durationMs}ms`);
+```js
+const hasil = await bot.broadcast([111, 222, 333], 'Pengumuman!', { delay: 35 });
+// → { terkirim: 3, gagal: 0, errors: [] }  (yang diblokir-mu tercatat di errors)
 ```
 
-Cap simultaneous work with `new Bot({ ..., updates: { concurrency: 64 } })` or `broadcast(..., { concurrency: 64 })` when your own downstream (database, API) needs it — by default both run fully parallel.
+### Kirim file
 
-## Full Telegraf parity on the context surface
-
-Every Telegraf context shortcut is available, plus additions that cover what the Telegraf core leaves to its plugin ecosystem:
-
-- **Moderation & admin** — `ctx.banChatMember`, `ctx.unbanChatMember`, `ctx.restrictChatMember`, `ctx.promoteChatMember`, `ctx.banChatSenderChat`, `ctx.unbanChatSenderChat`
-- **Chat management** — `ctx.setChatTitle/Description/Photo`, `ctx.setChatPermissions`, `ctx.leaveChat`, `ctx.unpinAllChatMessages`, `ctx.setChatStickerSet`, `ctx.deleteChatStickerSet`
-- **Info** — `ctx.getChatAdministrators`, `ctx.getChatMemberCount`, `ctx.getChatMember`
-- **Invite links & join requests** — `ctx.exportChatInviteLink`, `ctx.createChatInviteLink`, `ctx.editChatInviteLink`, `ctx.revokeChatInviteLink`, `ctx.approveChatJoinRequest`, `ctx.declineChatJoinRequest`
-- **Polls, games, payments** — `ctx.replyWithQuiz`, `ctx.stopPoll`, `ctx.editMessageLiveLocation`, `ctx.stopMessageLiveLocation`, `ctx.replyWithGame`, `ctx.setGameScore`, `ctx.getGameHighScores`, `ctx.replyWithInvoice`
-- **Forum topics** — `ctx.createForumTopic`, `ctx.closeForumTopic`, `ctx.editGeneralForumTopic`, and nine more
-- **Launch options** — `handlerTimeout` (default 90s, like Telegraf) rejects hung updates with `UpdateTimeoutError` while the handler keeps running; `0` disables the timeout; `contextType` plugs in your own `Context` subclass; `dropPendingUpdates` on `start()/launch()`
-- **Webhook replies** — opt-in `webhookReply: true` answers the first API call through the webhook HTTP response itself (Telegraf-style), with the lazy `getMe` never claiming the slot
-- **Drop-in handler aliases** — `bot.action(...)` registers a callback-query handler just like `bot.callback(...)`, so handlers written for Telegraf migrate unchanged
-
-## State, queue, scheduler, and cache
-
-The package provides `MemoryStorage` with TTL and serialized per-key updates, `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, persistent application state storage, bot sessions, storage-backed conversations and forms, permission-aware menus, `MenuController` pagination, `MemoryCache`, a token-bucket limiter, a task queue with retry/backoff/concurrency/delay/cancel, and schedulers for intervals, one-shot tasks, and full five-field cron expressions. Redis, SQL, and Mongo adapters use small driver interfaces so the core package remains free of vendor runtime dependencies.
-
-## Terminal experience
-
-When the bot starts on an interactive terminal (`npm start`, `node index.js`, `telebibz start`), telebibz plays a startup sequence: a typing effect for `Installing Dependencies......`, a glass progress bar with a sweeping highlight, and the animated rainbow ASCII banner **Tele Bibz** (figlet `Speed` font) that keeps flowing until the bot connects, then freezes with `✓ Connected as @<username>`.
-
-Afterwards, every incoming update is logged on a human-readable line, and errors are printed in red with the full stack:
-
-```text
-[ => ] Message From 123456789 John Doe 29/08/2026 15:04:05
-        ↳ Text: /start
-[ => ] Callback From 123456789 John Doe 29/08/2026 15:04:07
-        ↳ Data: menu:open
+```js
+const { InputFile } = require('@xbibzlibrary/telebibz');
+bot.cmd('foto', (ctx) => ctx.replyWithPhoto(new InputFile(buf, 'x.jpg')));
 ```
 
-Message and command text is truncated to 50 characters; callback button data is shown in full. Pass `branding: false` to `Bot` to disable the sequence, or set `logger.format: "json"` for structured log ingestion. Non-interactive stdout (pipes, Docker, CI) automatically falls back to plain output without animations.
+### Error yang bisa dibaca manusia
 
-## CLI
+Default-nya setiap error dilaporkan dengan **saran penyelesaian**:
+```
+✖ Telegram error (403): Forbidden: bot was blocked by the user
+  💡 saran: Bot diblokir pengguna — jangan kirim ulang, hapus dari daftar broadcast.
+```
+Kustom: `new TeleBibz(token, { onError: (err, ctx) => { ... } })`.
 
-CLI commands such as `telebibz doctor`, `init`, and `webhook` start with the rainbow `Tele Bibz` banner. Startup animation automatically falls back to clean static output when stdout is not a TTY.
+### Opsi konstruktor
 
-```bash
-npm start
-npx telebibz init my-bot
-npx telebibz doctor
-npx telebibz build
-npx telebibz test
+| Opsi | Default | Fungsi |
+|---|---|---|
+| `allowedUpdates` | semua tipe umum + Business | batasi update yang diterima |
+| `onError` | reporter cantik bawaan | handle error sendiri |
+| `silent` | `false` | tanpa banner boot |
+| `dropPending` | `false` | buang update lama saat start |
+| `grammy` | `{}` | opsi mentah `new Bot()` grammY |
+
+### Webhook / serverless
+
+```js
+// express:
+app.use('/tg', bot.webhook('express'));
+// atau serverless manual:
+await bot.handleUpdate(req.body);
 ```
 
-Applications can print the same terminal branding explicitly:
+### Escape hatch penuh
 
-```ts
-import { printTeleBibzBanner, printTerminalBranding } from "@xbibzlibrary/telebibz";
+Kapan pun butuh API mentah: `bot.api.sendMessage(...)`, `bot.bot` (instance grammY), `ctx.reply(...)`, `ctx.api.*` — grammar lengkap grammY tetap berlaku 100%.
 
-printTeleBibzBanner({ subtitle: "My bot" });
-printTerminalBranding();
-```
+---
 
-## Testing
+## 🧩 Contoh siap jalan (`examples/`)
 
-```bash
-npm run typecheck
-npm run test:types
-npm run lint
-npm test
-npm run build
-npm run security
-npm run release:check
-```
-
-Real Telegram E2E tests require `TELEGRAM_BOT_TOKEN` and `TELEGRAM_TEST_CHAT_ID`. Without credentials, E2E tests are skipped and are not counted as passing.
-
-## Web Apps and payments
-
-`validateWebAppInitData()` verifies Telegram Web App signatures and expiration. `PaymentsClient` provides wrappers for invoice links, invoices, pre-checkout answers, Web App query answers, Stars transactions, and Stars refunds. Use `TelegramTypes` and aliases such as `TelegramUser`, `TelegramMessage`, and `TelegramUpdate` for the vendored full Telegram declaration surface.
-
-## API surface
-
-Everything below ships from the package entry point unless a subpath is given. Full signatures for every export are documented in [docs/API.md](docs/API.md) (also [docs/API.id.md](docs/API.id.md) and [docs/API.zh-CN.md](docs/API.zh-CN.md)).
-
-| Area | Exports |
+| File | Isi |
 |---|---|
-| Bot & lifecycle | `Bot` with `on`, `onText`, `onRegex`, `command`, `hears`, `callback`, `action`, `catch`, `use`, `usePlugin`, `useWizard`, `handleUpdate`, `handleUpdates`, `start`/`launch`, `stop`, `restart`, `init`, `health`, `broadcast`, `getMe`, `setCommands`, `deleteCommands`, `downloadFile`; `UpdateTimeoutError` |
-| Context | `Context`, `ContextOptions`, `contextType` launch option; ~80 shortcuts on `ctx` for replies, admin actions, chat management, invite links, polls, games, payments, and forum topics |
-| Telegram API | `ApiClient` with `call()`, `request()`, `raw()`, `downloadFile()`, and `methods` (all generated Bot API methods); `FetchTransport` with automatic 429/5xx retries, a global flood gate, multipart uploads (Blob/bytes/path/streams), and file downloads |
-| Errors | `TelegramError` with a `kind` taxonomy (`retryable`, `rate-limit`, `authentication`, `validation`, `network`, `server`, `unknown`) and `retryAfter`, plus `TelegramRateLimitError`, `TelegramAuthError`, `TelegramValidationError`, `TelegramNetworkError` |
-| Router & middleware | `Router`, `compose`, 24 update filters (`message:photo`, `callback_query:data`, …), `matchMode` (`first`/`all`) |
-| Keyboards | `InlineKeyboard`, `ReplyKeyboard`, `removeKeyboard()`, `forceReply()` |
-| Storage | `MemoryStorage` (TTL, per-key serialization), `JsonFileStorage`, `RedisStorage`, `SqlStorage`, `MongoStorage`, plus the small driver interfaces they build on |
-| Cache & limiting | `MemoryCache`, `TokenBucketLimiter`, `Limiter`, `mapWithConcurrency()` |
-| Queue & scheduler | `TaskQueue` (priority, retry, backoff, delay, cancel), `Scheduler` (intervals, one-shot, cron), `parseCronExpression()`, `nextCronOccurrence()` |
-| State & dialogs | `Wizard`, `ConversationManager`, `ConversationFlow`, `Form` with `validators`, permission-aware `Menu`, `MenuController`, `paginate()` |
-| Webhook | `createWebhookHandler()` (Web `Request`/`Response`), `webhookCallback()` for Express/Koa/Fastify/Node `http`, `runWithWebhookReply()`, `claimWebhookReply()` |
-| Web Apps & payments | `parseWebAppInitData()`, `validateWebAppInitData()`, `PaymentsClient`, `TelegramTypes` (vendored Telegram declarations) |
-| Observability | `Logger` (levels, redaction, JSON format), `EventBus` with the `update:*`, `bot:*`, and `broadcast:*` event maps, `redact()` |
-| Terminal | `printTeleBibzBanner()`, `printTerminalBranding()`, `buildTerminalBranding()`, `runStartupSequence()`, `startTeleBibzBanner()`, `paintRainbow()`, `printStatusLine()` |
-| Text utilities | `splitMessage()`, `splitCaption()`, `escapeMarkdownV2()`, `escapeHtml()`, `md`, `html`, `template()` |
-| File utilities | `validateUpload()`, `assertValidUpload()`, `UploadValidationError` (size, MIME, extension rules) |
-| Testing (`@xbibzlibrary/telebibz/testing`) | `MockTransport` (with mock downloads), `createTestBot()`, `createMockUpdate()`, `createMockCallbackUpdate()`, `createMockContext()` |
-| CLI (`telebibz …`) | `init`, `doctor`, `build`, `test`, `start`, `webhook`, `generate` |
+| `01-quickstart.js` | bot jalan dalam 6 baris |
+| `02-menu-tombol.js` | keyboard berwarna + ikon |
+| `03-wizard.js` | form pendaftaran |
+| `04-broadcast.js` | blast admin |
+| `05-kirim-file.js` | foto & dokumen dari buffer |
 
-## API targets and limitations
+## 🔬 Test
 
-The generated method list is derived from the Telegram Bot API schema when it is updated. Runtime access is available for detected official methods, while specialized request/result inference remains concentrated on the core method map. The complete vendored Telegram object, union, enum, and method declarations are available through `TelegramTypes`. See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for implementation status and [docs/API.md](docs/API.md) for the complete API reference.
+```
+npm test   # 12 kasus: keyboard, token guard, cmd/hears, action, wizard ×3,
+           # broadcast, humanize error, session, onError kustom
+```
 
-For every exported class, function, method, type, error, lifecycle hook, CLI command, and generated Telegram method, see the [complete English API reference](docs/API.md).
+## 🆚 Kenapa recode?
 
-## Release automation
+| | v0.4 lama | v1.0 |
+|---|---|---|
+| Baris file sumber | 152 file TS | 7 file JS |
+| Build step | tsc ×2 + script | — |
+| Dependency API client | tulis tangan | **grammY** (terawat komunitas) |
+| Bot API | manual update | ikut grammY (9.x) |
+| Hello world | kelas + config | 6 baris |
+| Docs | 3 bahasa × belasan file | README ini |
 
-The GitHub repository includes CI and an auto-publish workflow. A push to `main` runs the quality gates and derives the next version from the pushed Conventional Commits: `feat:` commits and breaking changes bump the minor version while the package is pre-1.0 (`BREAKING-CHANGE` footers or `type!:` subjects bump the major from 1.0.0 onward), everything else bumps the patch version. A version already declared in `package.json` ahead of npm publishes exactly as declared, and the workflow never publishes a version at or below the latest npm release. The workflow commits the version, creates the tag, publishes to npm (with provenance disabled via `--provenance=false`), and creates a GitHub Release. Commits containing `[skip release]` do not trigger a publication. Configure the `NPM_TOKEN` GitHub Actions secret before relying on automatic publication. See [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md).
+## 📄 Lisensi
 
-## Project policies and contribution
-
-| Document | Purpose |
-|---|---|
-| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community behavior, enforcement, reporting, and appeals. |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Local setup, branch/commit rules, tests, review, and release workflow. |
-| [CONTRIBUTION_RULES.md](CONTRIBUTION_RULES.md) | API, compatibility, testing, dependency, security, and release requirements. |
-| [GOVERNANCE.md](GOVERNANCE.md) | Roles, decision-making, triage, repository protection, and amendments. |
-| [SECURITY.md](SECURITY.md) | Private vulnerability reporting, threat boundaries, and credential rotation. |
-| [SUPPORT.md](SUPPORT.md) | Support channels, safe-reporting rules, and request expectations. |
-| [RELEASE_AUTOMATION.md](RELEASE_AUTOMATION.md) | GitHub-to-npm automation and required `NPM_TOKEN` setup. |
-| [RELEASE_POLICY.md](RELEASE_POLICY.md) | Immutable release and hardening controls. |
-| [NOTICE.md](NOTICE.md) | Third-party declaration attribution. |
-
-Never commit Telegram tokens or npm credentials. Use environment variables or a secret manager. See [SECURITY.md](SECURITY.md) and [RELEASE_POLICY.md](RELEASE_POLICY.md) for security and release hardening policies.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+MIT · //—Xbibz Official—//
