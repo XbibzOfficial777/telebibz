@@ -1,0 +1,39 @@
+name: Question or support
+description: Ask a usage or configuration question after checking the documentation.
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [SUPPORT.md](../../SUPPORT.md) and the API reference first. Never include Telegram tokens, npm tokens, private keys, cookies, authorization headers, or private user data.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant context
+      description: Include telebibz version, Node.js version, module system, configuration shape, and safe code excerpts.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched the documentation and existing issues.
+          required: true
+        - label: I removed secrets and private data.
+          required: true

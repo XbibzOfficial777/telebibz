@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Runtime tests (24 kasus, tanpa jaringan)
+        run: npm test
+      - name: Syntax check semua contoh
+        run: |
+          for f in examples/*.js; do node --check "$f"; done
+      - run: npm pack --dry-run
+      - run: npm audit --audit-level=high --omit=dev

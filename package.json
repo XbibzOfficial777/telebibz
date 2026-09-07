@@ -42,7 +42,11 @@
     "index.js",
     "index.d.ts",
     "lib/",
+    "examples/",
+    "test/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE.md",
+    "CHANGELOG.md"
   ]
 }

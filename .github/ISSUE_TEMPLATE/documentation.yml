@@ -1,0 +1,48 @@
+name: Documentation issue
+description: Report inaccurate, missing, unclear, or untranslated documentation.
+title: "[Docs]: "
+labels:
+  - documentation
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Documentation language
+      options:
+        - English
+        - Bahasa Indonesia
+        - 简体中文
+        - All languages
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: File or URL
+      placeholder: "docs/API.md#context"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is incorrect or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction
+      description: Include corrected wording, a code sample, or a link to the relevant source API.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I checked the current source implementation.
+          required: true
+        - label: I searched existing documentation issues.
+          required: true
+        - label: I removed secrets and private data.
+          required: true
