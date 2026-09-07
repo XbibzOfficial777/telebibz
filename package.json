@@ -1,6 +1,6 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Library Telegram Indonesia production-grade — set fitur penuh setara grammY: proxy-api segala metode, transformer, menus, inline query, media group, throttler & auto-retry, session swappable, webhook, polling tahan-409. //—Xbibz Official—//",
   "main": "index.js",
   "types": "index.d.ts",
