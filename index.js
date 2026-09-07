@@ -1,21 +1,17 @@
-// index.js — pintu masuk @xbibzlibrary/telebibz.
-// Semua yang perlu kamu pakai sehari-hari diekspor dari sini.
+// index.js — pintu masuk @xbibzlibrary/telebibz (v2: 100% kode sendiri, 0 dependency).
 'use strict';
 
-const { TeleBibz, GrammyError, HttpError } = require('./lib/telebibz');
-const { btn, url, webApp, copy, kb } = require('./lib/keyboard');
+const { TeleBibz } = require('./lib/telebibz');
+const { ApiError } = require('./lib/net');
+const { File, InputFile } = require('./lib/file');
+const { btn, url, webApp, copy, kb, InlineKeyboard, Keyboard } = require('./lib/keyboard');
 const wizard = require('./lib/wizard');
 const { humanize } = require('./lib/errors');
 const log = require('./lib/logger');
+const { session } = require('./lib/session');
+const { Composer, BotError } = require('./lib/composer');
+const { Api } = require('./lib/api');
 
-// Re-export alat grammY yang paling seru dipakai pemula:
-const { InputFile, InlineKeyboard, Keyboard, webhookCallback } = require('grammy');
-
-/**
- * Shortcut konteks: tambah ctx.replyHTML / ctx.jawab? — cukup lewat opsi:
- *   ctx.reply('<b>halo</b>', { parse_mode: 'HTML' })
- * atau pakai gula di bawah.
- */
 const say = {
   html: (text, extra = {}) => ({ ...extra, text, parse_mode: 'HTML' }),
 };
@@ -23,13 +19,15 @@ const say = {
 module.exports = {
   TeleBibz,
   // keyboard
-  btn, url, webApp, copy, kb,
-  // wizard (akses langsung kalau mau)
+  btn, url, webApp, copy, kb, InlineKeyboard, Keyboard,
+  // percakapan berurut
   wizard,
+  // file kiriman
+  File, InputFile,
+  // blok penyusun (lanjutan)
+  Composer, BotError, session, Api,
   // util
   humanize, log, say,
-  // bawaan grammY
-  InputFile, InlineKeyboard, Keyboard, webhookCallback,
-  // error
-  GrammyError, HttpError,
+  // error API
+  ApiError,
 };

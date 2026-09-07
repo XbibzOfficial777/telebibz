@@ -1,13 +1,14 @@
 # 🤖 telebibz
 
-**Library Telegram paling gampang untuk Node.js** — semua kekuatan [grammY](https://grammy.dev) (framework Telegram modern, Bot API 9.x), dengan API sekecil mungkin, log cantik, dan dokumentasi Bahasa Indonesia.
+**Library Telegram paling gampang untuk Node.js** — **100% kode sendiri & 0 dependency** (full recode atas arsitektur elegan [grammY](https://grammy.dev), lisensi MIT — lihat [NOTICE.md](NOTICE.md)). Hanya butuh Node 18+ (fetch bawaan), tidak ada `node_modules` sama sekali.
 
 ```
 npm install @xbibzlibrary/telebibz
 ```
 
-> v1.0 adalah **recode total** dari framework TS lama (152 file, build step, API client sendiri)
-> menjadi **wrapper ramping**: 1 dependency, tanpa kompilasi, CommonJS murni.
+> v2.0: **clone & recode penuh** — transport, API, composer/router, context, session,
+> runner polling, file multipart, semuanya dituliskan ulang dalam 11 file ramping.
+> API publik SAMA dengan v1.0 → bot kamu tidak perlu diubah sepatah kode pun.
 
 ---
 
@@ -153,12 +154,30 @@ Kapan pun butuh API mentah: `bot.api.sendMessage(...)`, `bot.bot` (instance gram
 | `04-broadcast.js` | blast admin |
 | `05-kirim-file.js` | foto & dokumen dari buffer |
 
-## 🔬 Test
+## 🔬 Test & bukti live
 
 ```
-npm test   # 12 kasus: keyboard, token guard, cmd/hears, action, wizard ×3,
-           # broadcast, humanize error, session, onError kustom
+npm test   # 14 kasus, TANPA jaringan (transport disuntik)
 ```
+
+Tervalidasi **8/8 live** pada bot produksi: getMe, keyboard berwarna & ikon animasi asli,
+upload multipart (photo+document), edit keyboard, broadcast, deleteMessage, polling 409 retry.
+
+## 📂 Isi repo (11 file inti)
+
+| File | Peran |
+|---|---|
+| `lib/net.js` | transport HTTP fetch murni + multipart `attach://` |
+| `lib/api.js` | metode Bot API + `api.callApi()` untuk segala metode |
+| `lib/composer.js` | middleware, filter `on('message:photo')`, `errorBoundary` |
+| `lib/context.js` | objek ctx + pintasan reply/edit/delete/callback |
+| `lib/session.js` | sesi per user:chat (dapat ditukar storagenya) |
+| `lib/runner.js` | long polling: retry 409, backoff jaringan, drop pending |
+| `lib/file.js` | `File`/`InputFile` (Buffer/path/stream) |
+| `lib/keyboard.js` | builder + `InlineKeyboard`/`Keyboard` fluent class |
+| `lib/wizard.js` | percakapan tanya-jawab berurutan |
+| `lib/broadcast.js` | blast aman rate limit |
+| `lib/errors.js` + `lib/logger.js` | error manusiawi + log berbingkai |
 
 ## 🆚 Kenapa recode?
 
@@ -166,8 +185,8 @@ npm test   # 12 kasus: keyboard, token guard, cmd/hears, action, wizard ×3,
 |---|---|---|
 | Baris file sumber | 152 file TS | 7 file JS |
 | Build step | tsc ×2 + script | — |
-| Dependency API client | tulis tangan | **grammY** (terawat komunitas) |
-| Bot API | manual update | ikut grammY (9.x) |
+| Dependency runtime | — | **0 (nol)** |
+| Bot API | manual update | 9.x penuh (uji live asli) |
 | Hello world | kelas + config | 6 baris |
 | Docs | 3 bahasa × belasan file | README ini |
 

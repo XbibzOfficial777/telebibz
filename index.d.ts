@@ -1,5 +1,6 @@
 // index.d.ts — tipe ringkas untuk autocompletion editor (autocorrect).
-import type { Bot, Context } from 'grammy';
+// v2: tanpa grammY — tipe longgar namun ramah.
+type Context = any; type Bot = any;
 
 declare module '@xbibzlibrary/telebibz' {
   type Color = 'danger' | 'success' | 'primary';
@@ -68,10 +69,10 @@ declare module '@xbibzlibrary/telebibz' {
   const log: { info: Function; ok: Function; warn: Function; error: Function; banner: Function };
   const say: { html: (text: string, extra?: object) => object };
 
-  const InputFile: any;
+  class File { constructor(src: any, filename?: string, type?: string); src: any; filename: string; data(): Promise<Buffer>; }
+  const InputFile: typeof File;
   const InlineKeyboard: any;
   const Keyboard: any;
-  const webhookCallback: any;
-  const GrammyError: any;
-  const HttpError: any;
+  class ApiError extends Error { description: string; error_code?: number; method?: string; payload?: any; }
+  const Composer: any; const BotError: any; const session: any; const Api: any;
 }

@@ -1,7 +1,7 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "1.0.0",
-  "description": "Library Telegram paling gampang untuk Node.js — wrapper ramah di atas grammY: command, tombol berwarna & ikon animasi, wizard percakapan, broadcast, dan log cantik. //—Xbibz Official—//",
+  "version": "2.0.0",
+  "description": "Library Telegram Indonesia — 100% kode sendiri & 0 dependency (full recode arsitektur grammY, lisensi MIT): polling tahan-409, wizard, broadcast, keyboard berwarna & ikon animasi. //—Xbibz Official—//",
   "main": "index.js",
   "types": "index.d.ts",
   "type": "commonjs",
@@ -22,14 +22,14 @@
     "wizard",
     "broadcast",
     "indonesia",
-    "nodejs"
+    "nodejs",
+    "zero-dependency",
+    "tanpa-dependency"
   ],
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "grammy": "^1.46.0"
-  },
+  "dependencies": {},
   "scripts": {
     "test": "node test/all.test.js"
   },
