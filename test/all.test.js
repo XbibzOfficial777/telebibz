@@ -2,10 +2,11 @@
 'use strict';
 
 const assert = require('assert');
-const { TeleBibz, btn, url, kb, webApp, copy, humanize, File, InlineKeyboard } = require('..');
+const { TeleBibz, btn, url, kb, webApp, copy, humanize, File, InlineKeyboard,
+  Menu, MenuContainer, iq, autoRetry, throttler, limiter, InputMediaBuilder } = require('..');
 
 let N = 0, OK = 0;
-const TOTAL = 14;
+const TOTAL = 24;
 const t = (nama, fn) => {
   const done = () => { N++; if (N === TOTAL) { console.log(`\n${OK}/${N} lulus`); process.exit(OK === N ? 0 : 1); } };
   Promise.resolve()
@@ -140,13 +141,13 @@ t('pesan non-teks di tengah wizard tidak error & wizard lanjut', async () => {
 /* ===== 9. broadcast ===== */
 t('broadcast mengirim ke semua + merangkum kegagalan', async () => {
   const { bot } = buatBot(); await boot(bot);
-  bot.api._t = async (method, payload) => {
+  bot.api.config.use(async (prev, method, payload) => {
     if (method === 'sendMessage' && payload.chat_id === 99) {
       const e = new Error('Forbidden: bot was blocked by the user');
       e.description = 'bot was blocked by the user'; throw e;
     }
-    return { ok: true };
-  };
+    return prev(method, payload);
+  });
   const hasil = await bot.broadcast([1, 99, 2], 'tes', { delay: 0 });
   assert.strictEqual(hasil.terkirim + hasil.gagal, 3);
   assert.strictEqual(hasil.gagal, 1);
@@ -199,6 +200,122 @@ t('launch: getUpdates 409 → retry halus; stop() resolve runPromise', async () 
   bot.stop();
   await bot.runPromise;
   assert.ok(polls >= 2, `harus retry minimal sekali, polls=${polls}`);
+});
+
+/* ===== 15. Proxy API generik: metode apapun ===== */
+t('Proxy: api.metodeBebas(payload) → callApi mentah', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
+  const c = calls.find((x) => x.method === 'sendDiceCustom');
+  assert.ok(c && c.payload.emoji === '🎲');
+});
+
+/* ===== 16. transformer pipeline ===== */
+t('api.config.use: transformer melihat semua panggilan', async () => {
+  const { bot } = buatBot(); await boot(bot);
+  const seen = [];
+  bot.api.config.use(async (prev, m, p) => { seen.push(m); return prev(m, p); });
+  await bot.api.sendMessage(1, 'a'); await bot.api.getMyCommands();
+  assert.deepStrictEqual(seen, ['sendMessage', 'getMyCommands']);
+});
+
+/* ===== 17. autoRetry menahan 429 sekali ===== */
+t('autoRetry: 429 + retry_after dihormati lalu sukses', async () => {
+  let hits = 0;
+  const tr = async (m) => { hits++; if (hits === 1) { const e = new Error('Too Many Requests'); e.error_code = 429; e.parameters = { retry_after: 0 }; throw e; } return true; };
+  const out = await autoRetry({ maxRetry: 2, baseDelayMs: 1 })(tr, 'sendMessage', {});
+  assert.ok(out === true && hits === 2);
+});
+
+/* ===== 18. throttler memanggil berurutan ===== */
+t('throttler: semua panggilan lolos berurutan', async () => {
+  const order = []; const tr = async (m) => { order.push(m); return m; };
+  const th = throttler({ perSecond: 1000 });
+  await Promise.all([th(tr, 'a', {}), th(tr, 'b', {}), th(tr, 'c', {})]);
+  assert.deepStrictEqual(order, ['a', 'b', 'c']);
+});
+
+/* ===== 19. limiter menahan spam ===== */
+t('limiter: update ke-4 dalam window ditahan', async () => {
+  const { bot } = buatBot(); await boot(bot);
+  let hits = 0;
+  bot.use(limiter({ windowMs: 60000, limit: 3 }));
+  bot.on(':text', () => { hits++; });
+  for (let i = 0; i < 5; i++) await bot.handleUpdate(uMsg('x' + i));
+  assert.strictEqual(hits, 3);
+});
+
+/* ===== 20. Menu render + tekan ===== */
+t('Menu: render keyboard & handler tombol jalan', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  const mc = new MenuContainer();
+  const m = mc.create('cfg');
+  let pressed = 0;
+  m.text('Tombol', async (ctx) => { pressed++; await ctx.answerCallbackQuery('sip'); });
+  bot.use(mc);
+  const rm = await m.render({});
+  const cbData = rm.inline_keyboard[0][0].callback_data;
+  assert.strictEqual(cbData, 'cfg|0');
+  await bot.handleUpdate({ update_id: ++uid, callback_query: { id: 'c1', from: USER, chat_instance: 'x', data: cbData, message: { message_id: 9, from: { id: 99, is_bot: true, first_name: 'B' }, chat: CHAT, date: 1 } } });
+  assert.strictEqual(pressed, 1);
+  assert.ok(calls.some((c) => c.method === 'answerCallbackQuery' && c.payload.text === 'sip'));
+});
+
+/* ===== 21. inlineQuery ===== */
+t('inlineQuery: regex cocok, answerInlineQuery terkirim', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.inlineQuery(/kucing/i, async (ctx) => {
+    await ctx.answerInlineQuery([iq.article('1', 'Kucing garong', { message_text: 'meong!' })], { cache_time: 0 });
+  });
+  await bot.handleUpdate({ update_id: ++uid, inline_query: { id: 'i1', from: USER, query: 'kucing lucu', offset: '' } });
+  const c = calls.find((x) => x.method === 'answerInlineQuery');
+  assert.ok(c && c.payload.results[0].type === 'article');
+});
+
+/* ===== 22. replyWithMediaGroup ===== */
+t('replyWithMediaGroup membentuk payload media', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.cmd('album', (ctx) => ctx.replyWithMediaGroup([
+    InputMediaBuilder.photo('https://a/1.jpg'), InputMediaBuilder.photo('https://a/2.jpg', { caption: 'dua' }),
+  ]));
+  await bot.handleUpdate(uMsg('/album'));
+  const c = calls.find((x) => x.method === 'sendMediaGroup');
+  assert.ok(c && c.payload.media.length === 2 && c.payload.media[1].caption === 'dua');
+});
+
+/* ===== 23. composer lanjutan: branch/drop/filter ===== */
+t('branch/drop/filter berperilaku benar (semantik grammY)', async () => {
+  // bot A: branch memilih sub-pohon
+  const A = buatBot(); await boot(A.bot);
+  const tagA = [];
+  A.bot.branch((ctx) => ctx.msg.text === 'yes', async () => { tagA.push('A'); }, async () => { tagA.push('B'); });
+  await A.bot.handleUpdate(uMsg('yes'));
+  await A.bot.handleUpdate(uMsg('no'));
+  assert.deepStrictEqual(tagA, ['A', 'B']);
+
+  // bot B: filter menjalankan hanya saat cocok; drop menahan saat cocok
+  const B = buatBot(); await boot(B.bot);
+  const tagB = [];
+  B.bot.filter((ctx) => ctx.msg.text.startsWith('fi'), async () => { tagB.push('F'); });
+  B.bot.drop((ctx) => ctx.msg.text === 'toxic', async () => { tagB.push('TERTAHAN'); });
+  await B.bot.handleUpdate(uMsg('file update'));
+  await B.bot.handleUpdate(uMsg('toxic'));        // drop(pred=true) → mw ditahan ✓
+  await B.bot.handleUpdate(uMsg('bukan cocok'));  // drop(pred=false) → mw jalan ✓
+  assert.deepStrictEqual(tagB, ['F', 'TERTAHAN']);
+});
+
+/* ===== 24. ctx.getFile pilih photo terbesar ===== */
+t('ctx.getFile() memilih ukuran photo terbesar', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.on('message:photo', async (ctx) => { const f = await ctx.getFile(); await ctx.reply('got:' + f.file_path || 'x'); });
+  await bot.handleUpdate({
+    update_id: ++uid,
+    message: { message_id: ++mid, from: USER, chat: CHAT, date: 1, photo: [
+      { file_id: 'kecil', width: 90, height: 90 }, { file_id: 'besar', width: 800, height: 600 },
+    ] },
+  });
+  const g = calls.find((c) => c.method === 'getFile');
+  assert.ok(g && g.payload.file_id === 'besar');
 });
 
 /* ===== 14. webhook handler Node murni ===== */

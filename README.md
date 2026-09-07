@@ -1,14 +1,51 @@
 # 🤖 telebibz
 
-**Library Telegram paling gampang untuk Node.js** — **100% kode sendiri & 0 dependency** (full recode atas arsitektur elegan [grammY](https://grammy.dev), lisensi MIT — lihat [NOTICE.md](NOTICE.md)). Hanya butuh Node 18+ (fetch bawaan), tidak ada `node_modules` sama sekali.
+**Library Telegram paling gampang untuk Node.js, set fitur penuh setara grammY** — recode mandiri atas arsitektur elegan [grammY](https://grammy.dev) (MIT — lihat [NOTICE.md](NOTICE.md)) dengan dependency produksi yang **benar-benar dipakai** (axios keep-alive, mime-types, https-proxy-agent, debug).
 
 ```
 npm install @xbibzlibrary/telebibz
 ```
 
-> v2.0: **clone & recode penuh** — transport, API, composer/router, context, session,
-> runner polling, file multipart, semuanya dituliskan ulang dalam 11 file ramping.
-> API publik SAMA dengan v1.0 → bot kamu tidak perlu diubah sepatah kode pun.
+## 📊 FEATURE MATRIX (parity grammY)
+
+| Fitur | grammY | telebibz |
+|---|---|---|
+| Proxy API **segala metode** (auto-generated) | ✅ `api.xyz()` | ✅ `api.xyz({...})` |
+| ~60 shortcut bertipe (sendMessage, banChatMember…) | ✅ | ✅ |
+| Context lengkap (~70 pintasan reply/edit/admin/react) | ✅ | ✅ |
+| Context flavor business (`business_connection_id` otomatis) | plugin | ✅ bawaan |
+| Filter `on('message:photo' / ':text' / 'chat_type:private' …)` | ✅ | ✅ |
+| `cmd / hears / action / inlineQuery` | ✅ | ✅ (+ inlineQuery matcher) |
+| `branch / filter / drop / route / lazy / fork` | ✅ | ✅ |
+| Error boundary + catch | ✅ | ✅ (semua shortcut otomatis terlindungi) |
+| Session + storage swappable | ✅ | ✅ |
+| Transformer API (`api.config.use`) | ✅ | ✅ |
+| `auto-retry` 429 hormati `retry_after` | plugin (@grammyjs/auto-retry) | ✅ bawaan `autoRetry()` |
+| Throttler antre-rate-limit | plugin | ✅ bawaan `throttler()` |
+| Rate limit per-user | plugin | ✅ bawaan `limiter()` |
+| `InputFile` Buffer/path/stream + multipart attach:// | ✅ | ✅ |
+| `InputMedia` builder + media group | ✅ | ✅ `InputMediaBuilder` |
+| Download file (`getFile`/`downloadFile`) | plugin grammy/files | ✅ bawaan |
+| Keyboard & InlineKeyboard fluent class | ✅ | ✅ |
+| Menu interaktif | plugin @grammyjs/menu | ✅ bawaan `Menu/MenuContainer` |
+| Wizard/percakapan | plugin conversations | ✅ bawaan `wizard()` (lebih simpel) |
+| Long polling tahan-409 | ❌ (fatal crash) | ✅ bawaan (auto-retry 5 dtk) |
+| Broadcast siap pakai | ❌ | ✅ `bot.broadcast()` |
+| Humanisasi error + saran (🇮🇩) | ❌ | ✅ `humanize()` |
+| Banner boot cantik + log debug | ❌ | ✅ (`DEBUG=telebibz*`) |
+| Proxy HTTP(S) untuk VPS | ⚠️ via config manual | ✅ opsi `proxy` transport |
+| TypeScript | ✅ full | d.ts longgar (JS-first) |
+| Docs bahasa | en | **🇮🇩 Indonesia-first** |
+
+## Dependensi (semuanya dipakai nyata — tertest)
+| Paket | Untuk |
+|---|---|
+| `axios ^1.20` | transport keep-alive + streaming downloadFile |
+| `mime-types ^3.0` | deteksi content-type upload |
+| `https-proxy-agent ^9.1` | opsi proxy transport VPS |
+| `debug ^4.4` | logging `DEBUG=telebibz:net,telebibz:ratelimit` |
+
+> ❓ *"Kenapa bukan protobuf?"* — Bot API memakai **JSON/HTTP murni**, protobuf hanya relevan di dunia MTProto (user-client). Menambahkannya = dependency mati, melanggar prinsip *"semua library harus berfungsi"*.
 
 ---
 
@@ -160,7 +197,7 @@ Kapan pun butuh API mentah: `bot.api.sendMessage(...)`, `bot.bot` (instance gram
 npm test   # 14 kasus, TANPA jaringan (transport disuntik)
 ```
 
-Tervalidasi **8/8 live** pada bot produksi: getMe, keyboard berwarna & ikon animasi asli,
+Tervalidasi **24/24 offline + 10 live** pada bot produksi @xbibzrat_bot: getMe, keyboard berwarna & ikon animasi asli,
 upload multipart (photo+document), edit keyboard, broadcast, deleteMessage, polling 409 retry.
 
 ## 📂 Isi repo (11 file inti)

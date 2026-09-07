@@ -1,7 +1,7 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "2.0.0",
-  "description": "Library Telegram Indonesia — 100% kode sendiri & 0 dependency (full recode arsitektur grammY, lisensi MIT): polling tahan-409, wizard, broadcast, keyboard berwarna & ikon animasi. //—Xbibz Official—//",
+  "version": "3.0.0",
+  "description": "Library Telegram Indonesia production-grade — set fitur penuh setara grammY: proxy-api segala metode, transformer, menus, inline query, media group, throttler & auto-retry, session swappable, webhook, polling tahan-409. //—Xbibz Official—//",
   "main": "index.js",
   "types": "index.d.ts",
   "type": "commonjs",
@@ -29,7 +29,12 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {},
+  "dependencies": {
+    "axios": "^1.20.0",
+    "mime-types": "^3.0.2",
+    "https-proxy-agent": "^9.1.0",
+    "debug": "^4.4.3"
+  },
   "scripts": {
     "test": "node test/all.test.js"
   },

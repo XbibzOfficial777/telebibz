@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.0.0 — production-grade parity grammY (2026-09-07)
+
+- DEPENDENSI NYATA & TERTEST: axios (keep-alive transport), mime-types, https-proxy-agent, debug.
+- Proxy API: metode APA PUN `api.metodeBebas(payload)` → callApi otomatis.
+- Transformer pipeline `api.config.use` + `autoRetry()` (hormati retry_after 429) + `throttler()`.
+- `limiter()` anti-spam per-user; composer lanjut `branch/filter/drop/route/lazy/fork` — semantik = grammY.
+- `Menu` + `MenuContainer` (submenu, back) bawaan.
+- `inlineQuery` matcher + builder hasil (`iq.article/photo/gif/...`).
+- `InputMediaBuilder` + `sendMediaGroup`; `downloadFile()` streaming; `getFile()` pintar (photo terbesar).
+- Filter tambahan: `:text` leading-colon, `chat_type:private/group/supergroup/channel`, payment, dll.
+- Context: business_connection_id otomatis; ~70 shortcut; react(), replyWithInvoice, stopPoll, forum topic.
+- 24/24 test offline.
+
+
 ## 2.0.0 — clone & recode penuh: 0 dependency (2026-09-07)
 
 - ENGINE BARU 100% milik sendiri: net/api/composer/context/session/runner ditulis ulang

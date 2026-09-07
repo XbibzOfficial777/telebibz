@@ -1,5 +1,5 @@
 // index.d.ts — tipe ringkas untuk autocompletion editor (autocorrect).
-// v2: tanpa grammY — tipe longgar namun ramah.
+// v3: tipe longgar (JS-first) — parity grammY.
 type Context = any; type Bot = any;
 
 declare module '@xbibzlibrary/telebibz' {
@@ -76,3 +76,6 @@ declare module '@xbibzlibrary/telebibz' {
   class ApiError extends Error { description: string; error_code?: number; method?: string; payload?: any; }
   const Composer: any; const BotError: any; const session: any; const Api: any;
 }
+
+import { Menu as _M } from './lib/menus';
+export {};
