@@ -6,7 +6,7 @@ const { TeleBibz, btn, url, kb, webApp, copy, humanize, File, InlineKeyboard,
   Menu, MenuContainer, iq, autoRetry, throttler, limiter, InputMediaBuilder } = require('..');
 
 let N = 0, OK = 0;
-const TOTAL = 24;
+const TOTAL = 30;
 const t = (nama, fn) => {
   const done = () => { N++; if (N === TOTAL) { console.log(`\n${OK}/${N} lulus`); process.exit(OK === N ? 0 : 1); } };
   Promise.resolve()
@@ -331,4 +331,109 @@ t('webhook(): body JSON diproses handleUpdate', async () => {
   await handler(req, res);
   assert.strictEqual(status, 200);
   assert.ok(texts(calls).some((x) => /hai webhook/.test(x)));
+});
+/* ===== 25–30. wizard v3.1: tombol + edit/delete ===== */
+t('wizard v3.1: tombol reply — label cocok → nilai; onlyButtons menahan ketikan bebas', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  const jawab = [];
+  bot.wizard('survey', {
+    steps: [
+      { key: 'jk', ask: 'Jenis kelamin?', buttons: ['Laki-laki', 'Perempuan'], onlyButtons: true },
+      { key: 'kota', ask: 'Kota?' },
+    ],
+    done: async (ans) => { jawab.push(ans); },
+  });
+  await bot.handleUpdate(uMsg('/survey'));
+  const ask = calls.find((c) => c.method === 'sendMessage' && c.payload.text === 'Jenis kelamin?');
+  assert.ok(ask && ask.payload.reply_markup.keyboard[0][0].text === 'Laki-laki');
+  await bot.handleUpdate(uMsg('terserah'));         // bukan tombol → ditolak, wizard tetap di langkah 1
+  assert.strictEqual(jawab.length, 0);
+  await bot.handleUpdate(uMsg('Perempuan'));        // ketuk tombol
+  await bot.handleUpdate(uMsg('Magetan'));
+  assert.deepStrictEqual(jawab, [{ jk: 'Perempuan', kota: 'Magetan' }]);
+});
+
+t('wizard v3.1: tombol inline + mode edit → editMessageText, bukan pesan baru', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  const jawab = [];
+  bot.wizard('vote', {
+    mode: 'edit',
+    steps: [
+      { key: 'pilih', ask: 'Pilih salah satu', inline: true, buttons: [[{ text: 'Opsi A', value: 'a' }, { text: 'Opsi B', value: 'b' }]] },
+      { key: 'nama', ask: 'Siapa namamu?' },
+    ],
+    done: async (ans) => { jawab.push(ans); },
+  });
+  await bot.handleUpdate(uMsg('/vote'));
+  const ask = calls.find((c) => c.method === 'sendMessage' && c.payload.text === 'Pilih salah satu');
+  const data = ask.payload.reply_markup.inline_keyboard[0][1].callback_data;
+  assert.ok(/^wiz:[a-z0-9]+:0:1$/.test(data));
+  await bot.handleUpdate({ update_id: ++uid, callback_query: {
+    id: 'wq1', from: USER, chat_instance: 'x', data,
+    message: { message_id: ask.message_id, from: { id: 99, is_bot: true, first_name: 'B' }, chat: CHAT, date: 1 },
+  } });
+  assert.ok(calls.some((c) => c.method === 'editMessageText' && c.payload.text === 'Siapa namamu?'), 'langkah 2 harus lewat editMessageText');
+  assert.ok(!calls.some((c) => c.method === 'sendMessage' && c.payload.text === 'Siapa namamu?'), 'tidak boleh kirim pesan baru');
+  assert.ok(calls.some((c) => c.method === 'answerCallbackQuery' && c.payload.callback_query_id === 'wq1'));
+  await bot.handleUpdate(uMsg('Budi'));
+  assert.deepStrictEqual(jawab, [{ pilih: 'b', nama: 'Budi' }]);
+});
+
+t('wizard v3.1: mode delete → pesan lama dihapus; cleanup hapus pesan tanya terakhir', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.wizard('hapus', {
+    mode: 'delete',
+    steps: [{ key: 'a', ask: 'Pertanyaan A?' }, { key: 'b', ask: 'Pertanyaan B?' }],
+    done: () => {},
+  });
+  await bot.handleUpdate(uMsg('/hapus'));
+  const idxA = calls.findIndex((c) => c.method === 'sendMessage' && c.payload.text === 'Pertanyaan A?');
+  assert.ok(idxA >= 0);
+  const idA = idxA + 1; // stub transport: message_id = calls.length saat push
+  await bot.handleUpdate(uMsg('satu'));
+  const dihapus = () => calls.filter((c) => c.method === 'deleteMessage').map((c) => c.payload.message_id);
+  assert.ok(dihapus().includes(idA), 'pesan A harus dihapus sebelum tanya B');
+  const idxB = calls.findIndex((c) => c.method === 'sendMessage' && c.payload.text === 'Pertanyaan B?');
+  await bot.handleUpdate(uMsg('dua'));
+  assert.ok(dihapus().includes(idxB + 1), 'cleanup: pesan tanya terakhir ikut dihapus');
+});
+
+t('wizard v3.1: reply keyboard otomatis disingkirkan saat wizard selesai', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.wizard('kbd', { steps: [{ key: 'x', ask: 'Pilih:', buttons: ['Ok', 'Tidak'] }], done: () => {} });
+  await bot.handleUpdate(uMsg('/kbd'));
+  await bot.handleUpdate(uMsg('Ok'));
+  assert.ok(calls.some((c) => c.method === 'sendMessage' &&
+    c.payload.reply_markup && c.payload.reply_markup.remove_keyboard === true));
+});
+
+t('wizard v3.1: klik tombol usang → alert aman, wizard tidak rusak', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.wizard('prog', { steps: [{ key: 'a', ask: 'A?', inline: true, buttons: ['X'] }], done: () => {} });
+  await bot.handleUpdate(uMsg('/prog'));
+  await bot.handleUpdate({ update_id: ++uid, callback_query: {
+    id: 'wq2', from: USER, chat_instance: 'x', data: 'wiz:tokenpalsu:0:0',
+    message: { message_id: 1, from: { id: 99, is_bot: true, first_name: 'B' }, chat: CHAT, date: 1 },
+  } });
+  const alert = calls.find((c) => c.method === 'answerCallbackQuery' && /usang/i.test(c.payload.text || ''));
+  assert.ok(alert && alert.payload.show_alert === true);
+  await bot.handleUpdate(uMsg('jawaban asli'));   // wizard masih berjalan normal
+});
+
+t('wizard v3.1: wizard.cancel() membatalkan sesi secara programatis', async () => {
+  const wiz = require('../lib/wizard');
+  wiz.define('manual', { steps: [{ key: 'a', ask: 'A?' }], done: () => {}, onCancel: () => {} });
+  const replies = [];
+  const ctx = {
+    session: {},
+    chatId: 555,
+    reply: async (t) => { replies.push(t); return { message_id: 42 }; },
+    api: { editMessageText: async () => true, deleteMessage: async () => true, sendMessage: async () => true },
+  };
+  await wiz.start(ctx, 'manual');
+  assert.strictEqual(wiz.active(ctx), true);
+  assert.deepStrictEqual(replies, ['A?']);
+  assert.strictEqual(await wiz.cancel(ctx), true);
+  assert.strictEqual(wiz.active(ctx), false);
+  assert.strictEqual(await wiz.cancel(ctx), false); // sudah tidak aktif
 });

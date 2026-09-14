@@ -1,232 +1,641 @@
-# 🤖 telebibz
+<div align="center">
 
-**Library Telegram paling gampang untuk Node.js, set fitur penuh setara grammY** — recode mandiri atas arsitektur elegan [grammY](https://grammy.dev) (MIT — lihat [NOTICE.md](NOTICE.md)) dengan dependency produksi yang **benar-benar dipakai** (axios keep-alive, mime-types, https-proxy-agent, debug).
+[🇬🇧 **English**](README.md) · [🇮 **Indonesia**](README.id.md)
 
-```
-npm install @xbibzlibrary/telebibz
-```
+<br>
 
-## 📊 FEATURE MATRIX (parity grammY)
+<a href="https://www.npmjs.com/package/@xbibzlibrary/telebibz" title="Open telebibz on npm">
+  <img src="https://imgbs.com/uploads/telebibz-d7b30671.png" alt="telebibz — Telegram Bot Library" width="560">
+</a>
 
-| Fitur | grammY | telebibz |
-|---|---|---|
-| Proxy API **segala metode** (auto-generated) | ✅ `api.xyz()` | ✅ `api.xyz({...})` |
-| ~60 shortcut bertipe (sendMessage, banChatMember…) | ✅ | ✅ |
-| Context lengkap (~70 pintasan reply/edit/admin/react) | ✅ | ✅ |
-| Context flavor business (`business_connection_id` otomatis) | plugin | ✅ bawaan |
-| Filter `on('message:photo' / ':text' / 'chat_type:private' …)` | ✅ | ✅ |
-| `cmd / hears / action / inlineQuery` | ✅ | ✅ (+ inlineQuery matcher) |
-| `branch / filter / drop / route / lazy / fork` | ✅ | ✅ |
-| Error boundary + catch | ✅ | ✅ (semua shortcut otomatis terlindungi) |
-| Session + storage swappable | ✅ | ✅ |
-| Transformer API (`api.config.use`) | ✅ | ✅ |
-| `auto-retry` 429 hormati `retry_after` | plugin (@grammyjs/auto-retry) | ✅ bawaan `autoRetry()` |
-| Throttler antre-rate-limit | plugin | ✅ bawaan `throttler()` |
-| Rate limit per-user | plugin | ✅ bawaan `limiter()` |
-| `InputFile` Buffer/path/stream + multipart attach:// | ✅ | ✅ |
-| `InputMedia` builder + media group | ✅ | ✅ `InputMediaBuilder` |
-| Download file (`getFile`/`downloadFile`) | plugin grammy/files | ✅ bawaan |
-| Keyboard & InlineKeyboard fluent class | ✅ | ✅ |
-| Menu interaktif | plugin @grammyjs/menu | ✅ bawaan `Menu/MenuContainer` |
-| Wizard/percakapan | plugin conversations | ✅ bawaan `wizard()` (lebih simpel) |
-| Long polling tahan-409 | ❌ (fatal crash) | ✅ bawaan (auto-retry 5 dtk) |
-| Broadcast siap pakai | ❌ | ✅ `bot.broadcast()` |
-| Humanisasi error + saran (🇮🇩) | ❌ | ✅ `humanize()` |
-| Banner boot cantik + log debug | ❌ | ✅ (`DEBUG=telebibz*`) |
-| Proxy HTTP(S) untuk VPS | ⚠️ via config manual | ✅ opsi `proxy` transport |
-| TypeScript | ✅ full | d.ts longgar (JS-first) |
-| Docs bahasa | en | **🇮🇩 Indonesia-first** |
+<br><br>
 
-## Dependensi (semuanya dipakai nyata — tertest)
-| Paket | Untuk |
-|---|---|
-| `axios ^1.20` | transport keep-alive + streaming downloadFile |
-| `mime-types ^3.0` | deteksi content-type upload |
-| `https-proxy-agent ^9.1` | opsi proxy transport VPS |
-| `debug ^4.4` | logging `DEBUG=telebibz:net,telebibz:ratelimit` |
+**The easiest Telegram bot library for Node.js — full feature set on par with grammY.**<br>
+A standalone recode of [grammY](https://grammy.dev)'s elegant architecture, with production
+dependencies that are *actually used*, and an Indonesia-first community.
 
-> ❓ *"Kenapa bukan protobuf?"* — Bot API memakai **JSON/HTTP murni**, protobuf hanya relevan di dunia MTProto (user-client). Menambahkannya = dependency mati, melanggar prinsip *"semua library harus berfungsi"*.
+<br>
+
+[![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=CB3837&label=telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=green&label=downloads%2Fmonth)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![node](https://img.shields.io/node/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=node.js&logoColor=white&color=339933&label=node)](https://nodejs.org)
+[![tests](https://img.shields.io/badge/tests-30%2F30%20passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-testing--live-proof)
+[![size](https://img.shields.io/badge/code-1.7k%20lines-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analytics--statistics)
+[![license](https://img.shields.io/npm/l/@xbibzlibrary/telebibz?style=for-the-badge&color=blue)](LICENSE)
+[![views](https://komarev.com/ghpvc/?username=XbibzOfficial777&repo=telebibz&style=for-the-badge&color=blueviolet&label=repo+views)](https://github.com/XbibzOfficial777/telebibz)
+
+<br>
+
+`//—Xbibz Official—//`
+
+</div>
 
 ---
 
-## 🚀 Mulai dalam 6 baris
+## 📑 Table of Contents
+
+| | | |
+|---|---|---|
+| ⚡ [Why telebibz?](#why) | 📊 [Feature matrix vs grammY](#matrix) | 📥 [Installation & requirements](#install) |
+| 🚀 [Quick start](#quickstart) | 🧠 [How it works (architecture)](#architecture) | 📖 [Full documentation](#docs) |
+| 🎛️ [Handlers & filters](#handlers) | 💬 [Context shortcuts](#context) | 🔘 [Keyboards & buttons](#keyboards) |
+| ️ [Interactive menus](#menus) | 🧙 [Wizard (forms + buttons + edit/delete)](#wizard) | ❓ [Inline mode](#inline) |
+| 📣 [Broadcast](#broadcast) | 📎 [Files & media](#files) | 🛡️ [Reliability & rate limiting](#ratelimit) |
+| 🗃️ [Sessions](#sessions) | 🇮🇩 [Human-readable errors](#errors) | 🕸️ [Webhooks & serverless](#webhook) |
+| 🔌 [Proxy transport](#proxy) | 🧪 [Transformers](#transformers) | 📈 [Analytics & statistics](#analytics) |
+| 🧩 [Examples](#examples) | 🔬 [Testing](#testing) | 📂 [Repo structure](#structure) |
+| 🕐 [Changelog](#changelog) | 📄 [License](#license) | |
+
+<a id="why"></a>
+## ⚡ Why telebibz?
+
+> [!TIP]
+> **One principle:** every feature that needs a plugin in grammY is **built in** here —
+> wizard, menus, rate limiting, broadcast, file download — and polling that *never dies* on 409.
+
+- 🧠 **The grammY API you already know** — `bot.cmd()`, `bot.hears()`, `ctx.reply()`, middleware, transformers
+- 🧙 **Built-in Wizard v3.1** — question-and-answer forms with **choice buttons** (reply/inline) and **edit/delete** message modes
+- 🛡️ **Bulletproof** — 429 auto-retry, throttler, per-user limiter, polling auto-retry on 409 conflict
+- 🇮🇩 **Human-readable errors** — every Telegram error is translated into a plain-language suggestion
+- 🔌 **Proxy API for any method** — `api.anyMethod({...})` works automatically, even for methods not released yet
+- 🪶 **Light & honest** — 4 dependencies, all genuinely used and tested
+
+<a id="matrix"></a>
+## 📊 Feature Matrix — grammY parity
+
+| Feature | grammY | telebibz |
+|---|:---:|:---:|
+| Proxy API for **any method** (auto-generated) | ✅ | ✅ |
+| ~60 typed shortcuts (sendMessage, banChatMember…) | ✅ | ✅ |
+| Full Context (~70 shortcuts reply/edit/admin/react) | ✅ | ✅ |
+| Business flavor (`business_connection_id` automatic) | plugin | ✅ built-in |
+| Filters `on('message:photo' / ':text' / 'chat_type:private' …)` | ✅ | ✅ |
+| `cmd / hears / action / inlineQuery` | ✅ | ✅ (+ inlineQuery matcher) |
+| `branch / filter / drop / route / lazy / fork` | ✅ | ✅ |
+| Error boundary + catch | ✅ | ✅ (all shortcuts auto-protected) |
+| Session + swappable storage | ✅ | ✅ |
+| Transformer API (`api.config.use`) | ✅ | ✅ |
+| `auto-retry` on 429 honoring `retry_after` | plugin | ✅ built-in `autoRetry()` |
+| Throttler queue | plugin | ✅ built-in `throttler()` |
+| Per-user rate limit | plugin | ✅ built-in `limiter()` |
+| `InputFile` Buffer/path/stream + multipart `attach://` | ✅ | ✅ |
+| `InputMedia` builder + media groups | ✅ | ✅ `InputMediaBuilder` |
+| File download (`getFile`/`downloadFile`) | plugin | ✅ built-in |
+| Keyboard & InlineKeyboard fluent classes | ✅ | ✅ |
+| Interactive menus | plugin | ✅ built-in `Menu/MenuContainer` |
+| Wizard/conversations | plugin | ✅ built-in — **+ choice buttons & `edit`/`delete` modes** |
+| 409-resilient long polling | ❌ (fatal crash) | ✅ built-in (auto-retry 5 s) |
+| Broadcast ready to use | ❌ | ✅ `bot.broadcast()` |
+| Humanized errors + suggestions | ❌ | ✅ `humanize()` |
+| Boot banner + debug logging | ❌ | ✅ (`DEBUG=telebibz*`) |
+| HTTP(S) proxy for VPS | ⚠️ manual | ✅ `proxy` transport option |
+| TypeScript | ✅ full | loose d.ts (JS-first) |
+| Documentation language | en | **🇬🇧 + 🇮🇩** |
+
+<a id="install"></a>
+## 📥 Installation & Requirements
+
+**Requirements:** Node.js ≥ 18 (uses global `FormData`/`Blob` for uploads).
+
+```bash
+npm install @xbibzlibrary/telebibz
+# or
+yarn add @xbibzlibrary/telebibz
+# or
+pnpm add @xbibzlibrary/telebibz
+```
+
+**Runtime dependencies (all used, all tested):**
+
+| Package | Purpose |
+|---|---|
+| `axios ^1.20` | keep-alive transport + streaming `downloadFile` |
+| `mime-types ^3.0` | content-type detection for uploads |
+| `https-proxy-agent ^9.1` | VPS proxy transport option |
+| `debug ^4.4` | logging via `DEBUG=telebibz:net,telebibz:ratelimit` |
+
+Get your bot token from **@BotFather** → `/newbot`. The constructor validates the token
+format (`123456:ABC…`) and throws a helpful error if it's wrong.
+
+<a id="quickstart"></a>
+## 🚀 Quick Start
 
 ```js
 const { TeleBibz } = require('@xbibzlibrary/telebibz');
 
-const bot = new TeleBibz('TOKEN_DARI_BOTFATHER');
+const bot = new TeleBibz('TOKEN_FROM_BOTFATHER');
 
-bot.cmd('start', (ctx) => ctx.reply('Halo!'));
-bot.hears(/halo/i, (ctx) => ctx.reply('halo juga 👋'));
+bot.cmd('start', (ctx) => ctx.reply('Hello!'));
+bot.hears(/hello|hi/i, (ctx) => ctx.reply('hello there 👋'));
+bot.hears('ping', (ctx) => ctx.reply('pong 🏓'));
 
 bot.launch();
 ```
 
-```
+```bash
 BOT_TOKEN=123:abc node index.js
 ```
 
-Output terminal:
 ```
-┌────────────────────────┐
-│  🤖 TeleBibz ON        │
-│  bot      : @botkamu   │
-│  engine   : grammY 1.46│
-│  brand    : //—Xbibz Official—//
-└────────────────────────┘
-✔ menunggu update… (Ctrl+C untuk berhenti)
+┌──────────────────────────────────┐
+│  🤖 TeleBibz ON                   │
+│  bot      : @yourbot (id 123456) │
+│  mode     : long-polling          │
+│  library  : telebibz 3.1.0        │
+│  brand    : //—Xbibz Official—//  │
+└──────────────────────────────────┘
+✔ waiting for updates… (Ctrl+C to stop)
 ```
 
-> **Hidup di VPS:** kalau ada instance bot lain yang masih polling (409 Conflict — misal deploy
-> ganda atau hosting restart), telebibz **otomatis retry tiap 5 detik tanpa crash** dan menyalakan
-> diri begitu jalur bebas. Tidak perlu PM2 babysitter.
+> [!NOTE]
+> **On a VPS:** if another bot instance is still polling (409 Conflict — e.g. double
+> deploy or a hosting restart), telebibz **auto-retries every 5 seconds without
+> crashing** and boots the moment the lane is free. No PM2 babysitting needed.
 
----
+<a id="architecture"></a>
+## 🧠 How It Works (Architecture)
 
-## 📚 API lengkap (semuanya!)
+```
+                       ┌─────────────────────────────────────────────┐
+ Telegram Bot API ────►│  long polling (lib/runner.js)               │
+                       │  or webhook / handleUpdate (lib/telebibz.js)│
+                       └──────────────────┬──────────────────────────┘
+                                          │ raw update (JSON)
+                                          ▼
+                       Context(update, api, me)          lib/context.js
+                                          │
+             ┌────────────────────────────▼───────────────────────────┐
+             │  Middleware tree `_root` (fixed order):                │
+             │  1. session()                 lib/session.js           │
+             │  2. wizard.middleware()       lib/wizard.js            │
+             │  3. errorBoundary(reporter)                            │
+             │       └─► your handlers: use/cmd/hears/action/on/      │
+             │           inlineQuery/Menu/wizard      lib/composer.js │
+             └────────────────────────────┬───────────────────────────┘
+                                          │ ctx.reply / ctx.api.*
+                                          ▼
+             ApiBase + Proxy + transformer pipeline        lib/api.js
+             (api.config.use → autoRetry / throttler)
+                                          │
+                                          ▼
+             axios transport: JSON or multipart attach://  lib/net.js
+                                          │
+                                          ▼
+                                 https://api.telegram.org
+```
 
-### Perintah & teks
+**Lifecycle of one update** (e.g. `/start`): `getUpdates` → `pollLoop` →
+`handleUpdate` → new `Context` → session loads → wizard middleware (no active
+wizard → pass) → error boundary → your matched handler runs → `ctx.reply()` →
+transformer pipeline → axios → Telegram. Any thrown error becomes a `BotError`
+and flows to `opts.onError` or the humanized reporter.
+
+<a id="docs"></a>
+## 📖 Full Documentation
+
+### 🏗️ Constructor & options
 
 ```js
-bot.cmd('ping',          (ctx) => ctx.reply('pong'));      // /ping
-bot.cmd(['a', 'b'],      handler);                          // /a ATAU /b
-bot.hears('daftar',      handler);                          // teks persis "daftar"
-bot.hears(/kampret/i,    handler);                          // regex bebas
-bot.on('message:photo',  handler);                          // filter grammY apa pun
-bot.use(middleware);                                       // middleware manual
+const bot = new TeleBibz('TOKEN', {
+  allowedUpdates: [...],   // limit update types (default: common + Business types)
+  onError: (err, ctx) {},  // custom error handler (default: humanized reporter)
+  silent: false,           // hide boot banner
+  dropPending: false,      // discard old updates on start
+  session: { ... },        // { initial, getKey, storage } — see Sessions
+  transport: fn,           // inject custom transport (testing / proxy)
+});
 ```
 
-### Tombol (keyboard) — berwarna & ikon animated
+<a id="handlers"></a>
+### 🎛️ Handlers & filters
 
 ```js
-const { btn, url, webApp, copy, kb } = require('@xbibzlibrary/telebibz');
+bot.cmd('ping',           (ctx) => ctx.reply('pong'));     // /ping
+bot.cmd(['a', 'b'],       handler);                        // /a OR /b
+bot.start('Welcome!');    // shortcut: registers /start
+bot.hears('daftar',       handler);   // exact text "daftar" (case-insensitive)
+bot.hears(/kitt?y/i,      handler);   // any regex
+bot.on('message:photo',   handler);   // grammY-style filters
+bot.on([':text', 'chat_type:private'], handler);
+bot.action('menu:premium', handler);  // callback_query data (string or RegExp)
+bot.inlineQuery(/kucing/i, handler);  // inline mode (regex / string / '*')
+bot.use(middleware);                  // manual middleware
+```
+
+Composer combinators (grammY semantics):
+
+```js
+bot.branch(pred, ifTrue, ifFalse);  // pick a subtree by predicate
+bot.filter(pred, ...mw);            // run only when pred(ctx) is true
+bot.drop(pred, ...mw);              // skip when pred(ctx) is true
+bot.route('chat.type', { private: mwA, group: mwB });       // map ctx→handler
+bot.lazy((ctx) => ctx.from.is_bot ? botMw : userMw);        // build mw per update
+bot.fork(slowMw);                   // run in background, doesn't block next()
+```
+
+Filters supported by `on()`: update fields (`message`, `edited_message`,
+`callback_query`, `inline_query`, `my_chat_member`, …), message props
+(`message:photo`, `message:text`, `:caption`, `:document`, `:sticker`, `:media`, …),
+chat types (`chat_type:private/group/supergroup/channel`), plus
+`callback_query:data`, payments, reactions, join requests.
+
+Command handlers receive arguments in `ctx.match`:
+
+```js
+bot.cmd('echo', (ctx) => ctx.reply(`args: ${ctx.match}`)); // /echo hello → "hello"
+```
+
+<a id="context"></a>
+### 💬 Context shortcuts
+
+`ctx` wraps every update kind (message, edited, channel, business, callback,
+inline…) with unified accessors: `chat`, `from`, `chatId`, `msgId`, `msg`,
+`senderChat`, `inlineMessageId`, `businessConnectionId`.
+
+| Category | Shortcuts |
+|---|---|
+| **Reply** | `reply`, `replyWithHTML`, `replyWithMarkdown`, `replyWithPhoto/Video/Audio/Document/Animation/Voice/VideoNote/Sticker/MediaGroup/Location/Venue/Contact/Poll/Dice/Invoice/ChatAction` |
+| **Edit & delete** | `editMessageText/Caption/Media/ReplyMarkup`, `deleteMessage`, `deleteMessages` — callback-aware & inline-message aware |
+| **React** | `react('👍')` |
+| **Forward/copy** | `forwardMessage(to)`, `copyMessage(to)` (defaults to current msg) |
+| **Callbacks & inline** | `answerCallbackQuery` (string or object), `answerInlineQuery` |
+| **Admin** | `banChatMember`, `restrictChatMember`, `promoteChatMember`, `banAuthor`, `restrictAuthor`, `getChat*`, `getAuthor`, `leaveChat`, `setChatTitle/Description`, `pin/unpinChatMessage` |
+| **Files** | `getFile()` (smart: largest photo), `downloadFile(dest)` |
+
+Business accounts: replies inside a business context automatically carry
+`business_connection_id`.
+
+<a id="keyboards"></a>
+### 🔘 Keyboards & buttons
+
+```js
+const { btn, url, webApp, copy, kb, InlineKeyboard, Keyboard } = require('@xbibzlibrary/telebibz');
 
 bot.cmd('menu', (ctx) =>
-  ctx.reply('Pilih:', kb([
-    [btn('💎 Premium', 'prem', 'primary'),                // biru/ungu
-     btn('✅ Daftar', 'reg', 'success')],                 // hijau
-    [url('🌐 Web', 'https://situsmu.com')],
-    [btn('❌ Tutup', 'close', 'danger', '5408846744727334338')], // merah + IKON ANIMASI
+  ctx.reply('Pick:', kb([
+    [btn('💎 Premium', 'prem', 'primary'),      // blue/purple
+     btn('✅ Register', 'reg', 'success')],     // green
+    [url('🌐 Web', 'https://yoursite.com')],
+    [btn('❌ Close', 'close', 'danger', '5408846744727334338')], // red + ANIMATED ICON
   ])));
-
-bot.action('prem', async (ctx) => {
-  await ctx.answerCallbackQuery('Menuju premium…');
-  await ctx.reply('halaman premium');
-});
 ```
 
-- Warna (`primary`/`success`/`danger`) butuh aplikasi Telegram rilis ≥ Feb 2026 — versi lama tampil biasa, tidak error.
-- Ikon animated (`icon_custom_emoji_id`) butuh **owner bot ber-Premium** atau username Fragment. Cari ID-nya: kirim custom emoji ke bot + lihat entity `custom_emoji` di update (atau sediakan `/emojiid` sendiri, 5 baris lewat `bot.on('message')`).
+- 🎨 `style` colors (`primary`/`success`/`danger`) need Telegram apps from Feb 2026+ — older apps render plain buttons, never an error.
+- ✨ `icon_custom_emoji_id` needs a Premium bot owner or a Fragment username.
+- Helpers: `copy(text, value)` (copy-to-clipboard), `webApp(text, link)`, `kb.confirm(yesData, noData)`, `kb.markup(rows)`.
+- Fluent classes: `new InlineKeyboard().text(...).url(...).row().text(...).build()` and `new Keyboard().text(...).requestContact(...).resized().build()` (real reply keyboards).
 
-### Wizard — form tanya-jawab tanpa boilerplate
+<a id="menus"></a>
+### 🍽️ Interactive menus
 
 ```js
-bot.wizard('daftar', {
+const { Menu, MenuContainer } = require('@xbibzlibrary/telebibz');
+
+const mc = new MenuContainer();
+const main = mc.create('main'), more = mc.create('more');
+
+main.text('🔔 Toggle', async (ctx) => ctx.answerCallbackQuery('toggled!'))
+    .row()
+    .url('🌐 Web', 'https://x.com')
+    .submenu('More ▶', 'more');
+more.back('◀️ Back', 'main');
+
+bot.use(mc); // button handlers registered automatically
+bot.cmd('cfg', (ctx) => ctx.reply('Menu:', { reply_markup: main.render(ctx) }));
+```
+
+Submenus swap the keyboard in place via `editMessageReplyMarkup`; stale button
+presses are answered with a friendly alert instead of crashing.
+
+<a id="wizard"></a>
+### 🧙 Wizard — conversation forms, zero boilerplate
+
+```js
+bot.wizard('register', {
   steps: [
-    { key: 'nama', ask: 'Siapa namamu?' },
-    { key: 'umur', ask: 'Umur?', parse: Number,
-      validate: (n) => (n > 0 && n < 120 ? null : 'Angka saja ya:') },
+    { key: 'name', ask: 'What is your name?' },
+    { key: 'age', ask: 'Age?', parse: Number,
+      validate: (n) => (n > 0 && n < 120 ? null : 'Numbers only, please:') },
   ],
-  done: async (ans, ctx) => ctx.reply(`Oke ${ans.nama} (${ans.umur})!`),
+  done: async (ans, ctx) => ctx.reply(`Done ${ans.name} (${ans.age})!`),
 });
-// user tinggal /daftar → bot bertanya-bertanya sampai selesai.
-// ketik "batal" kapan pun untuk berhenti. Sesi otomatis aktif, tak perlu setup.
+// user runs /register → the bot asks until finished.
+// typing "cancel" / "batal" stops any time. Session is active automatically.
 ```
 
-### Broadcast aman rate-limit
+`bot.wizard(id, def, bindCommand = true)` also binds `/id` as the trigger; use
+`bot.wizardStart(ctx, id)` from any handler (button, menu, …).
+
+#### 🆕 v3.1 — choice buttons + `edit`/`delete` modes
 
 ```js
-const hasil = await bot.broadcast([111, 222, 333], 'Pengumuman!', { delay: 35 });
-// → { terkirim: 3, gagal: 0, errors: [] }  (yang diblokir-mu tercatat di errors)
+bot.wizard('survey', {
+  mode: 'edit',        // 'send' (default) | 'edit' | 'delete'
+  steps: [
+    // reply keyboard — user taps, no typing
+    { key: 'gender', ask: 'Gender?', buttons: ['👨 Male', '👩 Female'], onlyButtons: true },
+
+    // inline keyboard (callback) — value may differ from label
+    { key: 'island', ask: 'Which island?', inline: true, onlyButtons: true,
+      buttons: [[{ text: '🌋 Java', value: 'java' }, { text: '🌴 Sumatra', value: 'sumatra' }]] },
+
+    // free typing with validation (mode can be overridden per step)
+    { key: 'age', ask: 'Age?', parse: Number, mode: 'send',
+      validate: (n) => (n > 0 && n < 120 ? null : 'Numbers only:') },
+  ],
+  done: async (ans, ctx) => ctx.reply(`Saved: ${JSON.stringify(ans)}`),
+});
 ```
 
-### Kirim file
+| Option | Level | Purpose |
+|---|:---:|---|
+| `buttons` | step | `['A','B']`, `[{text,value}]`, or explicit rows `[['A'],['B','C']]` |
+| `inline` | step | `true` → callback buttons (click = value, no typing) |
+| `onlyButtons` | step | `true`/string → reject free typing, must pick a button |
+| `mode` | def/step | `'send'` new message · `'edit'` one message edited in place · `'delete'` old question deleted first |
+| `cleanup` | def | delete the last question when done (default on with mode `'delete'`) |
+| `removeKeyboard` | def | dismiss the reply keyboard when done (default `true` if one was shown) |
+
+Programmatic helpers: `bot.wizardCancel(ctx)`, `bot.wizardEdit(ctx, text)`,
+`bot.wizardDelete(ctx)`, plus module `wizard` (`cancel/editAsk/deleteAsk`).
+Stale buttons (clicked after the wizard advanced/ended) get a safe alert —
+the bot never crashes. `parse`/`validate` also apply to button values.
+
+<a id="inline"></a>
+### ❓ Inline mode
 
 ```js
-const { InputFile } = require('@xbibzlibrary/telebibz');
-bot.cmd('foto', (ctx) => ctx.replyWithPhoto(new InputFile(buf, 'x.jpg')));
+const { iq } = require('@xbibzlibrary/telebibz');
+
+bot.inlineQuery(/cat/i, async (ctx) => {
+  await ctx.answerInlineQuery([
+    iq.article('1', 'A cat fact', { message_text: 'meong!' }),
+    iq.photo('2', 'https://x/1.jpg'),
+  ], { cache_time: 0 });
+});
 ```
 
-### Error yang bisa dibaca manusia
+Builders: `iq.article/photo/gif/video/audio/location/sticker`.
 
-Default-nya setiap error dilaporkan dengan **saran penyelesaian**:
+<a id="broadcast"></a>
+### 📣 Broadcast (rate-limit safe)
+
+```js
+const result = await bot.broadcast([111, 222, 333], 'Announcement!', { delay: 35 });
+// → { terkirim: 3, gagal: 0, errors: [] }  (blocked users are listed in errors)
+```
+
+`pesan` may be a string, a `sendMessage` payload object, or a function
+`(chatId) => payload` for per-recipient personalization. Default pacing is
+35 ms (≈28 msg/s, safely under Telegram limits).
+
+<a id="files"></a>
+### 📎 Files & media
+
+```js
+const { InputFile, InputMediaBuilder } = require('@xbibzlibrary/telebibz');
+
+bot.cmd('foto', (ctx) => ctx.replyWithPhoto(new InputFile(buffer, 'x.jpg')));
+bot.cmd('dok',  (ctx) => ctx.replyWithDocument(new InputFile('/path/file.pdf')));
+bot.cmd('album', (ctx) => ctx.replyWithMediaGroup([
+  InputMediaBuilder.photo('https://a/1.jpg'),
+  InputMediaBuilder.photo('https://a/2.jpg', { caption: 'two' }),
+]));
+bot.on('message:photo', async (ctx) => {
+  const f = await ctx.getFile();        // largest photo size, automatic
+  await ctx.downloadFile('./foto.jpg'); // streams to disk
+});
+```
+
+`InputFile` accepts Buffer / Uint8Array / file path / fs stream / async
+iterable; uploads are sent as `multipart` with `attach://` anywhere in the
+payload (media groups, thumbnails, …). `api.downloadFile(file_id, dest)` works
+standalone too.
+
+<a id="ratelimit"></a>
+### 🛡️ Reliability & rate limiting
+
+```js
+const { autoRetry, throttler, limiter } = require('@xbibzlibrary/telebibz');
+
+bot.api.config.use(autoRetry());            // retry 429, honor retry_after (max 5)
+bot.api.config.use(throttler());            // global queue ≤ 28 calls/second
+bot.use(limiter({ windowMs: 2000, limit: 3, onExceeded })); // per-user anti-spam
+```
+
+Long polling is resilient by default: 409 conflicts retry every 5 s
+(`launch({ conflictDelay: 5000 })` to tune), network hiccups back off 1 s,
+`stop()` exits cleanly (`await bot.runPromise`).
+
+<a id="sessions"></a>
+### 🗃️ Sessions
+
+```js
+const { session } = require('@xbibzlibrary/telebibz');
+
+const bot = new TeleBibz(token, {
+  session: {
+    initial: () => ({ count: 0 }),
+    getKey: (ctx) => `${ctx.from?.id}:${ctx.chat?.id}`,   // default
+    storage: myRedisAdapter,   // { read(k), write(k,v), delete(k) } — default: in-memory Map
+  },
+});
+
+bot.on(':text', (ctx) => { ctx.session.count++; });
+```
+
+`ctx.session` is always present, even without configuration.
+
+<a id="errors"></a>
+### 🇮🇩 Human-readable errors
+
+Every error is reported with an actionable suggestion:
+
 ```
 ✖ Telegram error (403): Forbidden: bot was blocked by the user
   💡 saran: Bot diblokir pengguna — jangan kirim ulang, hapus dari daftar broadcast.
 ```
-Kustom: `new TeleBibz(token, { onError: (err, ctx) => { ... } })`.
 
-### Opsi konstruktor
+`humanize(err)` returns `{ pesan, saran, method, code }` covering 15+ common
+Telegram errors (bad token, chat not found, rights, parse errors, rate limits,
+stale callbacks, oversize files, …). Override with
+`new TeleBibz(token, { onError: (err, ctx) => {} })`.
 
-| Opsi | Default | Fungsi |
-|---|---|---|
-| `allowedUpdates` | semua tipe umum + Business | batasi update yang diterima |
-| `onError` | reporter cantik bawaan | handle error sendiri |
-| `silent` | `false` | tanpa banner boot |
-| `dropPending` | `false` | buang update lama saat start |
-| `grammy` | `{}` | opsi mentah `new Bot()` grammY |
-
-### Webhook / serverless
+<a id="webhook"></a>
+### 🕸️ Webhooks & serverless
 
 ```js
-// express:
-app.use('/tg', bot.webhook('express'));
-// atau serverless manual:
-await bot.handleUpdate(req.body);
+const http = require('http');
+http.createServer((req, res) =>
+  req.url === '/tg' ? bot.webhook()(req, res) : res.end('ok')
+).listen(8443);
+
+// any framework (Express/Fastify/Hono): mount the (req, res) handler from bot.webhook()
+// or serverless, directly:
+await bot.handleUpdate(req.body);   // one raw update in → full pipeline
 ```
 
-### Escape hatch penuh
+Remember `await bot.init()` first when you don't call `launch()` (it fetches
+bot info), and `setWebhook(url)` via `bot.api.setWebhook({ url })`.
 
-Kapan pun butuh API mentah: `bot.api.sendMessage(...)`, `bot.bot` (instance grammY), `ctx.reply(...)`, `ctx.api.*` — grammar lengkap grammY tetap berlaku 100%.
+<a id="proxy"></a>
+### 🔌 Proxy transport (VPS behind a proxy)
+
+```js
+const { TeleBibz, createTransport } = require('@xbibzlibrary/telebibz');
+const bot = new TeleBibz(token, {
+  transport: createTransport(token, { proxy: 'http://user:pass@proxy:8080' }),
+});
+```
+
+`createTransport(token, { apiRoot, proxy, timeoutMs, headers })` also lets you
+point at a local Bot API server.
+
+<a id="transformers"></a>
+### 🧪 Transformers (escape hatch)
+
+```js
+bot.api.config.use(async (prev, method, payload) => {
+  console.log('→', method);           // observe/modify every Bot API call
+  return prev(method, payload);
+});
+
+// any method, even unreleased ones (Proxy magic):
+await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
+```
+
+<a id="analytics"></a>
+## 📈 Analytics & Statistics
+
+### 📊 This repo in numbers
+
+| Metric | Value |
+|---|---|
+| 📦 Source modules | **16 files** in `lib/` |
+| 📝 Total lines of code | **~1,700** (no build step) |
+| 🔌 Bot API methods | **90+** — 75 typed shortcuts + unbounded Proxy |
+| ⌨️ Context shortcuts | **50+** (reply/edit/delete/admin/react…) |
+| 🧪 Offline tests | **30/30 passing**, zero network |
+| 🧩 Ready examples | **7** in `examples/` |
+| 📦 Runtime dependencies | **4** — all used, all tested |
+
+### ⬇️ Downloads & popularity (live from npm)
+
+[![per day](https://img.shields.io/npm/dd/@xbibzlibrary/telebibz?style=flat-square&label=day&color=informational)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![per week](https://img.shields.io/npm/dw/@xbibzlibrary/telebibz?style=flat-square&label=week&color=informational)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![per month](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz?style=flat-square&label=month&color=informational)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+[![total](https://img.shields.io/npm/dt/@xbibzlibrary/telebibz?style=flat-square&label=total&color=informational)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
+
+### 📏 Module size map (lines of code)
+
+```
+wizard.js      █████████████████████████ 247  ← forms + buttons + edit/delete
+telebibz.js    ███████████████████▎      193  ← main class & lifecycle
+context.js     ███████████████████       190  ← ctx + 50-ish shortcuts
+composer.js    █████████████████▍        174  ← middleware engine & filters
+api.js         ███████████████▍          154  ← 75 shortcuts + Proxy + transformers
+net.js         ███████████▌              115  ← axios transport + multipart
+menus.js       █████████                  90  ← Menu/MenuContainer
+keyboard.js    ████████▎                  83  ← btn/url/kb + fluent classes
+ratelimit.js   ██████                     61  ← autoRetry · throttler · limiter
+runner.js      ████▌                      45  ← 409-resilient polling
+file.js        ████                       41  ← InputFile + InputMediaBuilder
+logger.js      ███▊                       38  ← logs + banner
+session.js     ███▌                       36  ← swappable sessions
+errors.js      ███▌                       35  ← humanized errors 🇮
+broadcast.js   ███                       35  ← rate-limit-safe blast
+inline-query.js██▊                        28  ← matcher + result builders
+```
+
+### 🗺️ Repo health
+
+<div align="center">
+
+[![repo card](https://github-readme-stats.vercel.app/api/pin/?username=XbibzOfficial777&repo=telebibz&show_owner=false)](https://github.com/XbibzOfficial777/telebibz)
+
+</div>
+
+<details>
+<summary>📅 Star history (click to open)</summary>
+
+![Star History](https://api.star-history.com/svg?repos=XbibzOfficial777/telebibz&type=Date)
+
+</details>
+
+<a id="examples"></a>
+## 🧩 Ready Examples (`examples/`)
+
+| File | Content |
+|---|---|
+| `01-quickstart.js` | bot up in 6 lines |
+| `02-menu-tombol.js` | colored keyboard + animated icons |
+| `03-wizard.js` | registration form + **buttons + edit mode** |
+| `04-broadcast.js` | admin blast |
+| `05-kirim-file.js` | photos & documents from buffers |
+| `06-menu.js` | interactive menus + submenus |
+| `07-inline-query.js` | inline mode with result builders |
+
+Run any of them with `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
+
+<a id="testing"></a>
+## 🔬 Testing & Live Proof
+
+```bash
+npm test   # 30 cases, NO network (transport injected)
+```
+
+Validated **30/30 offline + 10 live** on the production bot `@xbibzrat_bot`:
+getMe · colored keyboards & real animated icons · multipart uploads
+(photo+document) · keyboard editing · broadcast · deleteMessage · polling 409
+retry · wizard buttons & edit/delete.
+
+Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
+
+<a id="structure"></a>
+## 📂 Repo Structure (16 core files)
+
+| File | Role |
+|---|---|
+| `lib/net.js` | axios keep-alive transport + multipart `attach://` |
+| `lib/api.js` | Bot API methods + any-method Proxy + transformers |
+| `lib/composer.js` | middleware, `on('message:photo')` filters, `errorBoundary` |
+| `lib/context.js` | ctx object + 50-ish reply/edit/delete/callback shortcuts |
+| `lib/session.js` | per user:chat sessions (swappable storage) |
+| `lib/runner.js` | long polling: 409 retry, network backoff, drop pending |
+| `lib/wizard.js` | conversation forms + choice buttons + edit/delete modes |
+| `lib/menus.js` | `Menu`/`MenuContainer` interactive menus |
+| `lib/keyboard.js` | button builders + fluent `InlineKeyboard`/`Keyboard` |
+| `lib/ratelimit.js` | `autoRetry` 429 · `throttler` queue · per-user `limiter` |
+| `lib/broadcast.js` | rate-limit-safe blast |
+| `lib/file.js` | `File`/`InputFile` (Buffer/path/stream) + `InputMediaBuilder` |
+| `lib/inline-query.js` | query matcher + inline result builders |
+| `lib/errors.js` | humanized errors + suggestions |
+| `lib/logger.js` | framed logs + boot banner |
+| `index.js` / `index.d.ts` | export door + TypeScript types |
+
+<a id="changelog"></a>
+## 🕐 Changelog
+
+- **3.1.0** — wizard: choice buttons (reply/inline), `edit`/`delete` modes, auto cleanup, programmatic helpers · tests 24 → 30
+- **3.0.0** — production-grade grammY parity: axios keep-alive, transformers, menus, inline query, limiter
+- **2.0.0** — engine rewritten from scratch, multipart transport, native Node webhook
+- **1.0.0** — grammY architecture recode
+
+> Full details in [`CHANGELOG.md`](CHANGELOG.md). Deep architecture study (🇮): [`ANALISIS-telebibz.md`](ANALISIS-telebibz.md).
+
+<a id="license"></a>
+## 📄 License
+
+**MIT** © Xbibz Official — architecture inspired by [grammY](https://grammy.dev) (MIT, see [`NOTICE.md`](NOTICE.md)).
 
 ---
 
-## 🧩 Contoh siap jalan (`examples/`)
+<div align="center">
 
-| File | Isi |
-|---|---|
-| `01-quickstart.js` | bot jalan dalam 6 baris |
-| `02-menu-tombol.js` | keyboard berwarna + ikon |
-| `03-wizard.js` | form pendaftaran |
-| `04-broadcast.js` | blast admin |
-| `05-kirim-file.js` | foto & dokumen dari buffer |
+**Made with ❤️ by //—Xbibz Official—//**
 
-## 🔬 Test & bukti live
+If telebibz helps you, a ⭐ on this repo means a lot.
 
-```
-npm test   # 14 kasus, TANPA jaringan (transport disuntik)
-```
+[![repo views](https://komarev.com/ghpvc/?username=XbibzOfficial777&repo=telebibz&style=flat-square&color=blueviolet&label=repo+views)](https://github.com/XbibzOfficial777/telebibz)
 
-Tervalidasi **24/24 offline + 10 live** pada bot produksi @xbibzrat_bot: getMe, keyboard berwarna & ikon animasi asli,
-upload multipart (photo+document), edit keyboard, broadcast, deleteMessage, polling 409 retry.
-
-## 📂 Isi repo (11 file inti)
-
-| File | Peran |
-|---|---|
-| `lib/net.js` | transport HTTP fetch murni + multipart `attach://` |
-| `lib/api.js` | metode Bot API + `api.callApi()` untuk segala metode |
-| `lib/composer.js` | middleware, filter `on('message:photo')`, `errorBoundary` |
-| `lib/context.js` | objek ctx + pintasan reply/edit/delete/callback |
-| `lib/session.js` | sesi per user:chat (dapat ditukar storagenya) |
-| `lib/runner.js` | long polling: retry 409, backoff jaringan, drop pending |
-| `lib/file.js` | `File`/`InputFile` (Buffer/path/stream) |
-| `lib/keyboard.js` | builder + `InlineKeyboard`/`Keyboard` fluent class |
-| `lib/wizard.js` | percakapan tanya-jawab berurutan |
-| `lib/broadcast.js` | blast aman rate limit |
-| `lib/errors.js` + `lib/logger.js` | error manusiawi + log berbingkai |
-
-## 🆚 Kenapa recode?
-
-| | v0.4 lama | v1.0 |
-|---|---|---|
-| Baris file sumber | 152 file TS | 7 file JS |
-| Build step | tsc ×2 + script | — |
-| Dependency runtime | — | **0 (nol)** |
-| Bot API | manual update | 9.x penuh (uji live asli) |
-| Hello world | kelas + config | 6 baris |
-| Docs | 3 bahasa × belasan file | README ini |
-
-## 📄 Lisensi
-
-MIT · //—Xbibz Official—//
+</div>

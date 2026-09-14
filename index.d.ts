@@ -6,18 +6,36 @@ declare module '@xbibzlibrary/telebibz' {
   type Color = 'danger' | 'success' | 'primary';
   type Handler = (ctx: Context) => unknown;
 
+  type WizardMode = 'send' | 'edit' | 'delete';
+  type WizardButton = string | { text: string; value?: unknown };
   interface WizardStep {
     key: string;
     ask: string | ((ctx: Context) => string | Promise<string>);
     parse?: (text: string, ctx: Context) => unknown | Promise<unknown>;
     validate?: (value: unknown, ctx: Context) => string | null | Promise<string | null>;
     opts?: Record<string, unknown>;
+    /** Tombol pilihan: ['A','B'] | [{text,value}] | baris eksplisit [['A'],['B','C']]. */
+    buttons?: Array<WizardButton | WizardButton[]>;
+    /** true → tombol inline (callback), default reply keyboard. */
+    inline?: boolean;
+    /** true/string → tolak ketikan bebas, wajib pilih tombol. */
+    onlyButtons?: boolean | string;
+    /** Override mode tampilan per langkah. */
+    mode?: WizardMode;
+    /** Reply keyboard sekali pakai. */
+    oneTime?: boolean;
   }
   interface WizardDef {
     steps: WizardStep[];
     done: (answers: Record<string, unknown>, ctx: Context) => unknown;
     cancelWords?: string[];
     onCancel?: (ctx: Context) => unknown;
+    /** 'send' (default) | 'edit' satu pesan | 'delete' tanya-hapus per langkah. */
+    mode?: WizardMode;
+    /** Hapus pesan tanya terakhir saat wizard selesai (default: true bila mode 'delete'). */
+    cleanup?: boolean;
+    /** Singkirkan reply keyboard saat selesai (default: true bila tombol reply pernah dipakai). */
+    removeKeyboard?: boolean;
   }
 
   interface TeleBibzOpts {
@@ -25,13 +43,13 @@ declare module '@xbibzlibrary/telebibz' {
     onError?: (err: unknown, ctx?: Context) => unknown;
     silent?: boolean;
     dropPending?: boolean;
-    grammy?: Record<string, unknown>;
+    session?: { initial?: () => unknown; getKey?: (ctx: Context) => string | undefined; storage?: unknown };
+    transport?: (method: string, payload?: object) => Promise<unknown>;
   }
 
   class TeleBibz {
     constructor(token: string, opts?: TeleBibzOpts);
-    bot: Bot<Context>;
-    api: Bot<Context>['api'];
+    api: any;
     botInfo: any;
     use(...mw: any[]): this;
     cmd(names: string | string[], ...mw: Handler[]): this;
@@ -42,6 +60,9 @@ declare module '@xbibzlibrary/telebibz' {
     wizard(id: string, def: WizardDef, bindCommand?: boolean): this;
     wizardStart(ctx: Context, id: string): Promise<unknown>;
     wizardActive(ctx: Context): boolean;
+    wizardCancel(ctx: Context): Promise<boolean>;
+    wizardEdit(ctx: Context, text: string, extra?: object): Promise<unknown>;
+    wizardDelete(ctx: Context): Promise<boolean>;
     broadcast(ids: Array<number | string>, pesan: any, opts?: { delay?: number }): Promise<{ terkirim: number; gagal: number; errors: Array<{ chatId: any; pesan: string }> }>;
     launch(opts?: Record<string, unknown>): Promise<this>;
     handleUpdate(update: any): Promise<void>;
@@ -63,6 +84,10 @@ declare module '@xbibzlibrary/telebibz' {
     define: (id: string, def: WizardDef) => string;
     start: (ctx: Context, id: string) => Promise<unknown>;
     active: (ctx: Context) => boolean;
+    cancel: (ctx: Context) => Promise<boolean>;
+    editAsk: (ctx: Context, text: string, extra?: object) => Promise<unknown>;
+    deleteAsk: (ctx: Context) => Promise<boolean>;
+    KEY: string;
   };
 
   function humanize(err: unknown): { pesan: string; saran: string | null; method?: string; code?: number };

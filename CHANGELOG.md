@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.1.0 — wizard: tombol pilihan + mode edit/delete (2026-09-13)
+
+- **Wizard mendukung tombol pilihan**: `step.buttons` sebagai reply keyboard
+  (`['A','B']`, `[{text,value}]`, atau baris eksplisit) atau inline keyboard
+  callback (`step.inline: true`) — klik tombol langsung menjadi nilai jawaban.
+- `onlyButtons` menolak ketikan bebas; `parse`/`validate` tetap berlaku untuk
+  nilai tombol; tombol usang dijawab alert aman tanpa crash.
+- **Wizard mendukung edit & delete pesan**: `mode: 'edit'` (satu pesan diedit
+  dari awal sampai akhir) dan `mode: 'delete'` (pesan tanya lama dihapus
+  sebelum pertanyaan berikutnya), bisa di-override per langkah via `step.mode`.
+- `cleanup` menghapus pesan tanya terakhir saat wizard selesai (default aktif
+  pada mode `'delete'`); `removeKeyboard` otomatis menyingkirkan reply keyboard.
+- Helper programatis baru: `wizard.cancel/editAsk/deleteAsk` + shortcut
+  `bot.wizardCancel()`, `bot.wizardEdit()`, `bot.wizardDelete()`.
+- Modul `wizard` kini diekspor dari `index.js` (sebelumnya hanya lewat kelas).
+- API lama 100% backward-compatible (tanpa `buttons`/`mode`, perilaku identik v3.0).
+- Test offline bertambah 24 → **30/30 lulus**. Contoh `examples/03-wizard.js` diperbarui.
+
 ## 3.0.0 — production-grade parity grammY (2026-09-07)
 
 - DEPENDENSI NYATA & TERTEST: axios (keep-alive transport), mime-types, https-proxy-agent, debug.

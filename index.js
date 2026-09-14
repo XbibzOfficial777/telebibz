@@ -25,6 +25,8 @@ const say = {
 module.exports = {
   // kelas utama
   TeleBibz, Context, Composer, BotError, session,
+  // wizard (form percakapan + tombol + edit/delete)
+  wizard,
   // keyboard & menu
   btn, url, webApp, copy, kb, InlineKeyboard, Keyboard, Menu, MenuContainer,
   // percakapan
