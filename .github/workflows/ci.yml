@@ -14,14 +14,16 @@ jobs:
       matrix:
         node: [20, 22, 24]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Runtime tests (24 kasus, tanpa jaringan)
+      - name: Runtime tests (47 checks + local HTTP, no Telegram token)
         run: npm test
+      - name: TypeScript declaration and payload tests
+        run: npm run typecheck
       - name: Syntax check semua contoh
         run: |
           for f in examples/*.js; do node --check "$f"; done

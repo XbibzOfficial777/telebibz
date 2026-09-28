@@ -4,7 +4,9 @@
 
 const { TeleBibz } = require('./lib/telebibz');
 const { ApiError, createTransport } = require('./lib/net');
-const { File, InputFile, InputMediaBuilder } = require('./lib/file');
+const { File, InputFile, InputMediaBuilder, InputPaidMediaBuilder } = require('./lib/file');
+const { rich, RichMessageBuilder, inputRichMessage } = require('./lib/rich');
+const { TELEGRAM_API_METHODS } = require('./lib/telegram-methods');
 const { btn, url, webApp, copy, kb, InlineKeyboard, Keyboard } = require('./lib/keyboard');
 const wizard = require('./lib/wizard');
 const { humanize } = require('./lib/errors');
@@ -32,7 +34,11 @@ module.exports = {
   // percakapan
   wizard,
   // file & media
-  File, InputFile, InputMediaBuilder,
+  File, InputFile, InputMediaBuilder, InputPaidMediaBuilder,
+  // Rich Messages (Bot API 10.3)
+  rich, RichMessageBuilder, inputRichMessage,
+  // complete raw Bot API method registry (185 methods)
+  TELEGRAM_API_METHODS,
   // api & transport
   makeApi, createTransport, ApiError,
   // anti-spam & keandalan

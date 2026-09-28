@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Telegram Bot API 10.3
+
+- Vendored schema TypeScript `@grammyjs/types@5.0.0` (MIT), typed payload signatures, and an audited 185-method runtime registry kept in exact sync by tests; no new runtime dependency.
+- Rich-message builders/entities/blocks, live-photo and paid-media builders, guest-query/ephemeral/draft helpers, inline rich-article builder, and the `08-rich-message.js` example.
+- Typed `callApi(method, payload)` and Telegram schema exports; positive/negative TypeScript consumer checks run in CI and before automated npm release.
+- English/Indonesian documentation and npm publishing setup guidance updated; tests now 30 feature + 17 audit checks.
+
 ## 3.1.0 — wizard: tombol pilihan + mode edit/delete (2026-09-13)
 
 - **Wizard mendukung tombol pilihan**: `step.buttons` sebagai reply keyboard

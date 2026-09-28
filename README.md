@@ -26,7 +26,7 @@ dependencies that are *actually used*, and an Indonesia-first community.
 
 <br>
 
-`//—Xbibz Official—//`
+`Xbibz Technology ID`
 
 </div>
 
@@ -137,13 +137,14 @@ BOT_TOKEN=123:abc node index.js
 ```
 
 ```
-┌──────────────────────────────────┐
-│  🤖 TeleBibz ON                   │
-│  bot      : @yourbot (id 123456) │
-│  mode     : long-polling          │
-│  library  : telebibz 3.1.0        │
-│  brand    : //—Xbibz Official—//  │
-└──────────────────────────────────┘
+◆ DEVELOPER  Xbibz Technology ID
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🤖 TeleBibz ON                       ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃  bot      : @yourbot (id 123456)      ┃
+┃  mode     : long-polling              ┃
+┃  library  : telebibz 3.1.2 (Node.js)  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ✔ waiting for updates… (Ctrl+C to stop)
 ```
 
@@ -264,6 +265,64 @@ inline…) with unified accessors: `chat`, `from`, `chatId`, `msgId`, `msg`,
 
 Business accounts: replies inside a business context automatically carry
 `business_connection_id`.
+
+<a id="rich-messages"></a>
+### 🧱 Rich Messages, drafts, live photos & ephemeral messages (Bot API 10.3)
+
+TeleBibz includes rich-message builders and Context helpers. All **185 Bot API
+methods** are also available through typed `ctx.api.callApi(method, payload)`;
+the proxy accepts newer methods using an object payload.
+
+```js
+const { rich, RichMessageBuilder } = require('@xbibzlibrary/telebibz');
+
+bot.cmd('report', (ctx) => ctx.replyWithRichMessage(rich.blocks([
+  rich.heading('Report', 2),
+  rich.paragraph(['Status: ', rich.bold('success')]),
+  rich.table([
+    [{ text: 'Item', align: 'left', valign: 'middle', is_header: true },
+     { text: 'Total', align: 'right', valign: 'middle', is_header: true }],
+    [{ text: 'Orders', align: 'left', valign: 'middle' },
+     { text: '3', align: 'right', valign: 'middle' }],
+  ], { bordered: true, striped: true, compact: true }),
+  rich.details('Notes', [rich.paragraph('Additional details')]),
+  rich.buttons([rich.button('Open', { url: 'https://example.com' }, 'primary')]),
+])));
+
+// HTML, Markdown, media blocks, lists, quotes, maps, tables, collages,
+// slideshows, buttons and rich-text entities (bold/customEmoji/dateTime, etc.) are supported.
+const content = new RichMessageBuilder().markdown('**Hello!**').rtl().build();
+await ctx.replyWithRichMessage(content);
+
+// Live photo: both inputs may be Telegram file_ids or InputFile instances.
+await ctx.replyWithLivePhoto('video-file-id', 'photo-file-id', { caption: 'Moment' });
+
+// A draft is a temporary preview. Send the final rich message to persist it.
+await ctx.sendRichMessageDraft(1, rich.draftBlocks([
+  rich.paragraph('Writing…'), rich.thinking('Working'),
+]), { can_stop: true, keep_on_stop: true });
+await ctx.replyWithRichMessage(rich.markdown('**Final answer**'));
+
+// Ephemeral: visible only to a specific recipient.
+await ctx.replyEphemeral('A temporary private message', ctx.from.id);
+
+// Fully typed raw access to every Bot API method and its payload.
+await ctx.api.callApi('sendRichMessage', {
+  chat_id: ctx.chatId,
+  rich_message: rich.html('<b>Rich HTML</b>'),
+});
+```
+
+`RichMessageBuilder` supports `.html()`, `.markdown()`, `.blocks()`, `.add()`,
+`.media()`, `.rtl()`, `.skipEntityDetection()`, `.build()`, and `.buildDraft()`.
+`rich.draftHtml()`, `rich.draftMarkdown()`, and `rich.draftBlocks()` return draft-safe content and reject `File` uploads (drafts may use existing Telegram file IDs). Rich block helpers cover
+paragraphs, headings, code, lists, tables, details, quotations, maps, media,
+buttons, and thinking. `InputMediaBuilder.livePhoto()` and
+`InputPaidMediaBuilder.livePhoto()` construct live-photo media payloads. The
+`thinking` block is only valid in `sendRichMessageDraft`. Other modern methods are available via
+`ctx.api.sendMessageDraft()`, `ctx.api.answerGuestQuery()`,
+`ctx.api.editEphemeralMessage*()`, and `ctx.api.deleteEphemeralMessage()`.
+Telegram types are available under `TelegramTypes`; rich input types are exported directly.
 
 <a id="keyboards"></a>
 ### 🔘 Keyboards & buttons
@@ -515,7 +574,7 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 | 📝 Total lines of code | **~1,700** (no build step) |
 | 🔌 Bot API methods | **90+** — 75 typed shortcuts + unbounded Proxy |
 | ⌨️ Context shortcuts | **50+** (reply/edit/delete/admin/react…) |
-| 🧪 Offline tests | **30/30 passing**, zero network |
+| 🧪 Offline tests | **47/47 passing**, including local HTTP transport and Bot API 10.3 tests |
 | 🧩 Ready examples | **7** in `examples/` |
 | 📦 Runtime dependencies | **4** — all used, all tested |
 
@@ -574,6 +633,7 @@ inline-query.js██▊                        28  ← matcher + result builder
 | `05-kirim-file.js` | photos & documents from buffers |
 | `06-menu.js` | interactive menus + submenus |
 | `07-inline-query.js` | inline mode with result builders |
+| `08-rich-message.js` | rich messages, live photo, drafts, ephemeral messages, raw API |
 
 Run any of them with `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 
@@ -581,13 +641,14 @@ Run any of them with `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 ## 🔬 Testing & Live Proof
 
 ```bash
-npm test   # 30 cases, NO network (transport injected)
+npm test          # 47 offline checks, including local HTTP transport + Bot API 10.3 tests
+npm run typecheck # verify declarations and method-specific Bot API payload types
 ```
 
-Validated **30/30 offline + 10 live** on the production bot `@xbibzrat_bot`:
-getMe · colored keyboards & real animated icons · multipart uploads
-(photo+document) · keyboard editing · broadcast · deleteMessage · polling 409
-retry · wizard buttons & edit/delete.
+The current audit needs no Telegram token. An earlier release of this repository
+records **30 offline + 10 live checks** on `@xbibzrat_bot`; that live run is historical
+and was not repeated in the current audit. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md)
+for the test matrix, Bot API 10.3 comparison, and remaining limitations.
 
 Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 
@@ -623,16 +684,23 @@ Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 
 > Full details in [`CHANGELOG.md`](CHANGELOG.md). Deep architecture study (🇮): [`ANALISIS-telebibz.md`](ANALISIS-telebibz.md).
 
+<a id="publishing"></a>
+## 📦 Automated npm publishing
+
+`.github/workflows/auto-publish.yml` publishes on pushes to `main` (except release commits tagged with `[skip release]`) or manually on the `main` branch via **Actions → Auto publish to npm → Run workflow** (the job rejects dispatches from other branches). Before enabling it, configure a GitHub Actions Environment named `npm-release` and add the repository/environment secret **`NPM_TOKEN`** with permission to publish `@xbibzlibrary/telebibz`. No credential is stored in this repository.
+
+The workflow derives the next patch version from the greater of the checked-in version and npm's latest version, then runs runtime tests, TypeScript checks, JS syntax checks, package dry-run, and production dependency audit. It publishes publicly, commits the bumped `package.json`/lockfile, creates an annotated `vX.Y.Z` tag, and a GitHub release. A failed validation stops before publish. The CI/release workflows have been reviewed locally; a real GitHub Actions run and npm publish still require repository access and the secret.
+
 <a id="license"></a>
 ## 📄 License
 
-**MIT** © Xbibz Official — architecture inspired by [grammY](https://grammy.dev) (MIT, see [`NOTICE.md`](NOTICE.md)).
+**MIT** © Xbibz Technology ID — architecture inspired by [grammY](https://grammy.dev) (MIT, see [`NOTICE.md`](NOTICE.md)).
 
 ---
 
 <div align="center">
 
-**Made with ❤️ by //—Xbibz Official—//**
+**Made with ❤️ by Xbibz Technology ID**
 
 If telebibz helps you, a ⭐ on this repo means a lot.
 

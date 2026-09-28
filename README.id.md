@@ -26,7 +26,7 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 
 <br>
 
-`//—Xbibz Official—//`
+`Xbibz Technology ID`
 
 </div>
 
@@ -138,13 +138,14 @@ BOT_TOKEN=123:abc node index.js
 ```
 
 ```
-┌──────────────────────────────────┐
-│  🤖 TeleBibz ON                   │
-│  bot      : @botkamu (id 123456) │
-│  mode     : long-polling          │
-│  library  : telebibz 3.1.0        │
-│  brand    : //—Xbibz Official—//  │
-└──────────────────────────────────┘
+◆ DEVELOPER  Xbibz Technology ID
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🤖 TeleBibz ON                       ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃  bot      : @botkamu (id 123456)      ┃
+┃  mode     : long-polling              ┃
+┃  library  : telebibz 3.1.2 (Node.js)  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ✔ menunggu update… (Ctrl+C untuk berhenti)
 ```
 
@@ -265,6 +266,65 @@ callback, inline…) dengan accessor seragam: `chat`, `from`, `chatId`, `msgId`,
 
 Akun business: balasan dalam konteks business otomatis menyertakan
 `business_connection_id`.
+
+<a id="rich-messages"></a>
+### 🧱 Rich Messages, draft, live photo & pesan ephemeral (Bot API 10.3)
+
+TeleBibz menyediakan builder rich-message dan Context helper; untuk seluruh
+**185 metode Bot API** tersedia juga `ctx.api.callApi(method, payload)` yang bertipe,
+sementara proxy menerima metode baru lewat object payload.
+
+```js
+const { rich, RichMessageBuilder } = require('@xbibzlibrary/telebibz');
+
+bot.cmd('laporan', (ctx) => ctx.replyWithRichMessage(rich.blocks([
+  rich.heading('Laporan', 2),
+  rich.paragraph(['Status: ', rich.bold('berhasil')]),
+  rich.table([
+    [{ text: 'Item', align: 'left', valign: 'middle', is_header: true },
+     { text: 'Total', align: 'right', valign: 'middle', is_header: true }],
+    [{ text: 'Pesanan', align: 'left', valign: 'middle' },
+     { text: '3', align: 'right', valign: 'middle' }],
+  ], { bordered: true, striped: true, compact: true }),
+  rich.details('Catatan', [rich.paragraph('Rincian tambahan')]),
+  rich.buttons([rich.button('Buka', { url: 'https://example.com' }, 'primary')]),
+])));
+
+// HTML, Markdown, blok berisi media, list, kutipan, peta, tabel, collage,
+// slideshow, button, rich-text entities (bold/customEmoji/dateTime, dll.) juga didukung.
+const content = new RichMessageBuilder().markdown('**Hai!**').rtl().build();
+await ctx.replyWithRichMessage(content);
+
+// Live photo: kedua file dapat berupa file_id atau InputFile.
+await ctx.replyWithLivePhoto('video-file-id', 'photo-file-id', { caption: 'Momen' });
+
+// Draft adalah preview sementara; kirim Rich Message final agar tersimpan.
+await ctx.sendRichMessageDraft(1, rich.draftBlocks([
+  rich.paragraph('Sedang menulis…'), rich.thinking('Memproses'),
+]), { can_stop: true, keep_on_stop: true });
+await ctx.replyWithRichMessage(rich.markdown('**Jawaban final**'));
+
+// Ephemeral: pesan hanya terlihat oleh penerima tertentu.
+await ctx.replyEphemeral('Pesan privat sementara', ctx.from.id);
+
+// Akses lengkap dan bertipe untuk metode/parameter Bot API (termasuk semua metode 10.3).
+await ctx.api.callApi('sendRichMessage', {
+  chat_id: ctx.chatId,
+  rich_message: rich.html('<b>Rich HTML</b>'),
+});
+```
+
+`RichMessageBuilder` menyediakan `.html()`, `.markdown()`, `.blocks()`, `.add()`,
+`.media()`, `.rtl()`, `.skipEntityDetection()`, `.build()`, dan `.buildDraft()`.
+`rich.draftHtml()`, `rich.draftMarkdown()`, dan `rich.draftBlocks()` menghasilkan
+konten draft-safe serta menolak upload `File` (draft dapat memakai file_id Telegram yang ada).
+Rich block builder mencakup
+paragraph/heading/pre/list/table/details/quote/map/media/buttons/thinking; block
+`thinking` hanya untuk `sendRichMessageDraft`. `InputMediaBuilder.livePhoto()` dan
+`InputPaidMediaBuilder.livePhoto()` membentuk payload media live photo. API raw modern lain tersedia lewat
+`ctx.api.sendMessageDraft()`, `ctx.api.answerGuestQuery()`, `ctx.api.editEphemeralMessage*()`
+dan `ctx.api.deleteEphemeralMessage()`. Tipe resmi Telegram dapat diakses sebagai
+`TelegramTypes`; rich input types diekspor langsung.
 
 <a id="keyboard"></a>
 ### 🔘 Keyboard & tombol
@@ -516,7 +576,7 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 | 📝 Total baris kode | **±1.700** (tanpa build step) |
 | 🔌 Metode Bot API | **90+** — 75 shortcut bertipe + Proxy tanpa batas |
 | ⌨️ Shortcut Context | **50+** (reply/edit/delete/admin/react…) |
-| 🧪 Test offline | **30/30 lulus**, tanpa jaringan |
+| 🧪 Test offline | **47/47 lulus**, termasuk transport HTTP lokal dan fitur Bot API 10.3 |
 | 🧩 Contoh siap jalan | **7** di `examples/` |
 | 📦 Dependency runtime | **4** — semuanya terpakai & ter-test |
 
@@ -575,6 +635,7 @@ inline-query.js██▊                        28  ← matcher + builder hasil
 | `05-kirim-file.js` | foto & dokumen dari buffer |
 | `06-menu.js` | menu interaktif + submenu |
 | `07-inline-query.js` | mode inline dengan builder hasil |
+| `08-rich-message.js` | rich messages, live photo, draft, ephemeral, dan raw method API |
 
 Jalankan dengan `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 
@@ -582,13 +643,14 @@ Jalankan dengan `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 ## 🔬 Test & Bukti Live
 
 ```bash
-npm test   # 30 kasus, TANPA jaringan (transport disuntik)
+npm test       # 47 test offline (mock + HTTP server lokal), tanpa token Telegram
+npm run typecheck # cek declaration TypeScript + payload method-specific
 ```
 
-Tervalidasi **30/30 offline + 10 live** pada bot produksi `@xbibzrat_bot`:
-getMe · keyboard berwarna & ikon animasi asli · upload multipart
-(photo+document) · edit keyboard · broadcast · deleteMessage · polling 409
-retry · wizard tombol & edit/delete.
+Audit saat ini tidak membutuhkan token Telegram. Versi repo sebelumnya mencatat
+**30 test offline + 10 test live** pada `@xbibzrat_bot`; pengujian live tersebut
+bersifat historis dan tidak diulang pada audit ini. Lihat [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md)
+untuk matriks test, perbandingan Bot API 10.3, dan batasan yang tersisa.
 
 Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 
@@ -624,16 +686,23 @@ Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 
 > Detail lengkap di [`CHANGELOG.md`](CHANGELOG.md). Studi arsitektur mendalam: [`ANALISIS-telebibz.md`](ANALISIS-telebibz.md).
 
+<a id="publishing"></a>
+## 📦 Publikasi npm otomatis
+
+Workflow `.github/workflows/auto-publish.yml` menerbitkan saat ada push ke `main` (kecuali commit rilis yang memuat `[skip release]`) atau manual dari branch `main` lewat **Actions → Auto publish to npm → Run workflow** (workflow menolak dispatch dari branch lain). Sebelum mengaktifkannya, buat GitHub Actions Environment bernama `npm-release`, lalu tambahkan secret **`NPM_TOKEN`** yang berizin menerbitkan `@xbibzlibrary/telebibz`. Token tidak disimpan di repo.
+
+Workflow memilih patch berikutnya berdasarkan versi yang lebih tinggi antara repo dan versi terbaru npm; lalu menjalankan test runtime, typecheck TypeScript, pemeriksaan sintaks JS, simulasi paket, dan audit dependency produksi. Workflow mem-publish sebagai paket publik, commit bump `package.json`/lockfile, membuat tag anotasi `vX.Y.Z`, dan GitHub Release. Validasi yang gagal menghentikan workflow sebelum publish. Konfigurasi ditinjau secara lokal; verifikasi Actions nyata dan publish memerlukan akses repo dan secret tersebut.
+
 <a id="lisensi"></a>
 ## 📄 Lisensi
 
-**MIT** © Xbibz Official — arsitektur terinspirasi [grammY](https://grammy.dev) (MIT, lihat [`NOTICE.md`](NOTICE.md)).
+**MIT** © Xbibz Technology ID — arsitektur terinspirasi [grammY](https://grammy.dev) (MIT, lihat [`NOTICE.md`](NOTICE.md)).
 
 ---
 
 <div align="center">
 
-**Dibuat dengan ❤️ oleh //—Xbibz Official—//**
+**Dibuat dengan ❤️ oleh Xbibz Technology ID**
 
 Kalau telebibz membantumu, bintang ⭐ repo ini sangat berarti.
 

@@ -1,12 +1,19 @@
 # NOTICE
 
-telebibz v2 adalah recode mandiri (JavaScript, 0 dependency) atas konsep arsitektur
-Bot API framework **grammY** (https://github.com/grammyjs/grammY} — lisensi MIT).
+## Arsitektur dan implementasi JavaScript
 
-Setiap berkas sumber di lib/ ditulis ulang: net (transport multipart), api, composer
-(middleware/routing filter), context, session, runner (polling tahan-409), file,
-keyboard, wizard, broadcast, errors, logger.
+telebibz adalah recode mandiri dengan konsep arsitektur yang terinspirasi oleh
+Bot API framework **grammY** (https://github.com/grammyjs/grammY, lisensi MIT).
+Implementasi JavaScript pada `lib/` ditulis untuk repo ini; referensi tersebut
+adalah atribusi konseptual.
 
-Terima kasih untuk grammY & komunitasnya atas rancangan API yang elegan.
-Tidak ada kode grammY yang disalin verbatim; pemakaian nama "grammY" bersifat
-atribusi konseptual sesuai semangat lisensi MIT.
+## Type declarations Bot API
+
+Berkas deklarasi TypeScript pada `types/telegram-bot-api/` diambil dari
+[`@grammyjs/types` v5.0.0](https://github.com/grammyjs/types), proyek grammY
+berlisensi MIT. Salinan lisensinya ada di [`types/telegram-bot-api/LICENSE`](types/telegram-bot-api/LICENSE).
+Deklarasi tersebut digunakan sebagai model tipe Bot API 10.3; implementasi
+runtime telebibz tetap menggunakan transport dan proxy milik repo ini.
+
+Terima kasih kepada grammY dan komunitas Telegram bot atas dokumentasi dan
+rancangan API yang membantu proyek ini.

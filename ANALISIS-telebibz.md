@@ -1,7 +1,8 @@
-# 📖 Analisis Lengkap telebibz v3.1.0
+# 📖 Analisis Lengkap telebibz v3.1.2
 
 > Hasil studi kode repo `github.com/XbibzOfficial777/telebibz` —
-> logic, fungsi, alur & workflow. Disusun 2026-09-13.
+> logic, fungsi, alur & workflow. Diperbarui 2026-09-28.
+> Audit mendalam, test regresi, dan pembandingan Bot API resmi terbaru dicatat di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
 
 ---
 
@@ -16,7 +17,7 @@ recode mandiri dari arsitektur [grammY](https://grammy.dev) (kredit MIT di
 - **Ukuran**: ±1.700 baris JS — 16 modul `lib/` + `index.js` + `index.d.ts`
 - **Dependensi** (semuanya terpakai): `axios` (transport keep-alive),
   `mime-types` (content-type upload), `https-proxy-agent` (proxy VPS), `debug` (log)
-- **Test**: 30 kasus offline, transport disuntik (tanpa jaringan)
+- **Test**: 30 test fitur + 17 test audit/regresi offline; termasuk transport HTTP lokal, tidak memerlukan token Telegram.
 
 ---
 
@@ -100,28 +101,31 @@ Poin desain kunci:
 
 ### 3.4 `lib/context.js` — objek `Context` (190 baris)
 - Accessor universal: `chat`, `from`, `chatId`, `msgId`, `senderChat`,
-  `inlineMessageId`, `businessConnectionId` — pesan dari 6 field berbeda
-  (`message`, `edited_message`, `channel_post`, `business_message`, …)
-  disatukan lewat `msgOf()`.
+  `inlineMessageId`, `businessConnectionId`, dan `guestQueryId` — variasi update
+  yang berisi pesan disatukan lewat `msgOf()`, termasuk update `guest_message`.
 - **±70 shortcut**: `reply*` (18 varian media/teks/lokasi/poll/invoice),
   `editMessage*`/`deleteMessage*` (sadar callback_query & inline message),
   `react()`, admin grup, `forward/copyMessage`, `answerCallbackQuery`,
-  `answerInlineQuery`, `getFile()` pintar (photo terbesar) + `downloadFile()`.
+  `answerInlineQuery`, `answerGuestQuery`, `getFile()` pintar (photo terbesar) + `downloadFile()`.
 - **Business flavor**: `business_connection_id` otomatis disisipkan pada
   balasan dalam konteks bisnis.
 
 ### 3.5 `lib/runner.js` + siklus hidup bot
 `pollLoop()`: `getUpdates` (timeout 25 s) berulang dengan kebijakan:
 - **409 Conflict** (instance lain polling) → log + retry tiap `conflictDelay` (5 dtk) — *tidak crash*, unggul atas grammY;
-- error jaringan/429 → jeda 1 dtk lalu lanjut;
-- error API lain → `onFatal` lalu berhenti bersih.
+- error jaringan/time-out → jeda lalu coba lagi; 429 menghormati `retry_after`, 5xx mencoba ulang;
+- konflik 409 → jeda `conflictDelay`; error API non-retryable → `onFatal` lalu berhenti bersih.
 `launch()` = `init()` (getMe) → banner → `pollLoop` → handler SIGINT/SIGTERM.
-`webhook()` mengembalikan handler `(req, res)` Node murni; `handleUpdate()`
-adalah pintu universal (webhook/serverless/test).
+`webhook()` mengembalikan handler `(req, res)` Node murni; opsional memverifikasi
+header secret Telegram dan membatasi ukuran body. `handleUpdate()` adalah pintu
+universal (webhook/serverless/test). Default `allowedUpdates` kini mencakup seluruh
+tipe update Bot API 10.3, termasuk `guest_message` dan `stopped_message_generation`.
 
 ### 3.6 `lib/session.js`
 Key default `${from.id}:${chat.id}`, storage Map memori, swappable
-(`{read, write, delete}`), `initial()` factory. `ctx.session` dibungkus Proxy.
+(`{read, write, delete}`), `initial()` factory. `ctx.session` dibungkus Proxy
+serta ditulis kembali sesudah middleware agar storage hasil deserialize ikut persisten;
+penanda `__deleted` menghapus entry storage saat request selesai.
 
 ### 3.7 `lib/ratelimit.js` — keandalan
 | Fungsi | Mekanisme |
@@ -225,26 +229,40 @@ handler / pindah submenu (`editMessageReplyMarkup`) / `back()`.
 3. Proxy API generik membuat library otomatis kompatibel dengan metode baru
    Telegram tanpa update kode.
 
-**Potensi perbaikan (di luar tugas ini)**
-1. `session.js` mendefinisikan penanda `__deleted` di komentar, tetapi logika
-   penghapusannya tidak diimplementasikan — sesi kosong tidak pernah dibuang
-   dari storage (bocor memori ringan pada bot besar).
-2. `MSG_PROPS` di `composer.js` punya key `successful_payment` ganda dan
-   `data: () => false` yang mati — tidak berbahaya, hanya berantakan.
-3. `limiter()` tidak pernah membersihkan bucket user lama (Map tumbuh terus).
-4. `launch()` tidak memanggil `deleteWebhook` otomatis saat beralih ke
-   polling (grammY juga tidak, tapi patut dipertimbangkan).
+**Perbaikan yang ditemukan dan ditangani pada audit mendalam (2026-09-28)**
+1. Error boundary sebelumnya dipasang sebelum handler publik sehingga handler
+   publik tidak benar-benar berada di dalam boundary. Kini middleware handler
+   dimasukkan langsung sebagai sub-pohon yang dilindungi.
+2. Matcher regex global (`/g`) sebelumnya bisa melewatkan match berikutnya;
+   `hears`, `callbackQuery`, dan inline-query matcher kini mereset `lastIndex`.
+3. Adapter sesi serialisasi kini ditulis ulang setelah tiap update; throttler tidak
+   lagi macet setelah satu request gagal; limiter membersihkan bucket lama berkala.
+4. Poller sekarang retry error jaringan ECONN*, 429 memakai `retry_after`, dan
+   error 5xx; error API non-retryable tetap fatal.
+5. Opsi `apiRoot` diteruskan ke transport dan unduhan file; webhook dapat memakai
+   secret token Telegram serta batas ukuran request.
+6. Default subscription, `Context`, dan matcher update diperbarui untuk update
+   Bot API 10.3, termasuk `guest_message`, boost, penghapusan pesan bisnis, dan
+   `stopped_message_generation`.
+7. Proxy API menghindari nama `then/catch/finally` agar objek API tidak menjadi
+   thenable palsu; deklarasi TypeScript diperbarui dan diverifikasi.
 
-**Yang dikerjakan pada studi ini (v3.1.0)**
-- ✅ Wizard mendukung **tombol pilihan** (reply keyboard & inline callback)
-  dengan nilai kustom, `onlyButtons`, dan proteksi tombol usang.
-- ✅ Wizard mendukung **edit & delete** pesan: mode `'edit'`/`'delete'`,
-  override per langkah, `cleanup`, `removeKeyboard`, helper
-  `wizardCancel/wizardEdit/wizardDelete`.
-- ✅ `README.md` diperbarui (matriks fitur, seksi wizard v3.1, tabel opsi
-  konstruktor akurat, contoh webhook benar, referensi grammY usang dibersihkan).
-- ✅ `CHANGELOG.md` entri 3.1.0 + versi `package.json` dinaikkan.
-- ✅ Test 24 → **30/30 lulus**, backward-compatible penuh.
+**Catatan sisa / batas verifikasi**
+1. `launch()` tidak otomatis memanggil `deleteWebhook`; perpindahan dari webhook ke
+   polling perlu dikelola eksplisit. Konflik 409 akan retry terus, bukan sukses.
+2. Proxy API menerima metode Bot API baru sebagai `api.method({ ...payload })`,
+   tetapi tidak melakukan validasi schema/parameter runtime untuk semua metode.
+3. Upload multipart membaca file ke memori sebelum mengirim; file sangat besar
+   berpotensi menaikkan penggunaan RAM.
+4. Uji jaringan memakai HTTP server lokal dan mock. Tidak ada token bot yang
+   diberikan, sehingga autentikasi, hak akses chat, serta penerimaan setiap metode
+   pada layanan Telegram produksi tidak diuji.
+
+**Yang dikerjakan pada studi ini (versi awal v3.1)**
+- ✅ Wizard mendukung tombol pilihan, mode edit/delete, cleanup, dan tombol anti-usang.
+- ✅ Branding diubah menjadi `Xbibz Technology ID`; log boot memakai blok warna
+  dengan identitas developer di atasnya.
+- ✅ Test fitur **30/30** dan test audit/regresi **17/17** lulus.
 
 ---
 
