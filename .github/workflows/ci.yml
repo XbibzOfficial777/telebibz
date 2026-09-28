@@ -20,7 +20,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Runtime tests (47 checks + local HTTP, no Telegram token)
+      - name: Runtime tests (48 checks + local HTTP, no Telegram token)
         run: npm test
       - name: TypeScript declaration and payload tests
         run: npm run typecheck

@@ -17,7 +17,7 @@ recode mandiri dari arsitektur [grammY](https://grammy.dev) (kredit MIT di
 - **Ukuran**: ±1.700 baris JS — 16 modul `lib/` + `index.js` + `index.d.ts`
 - **Dependensi** (semuanya terpakai): `axios` (transport keep-alive),
   `mime-types` (content-type upload), `https-proxy-agent` (proxy VPS), `debug` (log)
-- **Test**: 30 test fitur + 17 test audit/regresi offline; termasuk transport HTTP lokal, tidak memerlukan token Telegram.
+- **Test**: 30 test fitur + 18 test audit/regresi offline; termasuk transport HTTP lokal, tidak memerlukan token Telegram.
 
 ---
 
@@ -262,7 +262,7 @@ handler / pindah submenu (`editMessageReplyMarkup`) / `back()`.
 - ✅ Wizard mendukung tombol pilihan, mode edit/delete, cleanup, dan tombol anti-usang.
 - ✅ Branding diubah menjadi `Xbibz Technology ID`; log boot memakai blok warna
   dengan identitas developer di atasnya.
-- ✅ Test fitur **30/30** dan test audit/regresi **17/17** lulus.
+- ✅ Test fitur **30/30** dan test audit/regresi **18/18** lulus.
 
 ---
 

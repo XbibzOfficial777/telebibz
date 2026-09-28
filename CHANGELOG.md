@@ -1,11 +1,35 @@
 # Changelog
 
-## Unreleased — Telegram Bot API 10.3
+## Unreleased — Telegram Bot API 10.3 / Rich Messages
 
-- Vendored schema TypeScript `@grammyjs/types@5.0.0` (MIT), typed payload signatures, and an audited 185-method runtime registry kept in exact sync by tests; no new runtime dependency.
-- Rich-message builders/entities/blocks, live-photo and paid-media builders, guest-query/ephemeral/draft helpers, inline rich-article builder, and the `08-rich-message.js` example.
-- Typed `callApi(method, payload)` and Telegram schema exports; positive/negative TypeScript consumer checks run in CI and before automated npm release.
-- English/Indonesian documentation and npm publishing setup guidance updated; tests now 30 feature + 17 audit checks.
+### API surface and types
+
+- Added a runtime registry containing **185 Bot API method names**. An audit test compares the registry exactly with all vendored method signatures and rejects duplicates.
+- Vendored `@grammyjs/types@5.0.0` declarations (MIT; attribution/license in `NOTICE.md` and `types/telegram-bot-api/LICENSE`) for Bot API methods, objects, updates and payloads. These declarations add **no runtime dependency**; TypeScript is a development-only dependency for type tests.
+- `api.callApi(method, payload)` and `api.raw(...)` now provide method-specific parameter and result typing for all methods in the vendored schema. `TelegramTypes`, `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods` and `TelegramApiPayloads` are exported. The dynamic API Proxy remains available but is not runtime schema validation.
+
+### Rich Message authoring
+
+- Added `rich.html()`, `rich.markdown()`, `rich.blocks()`, `inputRichMessage()`, and `RichMessageBuilder` (`html`, `markdown`, `blocks`, `add`, `media`, `rtl`, `skipEntityDetection`, `build`, `buildDraft`). Exactly one content mode—HTML, Markdown or blocks—is required.
+- Added RichText entity builders for bold/italic/underline/strikethrough/spoiler/marked/code/subscript/superscript, date-time, mentions, custom emoji, math, links, email/phone/card, hashtag/cashtag/bot command, anchors/references, and inline rich-text buttons.
+- Added block builders for paragraph, heading, preformatted text, footer, divider, math, anchor, list, block/expandable/pull quotations, collage, slideshow, table, details, map, animation, audio, document, photo, video, voice note, buttons and draft-only thinking blocks.
+- `rich.button()` now builds a `RichMessageButton` for the buttons block; `rich.buttonText()` builds the separate inline `RichTextButton` entity. Runtime validation checks the one-action rule, supported style/alignment and 1–8 button count. This correction followed a live Telegram parse error.
+- Added draft-safe `rich.draftHtml()`, `rich.draftMarkdown()`, `rich.draftBlocks()` and `RichMessageBuilder.buildDraft()`. They reject new `File` uploads; use existing Telegram file IDs for draft media.
+- Added animated custom emoji support via `rich.customEmoji(customEmojiId, alternativeText)` and rich-message embedding of media through `tg://...` references plus `media` entries.
+
+### Bot API 10.x helpers and media
+
+- Added/typed API and Context support for `sendRichMessage`, `editMessageText` with `rich_message`, `sendLivePhoto`, `sendMessageDraft`, `sendRichMessageDraft`, `answerGuestQuery`, ephemeral send/edit/delete methods, and `iq.richArticle()`.
+- Added live-photo and paid-media builders (`InputMediaBuilder.livePhoto()` and `InputPaidMediaBuilder.livePhoto()`). Existing multipart transport now has audit coverage for nested rich-media attachments.
+- Added Context helpers: `replyWithRichMessage`, `editRichMessage`, `replyWithLivePhoto`, `sendMessageDraft`, `sendRichMessageDraft`, `replyEphemeral`, `editEphemeralRichMessage`, ephemeral media/caption/reply-markup edits, and `deleteEphemeralMessage`.
+- Added `examples/08-rich-message.js` and expanded both English and Indonesian README sections with usage, helper catalogs, typing, media, drafts, animated emoji, limits/permissions and troubleshooting.
+
+### Verification, live-test findings and publishing
+
+- Automated suite: **30/30** existing feature checks + **18/18** audit checks (**48 total**); `npm run typecheck`, JavaScript syntax, workflow YAML, `npm pack --dry-run`, `git diff --check`, and `npm audit --omit=dev` pass.
+- Live smoke test: rich blocks, HTML/Markdown, animated custom emoji, plain/rich drafts, photo/audio/document/video/voice-note media blocks, collage/slideshow, standalone live photo, GIF with `sendAnimation`, and rich HTML media references succeeded. For a rich `animation` block, MP4 succeeded while GIF returned `RICH_MESSAGE_VIDEO_INVALID`; the same GIF worked with standalone `sendAnimation`.
+- Live ephemeral sends returned Telegram `BOT_NOT_ADMIN`; paid-media sending was not attempted because it can involve Telegram Stars. Callback execution and all 185 endpoints were not live-tested; see `VERIFIKASI-MENDALAM.md`. No bot token or user/chat identifier is recorded in repo documentation.
+- CI/release workflows now run TypeScript checks. Auto-publish remains gated by GitHub Environment `npm-release` and secret `NPM_TOKEN`; no credential is committed and no release is implied by this Unreleased entry.
 
 ## 3.1.0 — wizard: tombol pilihan + mode edit/delete (2026-09-13)
 

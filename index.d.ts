@@ -1,6 +1,6 @@
 // Public TypeScript surface for @xbibzlibrary/telebibz.
 import type { ApiMethods, Opts } from './types/telegram-bot-api/methods.js';
-import type { InputRichBlock, InputRichMessage, InputRichMessageMedia } from './types/telegram-bot-api/rich.js';
+import type { InputRichBlock, InputRichBlockButtons, InputRichMessage, InputRichMessageMedia, RichMessageButton, RichTextButton } from './types/telegram-bot-api/rich.js';
 export * as TelegramTypes from './types/telegram-bot-api/mod.js';
 export type * from './types/telegram-bot-api/rich.js';
 
@@ -267,6 +267,9 @@ export const rich: {
   draftHtml(html: string, options?: Partial<InputRichMessage<TelegramFileInput>>): TelegramMethodPayload<'sendRichMessageDraft'>['rich_message'];
   draftMarkdown(markdown: string, options?: Partial<InputRichMessage<TelegramFileInput>>): TelegramMethodPayload<'sendRichMessageDraft'>['rich_message'];
   draftBlocks(blocks: InputRichBlock<TelegramFileInput>[], options?: Partial<InputRichMessage<TelegramFileInput>>): TelegramMethodPayload<'sendRichMessageDraft'>['rich_message'];
+  button(text: string, action: Record<string, unknown>, style?: 'danger' | 'success' | 'primary' | 'link'): RichMessageButton;
+  buttonText(text: string, action: Record<string, unknown>, style?: 'danger' | 'success' | 'primary' | 'link'): RichTextButton;
+  buttons(buttons: RichMessageButton[], align?: 'left' | 'center' | 'right'): InputRichBlockButtons;
   block(type: string, props?: Record<string, unknown>): InputRichBlock<TelegramFileInput>;
   [builder: string]: (...args: any[]) => any;
 };

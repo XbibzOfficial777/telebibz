@@ -19,8 +19,8 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 [![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=CB3837&label=telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=green&label=unduh%2Fbulan)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![node](https://img.shields.io/node/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=node.js&logoColor=white&color=339933&label=node)](https://nodejs.org)
-[![tests](https://img.shields.io/badge/test-30%2F30%20lulus-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-test--bukti-live)
-[![size](https://img.shields.io/badge/kode-1.7k%20baris-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analitik--statistik)
+[![tests](https://img.shields.io/badge/test-48%2F48%20lulus-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-test--bukti-live)
+[![size](https://img.shields.io/badge/kode-2.1k%20baris-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analitik--statistik)
 [![license](https://img.shields.io/npm/l/@xbibzlibrary/telebibz?style=for-the-badge&color=blue)](LICENSE)
 [![views](https://komarev.com/ghpvc/?username=XbibzOfficial777&repo=telebibz&style=for-the-badge&color=blueviolet&label=kunjungan+repo)](https://github.com/XbibzOfficial777/telebibz)
 
@@ -38,7 +38,7 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 |---|---|---|
 | ⚡ [Kenapa telebibz?](#kenapa) | 📊 [Matriks fitur vs grammY](#matriks) | 📥 [Instalasi & persyaratan](#instalasi) |
 | 🚀 [Mulai cepat](#mulai) | 🧠 [Cara kerja (arsitektur)](#arsitektur) | 📖 [Dokumentasi lengkap](#dokumentasi) |
-| 🎛️ [Handler & filter](#handler) | 💬 [Shortcut Context](#context) | 🔘 [Keyboard & tombol](#keyboard) |
+| 🎛️ [Handler & filter](#handler) | 💬 [Shortcut Context](#context) | 🧱 [Rich Message & Bot API 10.3](#rich-messages) |
 | 🍽️ [Menu interaktif](#menu) | 🧙 [Wizard (form + tombol + edit/delete)](#wizard) | ❓ [Mode inline](#inline) |
 | 📣 [Broadcast](#broadcast) | 📎 [File & media](#file) | 🛡️ [Keandalan & rate limit](#ratelimit) |
 | 🗃️ [Session](#session) | 🇮🇩 [Error manusiawi](#error) | 🕸️ [Webhook & serverless](#webhook) |
@@ -67,6 +67,8 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 | Fitur | grammY | telebibz |
 |---|:---:|:---:|
 | Proxy API **segala metode** (auto-generated) | ✅ | ✅ |
+| **185 signature payload Bot API spesifik** (`callApi`) | ✅ | ✅ |
+| Rich Message: block, entity, draft, media, emoji bergerak | beragam per API | ✅ bawaan |
 | ~60 shortcut bertipe (sendMessage, banChatMember…) | ✅ | ✅ |
 | Context lengkap (~70 pintasan reply/edit/admin/react) | ✅ | ✅ |
 | Context flavor business (`business_connection_id` otomatis) | plugin | ✅ bawaan |
@@ -90,7 +92,7 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 | Humanisasi error + saran (🇮🇩) | ❌ | ✅ `humanize()` |
 | Banner boot + log debug | ❌ | ✅ (`DEBUG=telebibz*`) |
 | Proxy HTTP(S) untuk VPS | ⚠️ manual | ✅ opsi `proxy` transport |
-| TypeScript | ✅ full | d.ts longgar (JS-first) |
+| TypeScript | ✅ full | ✅ tipe spesifik untuk 185 metode Bot API |
 | Bahasa dokumentasi | en | **🇬🇧 + 🇮🇩** |
 
 <a id="instalasi"></a>
@@ -268,63 +270,256 @@ Akun business: balasan dalam konteks business otomatis menyertakan
 `business_connection_id`.
 
 <a id="rich-messages"></a>
-### 🧱 Rich Messages, draft, live photo & pesan ephemeral (Bot API 10.3)
+### 🧱 Rich Message, emoji bergerak, media & draft (Bot API 10.3)
 
-TeleBibz menyediakan builder rich-message dan Context helper; untuk seluruh
-**185 metode Bot API** tersedia juga `ctx.api.callApi(method, payload)` yang bertipe,
-sementara proxy menerima metode baru lewat object payload.
+**Rich Message** adalah format Telegram terstruktur: satu pesan dapat memuat rich-text entities, heading, list, kutipan, tabel, peta, tombol, blok media, dan elemen lainnya. TeleBibz menyediakan builder dan shortcut Context; [referensi resmi Telegram Bot API](https://core.telegram.org/bots/api) tetap menjadi sumber otoritatif untuk batasan dan kelayakan fitur.
+
+> **Catatan cakupan:** schema memuat **185 nama metode Bot API** dan payload bertipe melalui `api.callApi()`. Ini tidak berarti seluruh 185 endpoint aman atau bermakna untuk dites live: sebagian memerlukan update nyata, hak admin, pembayaran, atau chat tertentu. Matriks live test dan batasannya ada di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
+
+#### 1. Pilih tepat satu mode konten
+
+Satu rich message harus memakai tepat satu sumber konten: `html`, `markdown`, atau `blocks`. Opsi seperti `media`, `is_rtl`, dan `skip_entity_detection` bersifat tambahan, bukan mode konten.
 
 ```js
-const { rich, RichMessageBuilder } = require('@xbibzlibrary/telebibz');
+const { TeleBibz, rich, RichMessageBuilder } = require('@xbibzlibrary/telebibz');
+const bot = new TeleBibz(process.env.BOT_TOKEN);
 
-bot.cmd('laporan', (ctx) => ctx.replyWithRichMessage(rich.blocks([
-  rich.heading('Laporan', 2),
-  rich.paragraph(['Status: ', rich.bold('berhasil')]),
-  rich.table([
-    [{ text: 'Item', align: 'left', valign: 'middle', is_header: true },
-     { text: 'Total', align: 'right', valign: 'middle', is_header: true }],
-    [{ text: 'Pesanan', align: 'left', valign: 'middle' },
-     { text: '3', align: 'right', valign: 'middle' }],
-  ], { bordered: true, striped: true, compact: true }),
-  rich.details('Catatan', [rich.paragraph('Rincian tambahan')]),
-  rich.buttons([rich.button('Buka', { url: 'https://example.com' }, 'primary')]),
-])));
+bot.cmd('laporan', async (ctx) => {
+  const message = rich.blocks([
+    rich.heading('Laporan mingguan', 2),
+    rich.paragraph(['Pesanan: ', rich.bold('42'), ' · status ', rich.italic('siap')]),
+    rich.table([
+      [
+        { text: 'Metrik', is_header: true, align: 'left', valign: 'middle' },
+        { text: 'Nilai', is_header: true, align: 'right', valign: 'middle' },
+      ],
+      [
+        { text: 'Pendapatan', align: 'left', valign: 'middle' },
+        { text: 'Rp1.250.000', align: 'right', valign: 'middle' },
+      ],
+    ], { bordered: true, striped: true, compact: true, caption: 'Minggu ini' }),
+    rich.details('Informasi tambahan', [rich.paragraph('Bagian ini dapat dibuka.')]),
+    rich.buttons([
+      rich.button('Buka dashboard', { url: 'https://example.com' }, 'primary'),
+      rich.button('Konfirmasi', { callback_data: 'report:ack' }, 'success'),
+    ], 'center'),
+  ]);
+  return ctx.replyWithRichMessage(message);
+});
 
-// HTML, Markdown, blok berisi media, list, kutipan, peta, tabel, collage,
-// slideshow, button, rich-text entities (bold/customEmoji/dateTime, dll.) juga didukung.
-const content = new RichMessageBuilder().markdown('**Hai!**').rtl().build();
-await ctx.replyWithRichMessage(content);
+bot.launch();
+```
 
-// Live photo: kedua file dapat berupa file_id atau InputFile.
-await ctx.replyWithLivePhoto('video-file-id', 'photo-file-id', { caption: 'Momen' });
+Konstruktor tingkat rendah: `rich.html(html, options)`, `rich.markdown(markdown, options)`, dan `rich.blocks(blocks, options)`. `inputRichMessage(content, options)` memvalidasi pemilihan satu mode. Untuk merakit pesan bertahap, gunakan `RichMessageBuilder`:
 
-// Draft adalah preview sementara; kirim Rich Message final agar tersimpan.
-await ctx.sendRichMessageDraft(1, rich.draftBlocks([
-  rich.paragraph('Sedang menulis…'), rich.thinking('Memproses'),
-]), { can_stop: true, keep_on_stop: true });
-await ctx.replyWithRichMessage(rich.markdown('**Jawaban final**'));
+```js
+const message = new RichMessageBuilder()
+  .blocks([rich.heading('Pengumuman', 2)])
+  .add(rich.paragraph('Blok berikutnya bisa ditambahkan.'))
+  .rtl(false)
+  .skipEntityDetection()
+  .build();
+await ctx.replyWithRichMessage(message);
+```
 
-// Ephemeral: pesan hanya terlihat oleh penerima tertentu.
-await ctx.replyEphemeral('Pesan privat sementara', ctx.from.id);
+Pada satu builder, pemanggilan `.html()`, `.markdown()`, atau `.blocks()` kedua akan error. Buat builder baru untuk mode lain. `.media()` digunakan bersama konten HTML/Markdown yang menunjuk media melalui tautan `tg://...`.
 
-// Akses lengkap dan bertipe untuk metode/parameter Bot API (termasuk semua metode 10.3).
-await ctx.api.callApi('sendRichMessage', {
-  chat_id: ctx.chatId,
-  rich_message: rich.html('<b>Rich HTML</b>'),
+#### 2. Rich-text entities
+
+Rich text dapat berupa string biasa, array campuran string dan objek entity, atau objek rich-text bertingkat. Helper yang tersedia:
+
+| Helper | Entity | Kegunaan |
+|---|---|---|
+| `rich.bold(text)`, `rich.italic(text)`, `rich.underline(text)`, `rich.strikethrough(text)` | penekanan | format teks inline |
+| `rich.spoiler(text)`, `rich.marked(text)`, `rich.code(text)` | spoiler / marked / code | teks tersembunyi atau teknis |
+| `rich.subscript(text)`, `rich.superscript(text)` | posisi huruf | rumus dan referensi |
+| `rich.dateTime(text, unixTime, format)` | tanggal/waktu | timestamp lokal atau relatif |
+| `rich.url(text, url)`, `rich.email(text, email)`, `rich.phone(text, phone)` | tautan/kontak | tautan atau informasi kontak |
+| `rich.mention(text, username)`, `rich.textMention(text, user)` | mention | username atau objek User |
+| `rich.hashtag(text, value)`, `rich.cashtag(text, value)`, `rich.botCommand(text, value)` | entity Telegram | tag dan command |
+| `rich.customEmoji(customEmojiId, alternativeText)` | custom emoji | custom emoji statis maupun bergerak |
+| `rich.mathText(expression)`, `rich.anchorText(name)`, `rich.anchorLink(text, name)`, `rich.reference(text, name)`, `rich.referenceLink(text, name)` | rumus/navigasi | teks panjang terstruktur |
+| `rich.buttonText(text, action, style)` | tombol di rich-text inline | entity tombol di dalam satu rangkaian teks |
+
+Contoh custom emoji bergerak (gunakan **ID custom emoji yang nyata** dan dapat dipakai bot):
+
+```js
+const emojiId = 'CUSTOM_EMOJI_ID';
+const [sticker] = await ctx.api.callApi('getCustomEmojiStickers', {
+  custom_emoji_ids: [emojiId],
+});
+if (!sticker) throw new Error('Custom emoji ID tidak ditemukan');
+await ctx.replyWithRichMessage(rich.blocks([
+  rich.paragraph(['Status build: ', rich.bold('lulus'), ' ', rich.customEmoji(emojiId, '👍')]),
+]));
+```
+
+Emoji Unicode biasa tidak otomatis menjadi emoji custom bergerak. ID harus valid dan dapat digunakan bot; Telegram dapat menolak ID atau fitur yang tidak tersedia bagi bot tersebut.
+
+#### 3. Katalog blok terstruktur
+
+Setiap helper menghasilkan objek `InputRichBlock`. Blok dapat disusun bertingkat sesuai schema Telegram.
+
+| Kelompok | Helper | Catatan |
+|---|---|---|
+| Teks | `paragraph(text)`, `heading(text, size)`, `pre(text, language)`, `footer(text)`, `divider()` | ukuran heading 1–6; `pre` dapat menyebut bahasa kode |
+| Rumus/navigasi | `mathBlock(expression)`, `anchor(name)` | pasangan entity inline tersedia untuk isi teks |
+| List/kutipan | `list(items)`, `quote(blocks, credit)`, `expandableQuote(text, credit)`, `pullQuote(text, credit)` | item list bisa string atau item terstruktur; kutipan dapat berisi blok lain |
+| Tabel/disclosure | `table(cells, options)`, `details(summary, blocks, open)` | tiap sel memberi `align` dan `valign`; opsi tabel: `bordered`, `striped`, `compact`, `caption` |
+| Lokasi | `map(location, zoom, width, height, caption, credit)` | `location` berbentuk `{ latitude, longitude }` |
+| Media | `animation(media, caption)`, `audio(media, caption)`, `document(media, caption)`, `photo(media, caption)`, `video(media, caption)`, `voiceNote(media, caption)` | `media` adalah objek `InputMedia*`; upload `File` dikumpulkan menjadi multipart `attach://` |
+| Tata letak | `collage(blocks, caption, credit)`, `slideshow(blocks, caption, credit)` | gabungkan blok media yang didukung menjadi galeri atau urutan |
+| Tombol | `buttons(buttons, align)`, `button(text, action, style)` | 1–8 tombol; `align`: `left`, `center`, atau `right` |
+| Khusus draft | `thinking(text)` | hanya untuk `sendRichMessageDraft`, bukan pesan rich yang disimpan |
+
+Setiap sel tabel berbentuk `{ text, align: 'left'|'center'|'right', valign: 'top'|'middle'|'bottom' }`; sel header dapat memakai `is_header: true`. Satu tombol harus memilih tepat satu aksi seperti `url`, `callback_data`, `web_app`, `copy_text`, atau `disabled`. `rich.button()` menghasilkan objek tombol untuk block `buttons`; `rich.buttonText()` menghasilkan bentuk entity RichText yang berbeda. Style `link` hanya berlaku untuk tombol callback.
+
+#### 4. Upload media di dalam rich message
+
+Gunakan `file_id` Telegram untuk file yang sudah ada di server, atau bungkus bytes/path/stream dengan `File`/`InputFile` agar transport membuat multipart upload:
+
+```js
+const fs = require('node:fs');
+const { File, InputMediaBuilder } = require('@xbibzlibrary/telebibz');
+const image = new File(fs.readFileSync('./hero.png'), 'hero.png');
+const video = new File(fs.readFileSync('./clip.mp4'), 'clip.mp4');
+
+await ctx.replyWithRichMessage(rich.blocks([
+  rich.paragraph('Contoh blok media:'),
+  rich.photo(InputMediaBuilder.photo(image)),
+  rich.video(InputMediaBuilder.video(video)),
+]));
+```
+
+HTML/Markdown dapat merujuk media menggunakan ID unik dan entri `media` yang cocok:
+
+```js
+const photo = new File(fs.readFileSync('./hero.png'), 'hero.png');
+await ctx.replyWithRichMessage(rich.html(
+  '<b>Foto utama</b><br><a href="tg://photo?id=hero">Buka foto</a>',
+  { media: [{ id: 'hero', media: InputMediaBuilder.photo(photo) }] },
+));
+```
+
+Live smoke test berhasil mengirim media multipart bertingkat, blok photo/audio/document/video/voice note, collage/slideshow, dan media reference HTML. Pada server Telegram yang diuji, MP4 diterima sebagai rich `animation`, sedangkan GIF pada blok itu menghasilkan `RICH_MESSAGE_VIDEO_INVALID`. Metode standalone `sendAnimation` menerima GIF yang sama. Jika blok rich animation ditolak, coba MP4. Live photo dikirim lewat metode terpisah, bukan tipe `InputRichBlock`.
+
+#### 5. Draft dan preview streaming
+
+Draft hanya preview sementara, bukan pesan chat yang tersimpan. Kirim pesan final secara terpisah untuk menyimpan jawaban. Blok `thinking` hanya untuk rich draft. Builder draft menolak upload baru melalui `File`; gunakan `file_id` Telegram jika draft perlu media.
+
+```js
+bot.cmd('preview', async (ctx) => {
+  const draftId = Date.now(); // tidak nol dan unik untuk draft ini
+  await ctx.sendMessageDraft(draftId, 'Sedang menyiapkan jawaban…', { can_stop: true });
+  await ctx.sendRichMessageDraft(draftId + 1, rich.draftBlocks([
+    rich.paragraph(['Menyiapkan ', rich.bold('laporan Anda'), '…']),
+    rich.thinking('Mengumpulkan data'),
+  ]), { can_stop: true, keep_on_stop: true });
+  // Kirim jawaban final agar tersimpan:
+  return ctx.replyWithRichMessage(rich.markdown('**Laporan siap**'));
 });
 ```
 
-`RichMessageBuilder` menyediakan `.html()`, `.markdown()`, `.blocks()`, `.add()`,
-`.media()`, `.rtl()`, `.skipEntityDetection()`, `.build()`, dan `.buildDraft()`.
-`rich.draftHtml()`, `rich.draftMarkdown()`, dan `rich.draftBlocks()` menghasilkan
-konten draft-safe serta menolak upload `File` (draft dapat memakai file_id Telegram yang ada).
-Rich block builder mencakup
-paragraph/heading/pre/list/table/details/quote/map/media/buttons/thinking; block
-`thinking` hanya untuk `sendRichMessageDraft`. `InputMediaBuilder.livePhoto()` dan
-`InputPaidMediaBuilder.livePhoto()` membentuk payload media live photo. API raw modern lain tersedia lewat
-`ctx.api.sendMessageDraft()`, `ctx.api.answerGuestQuery()`, `ctx.api.editEphemeralMessage*()`
-dan `ctx.api.deleteEphemeralMessage()`. Tipe resmi Telegram dapat diakses sebagai
-`TelegramTypes`; rich input types diekspor langsung.
+Konstruktor khusus draft: `rich.draftHtml()`, `rich.draftMarkdown()`, `rich.draftBlocks()`, dan `new RichMessageBuilder()...buildDraft()`. Hasilnya mengikuti schema `sendRichMessageDraft` yang tidak menerima upload `File` baru. `sendMessageDraft` dan `sendRichMessageDraft` juga bisa dipanggil dengan payload object tepat melalui `ctx.api.callApi()`.
+
+#### 6. Live photo, paid media, ephemeral, dan edit
+
+**Live photo** mengirim pasangan video dan foto statis yang terkait. Keduanya bisa berupa `file_id` atau `File`/`InputFile`; URL tidak didukung oleh schema metode saat ini.
+
+```js
+await ctx.replyWithLivePhoto('VIDEO_FILE_ID', 'PHOTO_FILE_ID', { caption: 'Sebuah momen' });
+// Atau API mentah bertipe:
+await ctx.api.sendLivePhoto({ chat_id: ctx.chatId, live_photo: videoFile, photo: photoFile });
+```
+
+`InputMediaBuilder.livePhoto(video, photo)` dan `InputPaidMediaBuilder.livePhoto(video, photo)` membangun objek media. `sendPaidMedia` membutuhkan `star_count` antara 1 dan 25.000:
+
+```js
+const fs = require('node:fs');
+const { File, InputPaidMediaBuilder } = require('@xbibzlibrary/telebibz');
+const paidPhoto = new File(fs.readFileSync('./paid.png'), 'paid.png');
+await ctx.api.callApi('sendPaidMedia', {
+  chat_id: ctx.chatId,
+  star_count: 1,
+  media: [InputPaidMediaBuilder.photo(paidPhoto)],
+  caption: 'Contoh foto berbayar',
+});
+```
+
+Fitur ini membuat paywall/pembayaran sungguhan: jangan dites ke pengguna tanpa persetujuan dan periksa penggunaan Telegram Stars sebelum memublikasikan konten berbayar.
+
+**Pesan ephemeral** ditujukan ke penerima melalui `ephemeral_message_parameters`; kelayakannya bergantung pada aturan dan izin Telegram untuk bot/chat terkait. Helper Context meliputi `replyEphemeral(text, receiverUserId)`, `editEphemeralMessageText`, `editEphemeralRichMessage`, `editEphemeralMessageMedia`, `editEphemeralMessageCaption`, `editEphemeralMessageReplyMarkup`, dan `deleteEphemeralMessage`.
+
+```js
+await ctx.replyEphemeral('Pemberitahuan sementara', ctx.from.id);
+const sent = await ctx.api.callApi('sendRichMessage', {
+  chat_id: ctx.chatId,
+  rich_message: rich.blocks([rich.paragraph('Preview rich privat')]),
+  ephemeral_message_parameters: { receiver_user_id: ctx.from.id },
+});
+// Jika Telegram mengembalikan ephemeral_message_id, ID tersebut dapat dipakai untuk edit/hapus.
+if (sent.ephemeral_message_id) {
+  await ctx.editEphemeralRichMessage(ctx.from.id, sent.ephemeral_message_id,
+    rich.blocks([rich.paragraph('Pemberitahuan sementara diperbarui')]));
+}
+```
+
+Telegram bisa menolak dengan `BOT_NOT_ADMIN` atau error izin lain; baca `ApiError` yang diterima dan jangan menganggap payload lolos test lokal berarti bot pasti berhak mengirimnya.
+
+Untuk mengedit rich message biasa, gunakan `ctx.editRichMessage(content, extra)`. API di bawahnya adalah `editMessageText` dengan `rich_message` dan target `chat_id`/`message_id` (atau `inline_message_id`). Operasi edit mengubah pesan yang ada; gunakan pesan khusus test.
+
+#### 7. Shortcut Context dan metode Bot API modern
+
+| Helper | Fungsi / argumen |
+|---|---|
+| `ctx.replyWithRichMessage(content, extra?)` | kirim rich message tersimpan ke chat saat ini |
+| `ctx.editRichMessage(content, extra?)` | edit rich message saat ini; mendukung callback dan inline target |
+| `ctx.replyWithLivePhoto(video, photo, extra?)` | kirim live photo ke chat saat ini |
+| `ctx.sendMessageDraft(draftId, text, extra?)` | preview teks sementara |
+| `ctx.sendRichMessageDraft(draftId, richMessage, extra?)` | preview rich sementara |
+| `ctx.replyEphemeral(text, receiverUserId, extra?)` | kirim teks ephemeral ke penerima tertentu |
+| `ctx.guestQueryId`, `ctx.answerGuestQuery(result)` | proses update `guest_message` yang nyata |
+| `ctx.editEphemeralRichMessage(...)`, `ctx.deleteEphemeralMessage(...)` | edit/hapus pesan ephemeral milik penerima |
+
+Jawaban guest query membutuhkan `guest_query_id` dari update masuk yang asli; ID buatan tidak dapat dipakai untuk tes live yang bermakna. Artikel inline rich dapat dibuat dengan `iq.richArticle(id, title, richMessage, extra)` lalu dikembalikan saat menangani inline query sungguhan.
+
+#### 8. Akses penuh Bot API dengan tipe
+
+Semua **185 nama metode dan signature payload** pada schema Bot API vendored tersedia lewat `api.callApi()` dan `api.raw()` di TypeScript:
+
+```js
+// JavaScript maupun TypeScript: nama metode + object payload
+await ctx.api.callApi('sendRichMessage', {
+  chat_id: ctx.chatId,
+  rich_message: rich.markdown('**Halo**'),
+});
+
+await ctx.api.callApi('sendMessageDraft', {
+  chat_id: ctx.chatId,
+  draft_id: Date.now(),
+  text: 'Preview',
+  can_stop: false,
+});
+```
+
+Namespace `TelegramTypes` mengekspor tipe object Telegram. Alias yang berguna: `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, dan `TelegramApiPayloads`. Proxy runtime juga menerima `ctx.api.metodeApaPun({ ...payload })` untuk metode baru, tetapi shorthand dinamis ini tidak memvalidasi schema saat runtime. Pengecekan TypeScript terjadi ketika compile saja. Jalankan `npm run typecheck` untuk memeriksa deklarasi dan contoh consumer.
+
+Deklarasi ini vendored dari `@grammyjs/types@5.0.0` berlisensi MIT (lihat [`NOTICE.md`](NOTICE.md) dan lisensi di folder types); tidak ada dependency runtime baru. Referensi/changelog Telegram resmi—bukan package vendored—tetap otoritas saat ada perbedaan field, izin, atau batasan.
+
+#### Batas payload dan pemecahan masalah
+
+Schema tipe Bot API 10.3 mencatat batas Rich Message berikut: **32.768 karakter UTF-8**, **500 block** (termasuk konten nested/list/tabel/kutipan/details), **16 level nesting**, **50 attachment media**, dan **20 kolom tabel**. Block map memakai zoom 0–24 dan lebar/tinggi 0–10.000; block tombol berisi 1–8 tombol. Batas Telegram dapat berubah, jadi cek [referensi resmi](https://core.telegram.org/bots/api) sebelum membuat payload besar. Server Telegram tetap validator terakhir.
+
+Error yang umum:
+
+- `RICH_MESSAGE_VIDEO_INVALID`: server yang diuji menolak GIF pada block Rich Message `animation`; coba MP4. Endpoint standalone `sendAnimation` menerima GIF tersebut.
+- `BOT_NOT_ADMIN` pada pesan ephemeral: respons ini terkait izin/kelayakan Telegram, bukan bukti bahwa bentuk JSON salah. Periksa akses bot/chat dan syarat metode resmi.
+- `chat not found`: pada private chat, penerima biasanya perlu membuka bot dan menekan **Start** sebelum bot dapat mengirim pesan.
+- Error upload: bungkus bytes/path/stream dengan `File`/`InputFile` dan pastikan tipe helper cocok dengan file.
+
+#### Hasil live test dan batasan
+
+Pada 2026-09-28, smoke test live dengan bot yang diberikan pengguna berhasil untuk rich blocks, HTML, Markdown, custom emoji bergerak, draft teks/rich, multipart media, blok photo/audio/document/video/voice-note, collage/slideshow, live photo, GIF melalui `sendAnimation`, dan HTML media reference. Ephemeral `sendMessage`/`sendRichMessage` ditolak Telegram dengan `BOT_NOT_ADMIN`; paid media tidak dikirim karena dapat melibatkan Stars; callback tidak diklik; seluruh 185 endpoint tidak dijalankan live. Rincian hasil dan batas cakupan ada di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
 
 <a id="keyboard"></a>
 ### 🔘 Keyboard & tombol
@@ -572,12 +767,12 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 
 | Metrik | Nilai |
 |---|---|
-| 📦 Modul sumber | **16 file** di `lib/` |
-| 📝 Total baris kode | **±1.700** (tanpa build step) |
-| 🔌 Metode Bot API | **90+** — 75 shortcut bertipe + Proxy tanpa batas |
+| 📦 Modul sumber | **18 file** di `lib/` |
+| 📝 Total baris kode | **2.105** di `lib/` (tanpa build step) |
+| 🔌 Metode Bot API | **185 signature bertipe** lewat `api.callApi()` + dynamic Proxy |
 | ⌨️ Shortcut Context | **50+** (reply/edit/delete/admin/react…) |
-| 🧪 Test offline | **47/47 lulus**, termasuk transport HTTP lokal dan fitur Bot API 10.3 |
-| 🧩 Contoh siap jalan | **7** di `examples/` |
+| 🧪 Test offline | **48/48 lulus**, termasuk transport HTTP lokal dan fitur Bot API 10.3 |
+| 🧩 Contoh siap jalan | **8** di `examples/` |
 | 📦 Dependency runtime | **4** — semuanya terpakai & ter-test |
 
 ### ⬇️ Download & popularitas (live dari npm)
@@ -589,23 +784,27 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 
 ### 📏 Peta ukuran modul (baris kode)
 
-```
-wizard.js      █████████████████████████ 247  ← form + tombol + edit/delete
-telebibz.js    ███████████████████▎      193  ← kelas utama & siklus hidup
-context.js     ███████████████████       190  ← ctx + 50-an shortcut
-composer.js    █████████████████▍        174  ← mesin middleware & filter
-api.js         ███████████████▍          154  ← 75 shortcut + Proxy + transformer
-net.js         ███████████▌              115  ← transport axios + multipart
-menus.js       █████████                  90  ← Menu/MenuContainer
-keyboard.js    ████████▎                  83  ← btn/url/kb + kelas fluent
-ratelimit.js   ██████                     61  ← autoRetry · throttler · limiter
-runner.js      ████▌                      45  ← polling tahan-409
-file.js        ████                       41  ← InputFile + InputMediaBuilder
-logger.js      ███▊                       38  ← log + banner
-session.js     ███▌                       36  ← session swappable
-errors.js      ███▌                       35  ← humanize error 🇮
-broadcast.js   ███▌                       35  ← blast aman rate-limit
-inline-query.js██▊                        28  ← matcher + builder hasil
+Angka berikut dihitung dari source terkini `lib/*.js`; ini informasi source, bukan ukuran bundle.
+
+```text
+context.js          250  accessor Context, reply, edit dan helper
+wizard.js           247  form terpandu, tombol, mode edit/delete
+telebibz.js         209  kelas bot, lifecycle dan dispatch update
+telegram-methods.js 192  registry runtime 185 nama metode Bot API
+composer.js         185  komposisi middleware dan filter
+rich.js             175  builder Rich Message, entity dan block
+api.js              168  adapter API, Proxy dan transformer
+net.js              115  transport HTTP dan multipart upload
+menus.js              90  Menu dan MenuContainer
+keyboard.js           83  builder keyboard dan fluent class
+ratelimit.js          74  retry, throttler dan limiter
+logger.js             68  log dan banner boot
+runner.js             54  polling dan retry
+file.js               48  File/InputFile dan media builder
+session.js            44  session storage swappable
+errors.js             35  terjemahan error
+broadcast.js          35  helper broadcast
+inline-query.js       33  pencocokan inline dan builder hasil
 ```
 
 ### 🗺️ Kesehatan repo
@@ -643,24 +842,23 @@ Jalankan dengan `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 ## 🔬 Test & Bukti Live
 
 ```bash
-npm test       # 47 test offline (mock + HTTP server lokal), tanpa token Telegram
+npm test       # 48 test offline (mock + HTTP server lokal), tanpa token Telegram
 npm run typecheck # cek declaration TypeScript + payload method-specific
 ```
 
-Audit saat ini tidak membutuhkan token Telegram. Versi repo sebelumnya mencatat
-**30 test offline + 10 test live** pada `@xbibzrat_bot`; pengujian live tersebut
-bersifat historis dan tidak diulang pada audit ini. Lihat [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md)
-untuk matriks test, perbandingan Bot API 10.3, dan batasan yang tersisa.
+48 test otomatis dan `npm run typecheck` berjalan offline dengan mock tanpa token bot. Secara terpisah dilakukan live smoke test pada bot uji milik pengguna: rich blocks, HTML/Markdown, custom emoji bergerak, draft, blok media, collage/slideshow, live photo, dan referensi media multipart berhasil. Pengiriman ephemeral ditolak Telegram dengan `BOT_NOT_ADMIN`; paid media dan semua 185 endpoint tidak diuji live. Lihat [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) untuk matriks lengkap, batasan, serta hasil yang gagal.
 
 Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 
 <a id="struktur"></a>
-## 📂 Struktur Repo (16 file inti)
+## 📂 Struktur Repo (18 modul JavaScript + tipe API vendored)
 
 | File | Peran |
 |---|---|
 | `lib/net.js` | transport axios keep-alive + multipart `attach://` |
 | `lib/api.js` | metode Bot API + Proxy segala metode + transformer |
+| `lib/rich.js` | entity Rich Message, builder block, helper draft-safe |
+| `lib/telegram-methods.js` | registry 185 nama metode Bot API |
 | `lib/composer.js` | middleware, filter `on('message:photo')`, `errorBoundary` |
 | `lib/context.js` | objek ctx + 50-an pintasan reply/edit/delete/callback |
 | `lib/session.js` | sesi per user:chat (storage swappable) |
@@ -674,11 +872,13 @@ Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 | `lib/inline-query.js` | matcher query + builder hasil inline |
 | `lib/errors.js` | humanisasi error + saran |
 | `lib/logger.js` | log berbingkai + banner boot |
-| `index.js` / `index.d.ts` | pintu ekspor + tipe TypeScript |
+| `types/telegram-bot-api/` | tipe Bot API vendored (MIT), tanpa kode runtime |
+| `index.js` / `index.d.ts` | ekspor dan surface method/payload bertipe |
 
 <a id="changelog"></a>
 ## 🕐 Changelog
 
+- **Unreleased — Bot API 10.3** — rich message, emoji bergerak, draft, live photo, payload bertipe untuk 185 metode; 48 test offline dan live verification lebih luas. Detail: [`CHANGELOG.md`](CHANGELOG.md).
 - **3.1.0** — wizard: tombol pilihan (reply/inline), mode `edit`/`delete`, cleanup otomatis, helper programatis · test 24 → 30
 - **3.0.0** — parity grammY production-grade: axios keep-alive, transformer, menu, inline query, limiter
 - **2.0.0** — engine ditulis ulang dari nol, transport multipart, webhook Node murni

@@ -19,8 +19,8 @@ dependencies that are *actually used*, and an Indonesia-first community.
 [![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=CB3837&label=telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=green&label=downloads%2Fmonth)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![node](https://img.shields.io/node/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=node.js&logoColor=white&color=339933&label=node)](https://nodejs.org)
-[![tests](https://img.shields.io/badge/tests-30%2F30%20passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-testing--live-proof)
-[![size](https://img.shields.io/badge/code-1.7k%20lines-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analytics--statistics)
+[![tests](https://img.shields.io/badge/tests-48%2F48%20passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-testing--live-proof)
+[![size](https://img.shields.io/badge/code-2.1k%20lines-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analytics--statistics)
 [![license](https://img.shields.io/npm/l/@xbibzlibrary/telebibz?style=for-the-badge&color=blue)](LICENSE)
 [![views](https://komarev.com/ghpvc/?username=XbibzOfficial777&repo=telebibz&style=for-the-badge&color=blueviolet&label=repo+views)](https://github.com/XbibzOfficial777/telebibz)
 
@@ -38,7 +38,7 @@ dependencies that are *actually used*, and an Indonesia-first community.
 |---|---|---|
 | ⚡ [Why telebibz?](#why) | 📊 [Feature matrix vs grammY](#matrix) | 📥 [Installation & requirements](#install) |
 | 🚀 [Quick start](#quickstart) | 🧠 [How it works (architecture)](#architecture) | 📖 [Full documentation](#docs) |
-| 🎛️ [Handlers & filters](#handlers) | 💬 [Context shortcuts](#context) | 🔘 [Keyboards & buttons](#keyboards) |
+| 🎛️ [Handlers & filters](#handlers) | 💬 [Context shortcuts](#context) | 🧱 [Rich Messages & Bot API 10.3](#rich-messages) |
 | ️ [Interactive menus](#menus) | 🧙 [Wizard (forms + buttons + edit/delete)](#wizard) | ❓ [Inline mode](#inline) |
 | 📣 [Broadcast](#broadcast) | 📎 [Files & media](#files) | 🛡️ [Reliability & rate limiting](#ratelimit) |
 | 🗃️ [Sessions](#sessions) | 🇮🇩 [Human-readable errors](#errors) | 🕸️ [Webhooks & serverless](#webhook) |
@@ -66,6 +66,8 @@ dependencies that are *actually used*, and an Indonesia-first community.
 | Feature | grammY | telebibz |
 |---|:---:|:---:|
 | Proxy API for **any method** (auto-generated) | ✅ | ✅ |
+| **185 method-specific Bot API payload signatures** (`callApi`) | ✅ | ✅ |
+| Rich Messages: blocks, entities, drafts, media, animated emoji | varies by API | ✅ built-in |
 | ~60 typed shortcuts (sendMessage, banChatMember…) | ✅ | ✅ |
 | Full Context (~70 shortcuts reply/edit/admin/react) | ✅ | ✅ |
 | Business flavor (`business_connection_id` automatic) | plugin | ✅ built-in |
@@ -89,7 +91,7 @@ dependencies that are *actually used*, and an Indonesia-first community.
 | Humanized errors + suggestions | ❌ | ✅ `humanize()` |
 | Boot banner + debug logging | ❌ | ✅ (`DEBUG=telebibz*`) |
 | HTTP(S) proxy for VPS | ⚠️ manual | ✅ `proxy` transport option |
-| TypeScript | ✅ full | loose d.ts (JS-first) |
+| TypeScript | ✅ full | ✅ method-specific types for 185 Bot API methods |
 | Documentation language | en | **🇬🇧 + 🇮🇩** |
 
 <a id="install"></a>
@@ -267,62 +269,256 @@ Business accounts: replies inside a business context automatically carry
 `business_connection_id`.
 
 <a id="rich-messages"></a>
-### 🧱 Rich Messages, drafts, live photos & ephemeral messages (Bot API 10.3)
+### 🧱 Rich Messages, animated emoji, media & drafts (Bot API 10.3)
 
-TeleBibz includes rich-message builders and Context helpers. All **185 Bot API
-methods** are also available through typed `ctx.api.callApi(method, payload)`;
-the proxy accepts newer methods using an object payload.
+A **Rich Message** is Telegram's structured message format: one message can combine rich-text entities, headings, lists, quotations, tables, maps, buttons, media blocks, and more. TeleBibz provides builders and Context shortcuts; the official [Telegram Bot API reference](https://core.telegram.org/bots/api) remains authoritative for current limits and eligibility.
+
+> **Coverage note:** the package includes a type-level registry for **185 Bot API methods** and typed payloads through `api.callApi()`. This does not mean all 185 endpoints can be safely or meaningfully tested live: many require real updates, admin rights, payments, or specific chats. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the live-test matrix and known limitations.
+
+#### 1. Choose exactly one content mode
+
+A rich message has exactly one content source: `html`, `markdown`, or `blocks`. Optional settings such as `media`, `is_rtl`, and `skip_entity_detection` do not count as content modes.
 
 ```js
-const { rich, RichMessageBuilder } = require('@xbibzlibrary/telebibz');
+const { TeleBibz, rich, RichMessageBuilder } = require('@xbibzlibrary/telebibz');
+const bot = new TeleBibz(process.env.BOT_TOKEN);
 
-bot.cmd('report', (ctx) => ctx.replyWithRichMessage(rich.blocks([
-  rich.heading('Report', 2),
-  rich.paragraph(['Status: ', rich.bold('success')]),
-  rich.table([
-    [{ text: 'Item', align: 'left', valign: 'middle', is_header: true },
-     { text: 'Total', align: 'right', valign: 'middle', is_header: true }],
-    [{ text: 'Orders', align: 'left', valign: 'middle' },
-     { text: '3', align: 'right', valign: 'middle' }],
-  ], { bordered: true, striped: true, compact: true }),
-  rich.details('Notes', [rich.paragraph('Additional details')]),
-  rich.buttons([rich.button('Open', { url: 'https://example.com' }, 'primary')]),
-])));
+bot.cmd('rich', async (ctx) => {
+  const message = rich.blocks([
+    rich.heading('Weekly report', 2),
+    rich.paragraph(['Orders: ', rich.bold('42'), ' · status ', rich.italic('ready')]),
+    rich.table([
+      [
+        { text: 'Metric', is_header: true, align: 'left', valign: 'middle' },
+        { text: 'Value', is_header: true, align: 'right', valign: 'middle' },
+      ],
+      [
+        { text: 'Revenue', align: 'left', valign: 'middle' },
+        { text: '$1,250', align: 'right', valign: 'middle' },
+      ],
+    ], { bordered: true, striped: true, compact: true, caption: 'This week' }),
+    rich.details('More information', [rich.paragraph('This section can be expanded.')]),
+    rich.buttons([
+      rich.button('Open dashboard', { url: 'https://example.com' }, 'primary'),
+      rich.button('Acknowledge', { callback_data: 'report:ack' }, 'success'),
+    ], 'center'),
+  ]);
+  return ctx.replyWithRichMessage(message);
+});
 
-// HTML, Markdown, media blocks, lists, quotes, maps, tables, collages,
-// slideshows, buttons and rich-text entities (bold/customEmoji/dateTime, etc.) are supported.
-const content = new RichMessageBuilder().markdown('**Hello!**').rtl().build();
-await ctx.replyWithRichMessage(content);
+bot.launch();
+```
 
-// Live photo: both inputs may be Telegram file_ids or InputFile instances.
-await ctx.replyWithLivePhoto('video-file-id', 'photo-file-id', { caption: 'Moment' });
+The lower-level constructors are `rich.html(html, options)`, `rich.markdown(markdown, options)`, and `rich.blocks(blocks, options)`. `inputRichMessage(content, options)` validates that one content mode is selected. `RichMessageBuilder` is useful when assembling a message incrementally:
 
-// A draft is a temporary preview. Send the final rich message to persist it.
-await ctx.sendRichMessageDraft(1, rich.draftBlocks([
-  rich.paragraph('Writing…'), rich.thinking('Working'),
-]), { can_stop: true, keep_on_stop: true });
-await ctx.replyWithRichMessage(rich.markdown('**Final answer**'));
+```js
+const message = new RichMessageBuilder()
+  .blocks([rich.heading('Notice', 2)])
+  .add(rich.paragraph('More blocks can be appended.'))
+  .rtl(false)
+  .skipEntityDetection()
+  .build();
+await ctx.replyWithRichMessage(message);
+```
 
-// Ephemeral: visible only to a specific recipient.
-await ctx.replyEphemeral('A temporary private message', ctx.from.id);
+Calling `.html()`, `.markdown()`, or `.blocks()` more than once on the same builder is an error: create a new builder when you want a different mode. `.media()` is intended for HTML/Markdown content that references media by `tg://...` links.
 
-// Fully typed raw access to every Bot API method and its payload.
-await ctx.api.callApi('sendRichMessage', {
-  chat_id: ctx.chatId,
-  rich_message: rich.html('<b>Rich HTML</b>'),
+#### 2. Rich-text entities
+
+Rich text can be a plain string, an array mixing strings and entity objects, or a nested rich-text object. Common entity helpers include:
+
+| Helper | Entity produced | Typical use |
+|---|---|---|
+| `rich.bold(text)`, `rich.italic(text)`, `rich.underline(text)`, `rich.strikethrough(text)` | emphasis | inline formatting |
+| `rich.spoiler(text)`, `rich.marked(text)`, `rich.code(text)` | spoiler / marked / code | hidden or technical text |
+| `rich.subscript(text)`, `rich.superscript(text)` | script position | formulas and references |
+| `rich.dateTime(text, unixTime, format)` | date/time | localized or relative timestamp |
+| `rich.url(text, url)`, `rich.email(text, email)`, `rich.phone(text, phone)` | explicit links/contact | clickable or recognized values |
+| `rich.mention(text, username)`, `rich.textMention(text, user)` | user mention | username or user object |
+| `rich.hashtag(text, value)`, `rich.cashtag(text, value)`, `rich.botCommand(text, value)` | Telegram entities | searchable tags/commands |
+| `rich.customEmoji(customEmojiId, alternativeText)` | custom emoji | standard or animated custom emoji |
+| `rich.mathText(expression)`, `rich.anchorText(name)`, `rich.anchorLink(text, name)`, `rich.reference(text, name)`, `rich.referenceLink(text, name)` | formula/navigation | structured long-form text |
+| `rich.buttonText(text, action, style)` | inline rich-text button entity | a button inside a rich-text run |
+
+Example with an animated custom emoji (use a **real** custom emoji ID that Telegram returns for your bot):
+
+```js
+const emojiId = 'CUSTOM_EMOJI_ID';
+const [sticker] = await ctx.api.callApi('getCustomEmojiStickers', {
+  custom_emoji_ids: [emojiId],
+});
+if (!sticker) throw new Error('Unknown custom emoji ID');
+await ctx.replyWithRichMessage(rich.blocks([
+  rich.paragraph(['Build status: ', rich.bold('passed'), ' ', rich.customEmoji(emojiId, '👍')]),
+]));
+```
+
+A regular Unicode emoji is not automatically an animated custom emoji. The custom ID must be valid and usable by the bot; Telegram may reject unavailable IDs or features the bot is not eligible to use.
+
+#### 3. Structured block catalog
+
+Each block helper returns an `InputRichBlock` object. Blocks can be nested where the schema permits it.
+
+| Block family | Helpers | Notes |
+|---|---|---|
+| Text | `paragraph(text)`, `heading(text, size)`, `pre(text, language)`, `footer(text)`, `divider()` | heading size is 1–6; preformatted blocks can name a language |
+| Math/navigation | `mathBlock(expression)`, `anchor(name)` | use the corresponding rich-text formula/reference helpers for inline content |
+| Lists/quotes | `list(items)`, `quote(blocks, credit)`, `expandableQuote(text, credit)`, `pullQuote(text, credit)` | a list item may be a string or a structured item; quotations can contain nested blocks |
+| Tables/disclosure | `table(cells, options)`, `details(summary, blocks, open)` | each cell supplies `align` and `valign`; options: `bordered`, `striped`, `compact`, `caption` |
+| Location | `map(location, zoom, width, height, caption, credit)` | `location` is `{ latitude, longitude }` |
+| Media | `animation(media, caption)`, `audio(media, caption)`, `document(media, caption)`, `photo(media, caption)`, `video(media, caption)`, `voiceNote(media, caption)` | `media` is an `InputMedia*` object; `File` uploads are collected recursively into multipart `attach://` fields |
+| Layout | `collage(blocks, caption, credit)`, `slideshow(blocks, caption, credit)` | compose allowed media blocks into a gallery or sequence |
+| Buttons | `buttons(buttons, align)`, `button(text, action, style)` | 1–8 buttons; alignment is `left`, `center`, or `right` |
+| Draft-only | `thinking(text)` | use only in `sendRichMessageDraft`, not a persisted rich message |
+
+For `table`, each cell should look like `{ text, align: 'left'|'center'|'right', valign: 'top'|'middle'|'bottom' }`; header cells may set `is_header: true`. A button action must provide exactly one supported action field, such as `url`, `callback_data`, `web_app`, `copy_text`, or `disabled`. `rich.button()` returns the button object for a buttons block. `rich.buttonText()` returns the distinct inline entity shape. Link style is only valid for callback buttons.
+
+#### 4. Uploading media inside rich messages
+
+Use Telegram `file_id`s for files already on Telegram, or wrap bytes/path/stream in `File` (or `InputFile`) for multipart upload:
+
+```js
+const fs = require('node:fs');
+const { File, InputMediaBuilder } = require('@xbibzlibrary/telebibz');
+const image = new File(fs.readFileSync('./hero.png'), 'hero.png');
+const video = new File(fs.readFileSync('./clip.mp4'), 'clip.mp4');
+
+await ctx.replyWithRichMessage(rich.blocks([
+  rich.paragraph('Uploaded media blocks:'),
+  rich.photo(InputMediaBuilder.photo(image)),
+  rich.video(InputMediaBuilder.video(video)),
+]));
+```
+
+HTML/Markdown can refer to media by a unique ID and a matching `media` entry:
+
+```js
+const photo = new File(fs.readFileSync('./hero.png'), 'hero.png');
+await ctx.replyWithRichMessage(rich.html(
+  '<b>Hero image</b><br><a href="tg://photo?id=hero">Open photo</a>',
+  { media: [{ id: 'hero', media: InputMediaBuilder.photo(photo) }] },
+));
+```
+
+A successful live smoke test confirmed nested multipart media, photo/audio/document/video/voice-note blocks, collage/slideshow, and a rich HTML media reference. On the tested Bot API server, an MP4 worked in a rich `animation` block; a GIF in that block returned `RICH_MESSAGE_VIDEO_INVALID`. The standalone `sendAnimation` method did accept the same GIF. If a rich animation block is rejected, try MP4. Live-photo video/photo pairing is a separate API operation, not an `InputRichBlock` type.
+
+#### 5. Drafts and streaming previews
+
+Drafts are temporary previews, not stored chat messages. Send a final message separately to persist the completed answer. `thinking` blocks are for rich drafts only. Draft helpers reject `File` uploads; use existing Telegram file IDs if a draft needs media.
+
+```js
+bot.cmd('stream-preview', async (ctx) => {
+  const draftId = Date.now(); // non-zero and unique for this draft
+  await ctx.sendMessageDraft(draftId, 'Preparing a response…', { can_stop: true });
+  await ctx.sendRichMessageDraft(draftId + 1, rich.draftBlocks([
+    rich.paragraph(['Working on ', rich.bold('your report'), '…']),
+    rich.thinking('Collecting data'),
+  ]), { can_stop: true, keep_on_stop: true });
+  // Persist the final answer explicitly:
+  return ctx.replyWithRichMessage(rich.markdown('**Report ready**'));
 });
 ```
 
-`RichMessageBuilder` supports `.html()`, `.markdown()`, `.blocks()`, `.add()`,
-`.media()`, `.rtl()`, `.skipEntityDetection()`, `.build()`, and `.buildDraft()`.
-`rich.draftHtml()`, `rich.draftMarkdown()`, and `rich.draftBlocks()` return draft-safe content and reject `File` uploads (drafts may use existing Telegram file IDs). Rich block helpers cover
-paragraphs, headings, code, lists, tables, details, quotations, maps, media,
-buttons, and thinking. `InputMediaBuilder.livePhoto()` and
-`InputPaidMediaBuilder.livePhoto()` construct live-photo media payloads. The
-`thinking` block is only valid in `sendRichMessageDraft`. Other modern methods are available via
-`ctx.api.sendMessageDraft()`, `ctx.api.answerGuestQuery()`,
-`ctx.api.editEphemeralMessage*()`, and `ctx.api.deleteEphemeralMessage()`.
-Telegram types are available under `TelegramTypes`; rich input types are exported directly.
+Draft constructors are `rich.draftHtml()`, `rich.draftMarkdown()`, `rich.draftBlocks()`, and `new RichMessageBuilder()...buildDraft()`. Their return types match `sendRichMessageDraft`'s no-new-upload schema. `sendMessageDraft` and `sendRichMessageDraft` also accept exact object payloads through `ctx.api.callApi()`.
+
+#### 6. Live photos, paid media, ephemeral messages, and editing
+
+**Live photo** sends a video and its corresponding still image. Both can be file IDs or `File`/`InputFile` values; URLs are not supported by the current method schema.
+
+```js
+await ctx.replyWithLivePhoto('VIDEO_FILE_ID', 'PHOTO_FILE_ID', { caption: 'A moment' });
+// Or raw typed API:
+await ctx.api.sendLivePhoto({ chat_id: ctx.chatId, live_photo: videoFile, photo: photoFile });
+```
+
+`InputMediaBuilder.livePhoto(video, photo)` and `InputPaidMediaBuilder.livePhoto(video, photo)` build media objects. `sendPaidMedia` requires a `star_count` from 1 to 25,000:
+
+```js
+const fs = require('node:fs');
+const { File, InputPaidMediaBuilder } = require('@xbibzlibrary/telebibz');
+const paidPhoto = new File(fs.readFileSync('./paid.png'), 'paid.png');
+await ctx.api.callApi('sendPaidMedia', {
+  chat_id: ctx.chatId,
+  star_count: 1,
+  media: [InputPaidMediaBuilder.photo(paidPhoto)],
+  caption: 'Paid photo sample',
+});
+```
+
+This is a real payment/paywall feature: do not test it on users without consent, and account for Telegram Stars before publishing paid content.
+
+An **ephemeral message** is addressed to a recipient using `ephemeral_message_parameters`; availability depends on Telegram's bot/chat eligibility and permissions. Context helpers include `replyEphemeral(text, receiverUserId)`, `editEphemeralMessageText`, `editEphemeralRichMessage`, `editEphemeralMessageMedia`, `editEphemeralMessageCaption`, `editEphemeralMessageReplyMarkup`, and `deleteEphemeralMessage`.
+
+```js
+await ctx.replyEphemeral('Temporary notice', ctx.from.id);
+const sent = await ctx.api.callApi('sendRichMessage', {
+  chat_id: ctx.chatId,
+  rich_message: rich.blocks([rich.paragraph('Private rich preview')]),
+  ephemeral_message_parameters: { receiver_user_id: ctx.from.id },
+});
+// If Telegram returns an ephemeral_message_id, it can be used with the edit/delete helpers.
+if (sent.ephemeral_message_id) {
+  await ctx.editEphemeralRichMessage(ctx.from.id, sent.ephemeral_message_id,
+    rich.blocks([rich.paragraph('Updated temporary notice')]));
+}
+```
+
+Telegram can reject requests with `BOT_NOT_ADMIN` or other permission errors; inspect the returned `ApiError` and do not treat a local payload test as proof of eligibility.
+
+Rich edits use `ctx.editRichMessage(content, extra)`. The underlying Bot API is `editMessageText` with `rich_message` and a target `chat_id`/`message_id` (or `inline_message_id`). These operations modify an existing message; use a message created for testing when validating them.
+
+#### 7. Context helpers and modern Bot API methods
+
+| Helper | Effect / arguments |
+|---|---|
+| `ctx.replyWithRichMessage(content, extra?)` | sends a persisted rich message to the current chat |
+| `ctx.editRichMessage(content, extra?)` | rich-edits the current message; callback and inline targets are handled |
+| `ctx.replyWithLivePhoto(video, photo, extra?)` | sends a live photo to the current chat |
+| `ctx.sendMessageDraft(draftId, text, extra?)` | streams a plain-text preview |
+| `ctx.sendRichMessageDraft(draftId, richMessage, extra?)` | streams a rich preview |
+| `ctx.replyEphemeral(text, receiverUserId, extra?)` | sends an ephemeral plain-text message |
+| `ctx.guestQueryId`, `ctx.answerGuestQuery(result)` | handles a real incoming `guest_message` update |
+| `ctx.editEphemeralRichMessage(...)`, `ctx.deleteEphemeralMessage(...)` | edits/deletes a recipient's ephemeral message |
+
+Guest query answers require the `guest_query_id` from an actual incoming guest update; it cannot be fabricated for a meaningful live test. Inline rich articles can be built with `iq.richArticle(id, title, richMessage, extra)` and returned while handling an actual inline query.
+
+#### 8. Complete typed Bot API access
+
+All **185 method names and payload signatures** in the vendored Bot API schema are available in TypeScript through `api.callApi()` and `api.raw()`:
+
+```js
+// JavaScript or TypeScript: method name + payload object
+await ctx.api.callApi('sendRichMessage', {
+  chat_id: ctx.chatId,
+  rich_message: rich.markdown('**Hello**'),
+});
+
+await ctx.api.callApi('sendMessageDraft', {
+  chat_id: ctx.chatId,
+  draft_id: Date.now(),
+  text: 'Preview',
+  can_stop: false,
+});
+```
+
+The `TelegramTypes` namespace exports the vendored Telegram object types. Useful type aliases include `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, and `TelegramApiPayloads`. The runtime proxy also permits `ctx.api.anyMethod({ ...payload })` for newly added methods, but that dynamic shorthand has no runtime schema validation. TypeScript checks happen at compile time only. Run `npm run typecheck` to validate declarations and consumer examples.
+
+The declarations are vendored from `@grammyjs/types@5.0.0` under MIT (see [`NOTICE.md`](NOTICE.md) and the vendored license); they add no runtime dependency. Telegram's official reference/changelog—not the vendored package—remains the authority when a field, permission, or limit differs.
+
+#### Limits and troubleshooting
+
+The Bot API 10.3 type schema documents these Rich Message ceilings: **32,768 UTF-8 characters**, **500 blocks** (including nested/list/table/quotation/details content), **16 nesting levels**, **50 media attachments**, and **20 table columns**. Map blocks use zoom 0–24 and width/height 0–10,000; the buttons block allows 1–8 buttons. Telegram can update limits, so check the [official reference](https://core.telegram.org/bots/api) before building large payloads. The server remains the final validator.
+
+Common failures:
+
+- `RICH_MESSAGE_VIDEO_INVALID`: the tested server rejected a GIF in a Rich Message `animation` block; try MP4. The standalone `sendAnimation` endpoint accepted the GIF.
+- `BOT_NOT_ADMIN` on ephemeral sends: this is a Telegram eligibility/permission response, not proof that the JSON shape is invalid. Verify bot/chat access and official method requirements.
+- `chat not found`: in a private chat, the user usually needs to open the bot and press **Start** before the bot can initiate a message.
+- Upload errors: wrap bytes, paths, or streams in `File`/`InputFile`; confirm the media helper's type matches the file.
+
+#### Live verification and limits
+
+On 2026-09-28, a live smoke test against a user-provided bot succeeded for rich blocks, HTML, Markdown, animated custom emoji, plain/rich drafts, multipart media, photo/audio/document/video/voice-note blocks, collage/slideshow, live photo, GIF via `sendAnimation`, and HTML media references. Ephemeral `sendMessage`/`sendRichMessage` failed with Telegram's `BOT_NOT_ADMIN`; paid media was not sent because it can involve Stars; callback buttons were not clicked; all 185 endpoints were not exercised live. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the exact outcomes and test boundaries.
 
 <a id="keyboards"></a>
 ### 🔘 Keyboards & buttons
@@ -570,12 +766,12 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 
 | Metric | Value |
 |---|---|
-| 📦 Source modules | **16 files** in `lib/` |
-| 📝 Total lines of code | **~1,700** (no build step) |
-| 🔌 Bot API methods | **90+** — 75 typed shortcuts + unbounded Proxy |
+| 📦 Source modules | **18 files** in `lib/` |
+| 📝 Total lines of code | **2,105** in `lib/` (no build step) |
+| 🔌 Bot API methods | **185 typed method signatures** via `api.callApi()` + dynamic Proxy |
 | ⌨️ Context shortcuts | **50+** (reply/edit/delete/admin/react…) |
-| 🧪 Offline tests | **47/47 passing**, including local HTTP transport and Bot API 10.3 tests |
-| 🧩 Ready examples | **7** in `examples/` |
+| 🧪 Offline tests | **48/48 passing**, including local HTTP transport and Bot API 10.3 tests |
+| 🧩 Ready examples | **8** in `examples/` |
 | 📦 Runtime dependencies | **4** — all used, all tested |
 
 ### ⬇️ Downloads & popularity (live from npm)
@@ -587,23 +783,27 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 
 ### 📏 Module size map (lines of code)
 
-```
-wizard.js      █████████████████████████ 247  ← forms + buttons + edit/delete
-telebibz.js    ███████████████████▎      193  ← main class & lifecycle
-context.js     ███████████████████       190  ← ctx + 50-ish shortcuts
-composer.js    █████████████████▍        174  ← middleware engine & filters
-api.js         ███████████████▍          154  ← 75 shortcuts + Proxy + transformers
-net.js         ███████████▌              115  ← axios transport + multipart
-menus.js       █████████                  90  ← Menu/MenuContainer
-keyboard.js    ████████▎                  83  ← btn/url/kb + fluent classes
-ratelimit.js   ██████                     61  ← autoRetry · throttler · limiter
-runner.js      ████▌                      45  ← 409-resilient polling
-file.js        ████                       41  ← InputFile + InputMediaBuilder
-logger.js      ███▊                       38  ← logs + banner
-session.js     ███▌                       36  ← swappable sessions
-errors.js      ███▌                       35  ← humanized errors 🇮
-broadcast.js   ███                       35  ← rate-limit-safe blast
-inline-query.js██▊                        28  ← matcher + result builders
+The figures below are generated from the current `lib/*.js` source. They are informational, not bundle-size measurements.
+
+```text
+context.js          250  Context accessors, replies, edits and helpers
+wizard.js           247  Guided forms, buttons, edit/delete modes
+telebibz.js         209  Bot class, lifecycle, update dispatch
+telegram-methods.js 192  Runtime registry for 185 API method names
+composer.js         185  Middleware composition and filters
+rich.js             175  Rich Message, entity and block builders
+api.js              168  Typed API adapters, Proxy and transformers
+net.js              115  HTTP transport and multipart upload
+menus.js              90  Menu and MenuContainer
+keyboard.js           83  Keyboard builders and fluent classes
+ratelimit.js          74  Retry, throttler and limiter
+logger.js             68  Logs and boot banner
+runner.js             54  Polling and retry handling
+file.js               48  File/InputFile and media builders
+session.js            44  Swappable session storage
+errors.js             35  Error translations
+broadcast.js          35  Broadcast helper
+inline-query.js       33  Inline matching and result builders
 ```
 
 ### 🗺️ Repo health
@@ -641,24 +841,23 @@ Run any of them with `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 ## 🔬 Testing & Live Proof
 
 ```bash
-npm test          # 47 offline checks, including local HTTP transport + Bot API 10.3 tests
+npm test          # 48 offline checks, including local HTTP transport + Bot API 10.3 tests
 npm run typecheck # verify declarations and method-specific Bot API payload types
 ```
 
-The current audit needs no Telegram token. An earlier release of this repository
-records **30 offline + 10 live checks** on `@xbibzrat_bot`; that live run is historical
-and was not repeated in the current audit. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md)
-for the test matrix, Bot API 10.3 comparison, and remaining limitations.
+The 48 automated checks and `npm run typecheck` are offline/mocked and do not need a bot token. A separate live smoke test was performed with the owner's test bot: rich blocks, HTML/Markdown, animated custom emoji, drafts, media blocks, collage/slideshow, live photo, and multipart media references passed. Ephemeral sends were rejected by Telegram with `BOT_NOT_ADMIN`; paid media and all 185 endpoints were not tested live. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the exact matrix, known limits, and failures.
 
 Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 
 <a id="structure"></a>
-## 📂 Repo Structure (16 core files)
+## 📂 Repo Structure (18 JavaScript modules + vendored API types)
 
 | File | Role |
 |---|---|
 | `lib/net.js` | axios keep-alive transport + multipart `attach://` |
 | `lib/api.js` | Bot API methods + any-method Proxy + transformers |
+| `lib/rich.js` | Rich Message entities, block builders, draft-safe helpers |
+| `lib/telegram-methods.js` | registry of 185 Bot API method names |
 | `lib/composer.js` | middleware, `on('message:photo')` filters, `errorBoundary` |
 | `lib/context.js` | ctx object + 50-ish reply/edit/delete/callback shortcuts |
 | `lib/session.js` | per user:chat sessions (swappable storage) |
@@ -672,11 +871,13 @@ Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 | `lib/inline-query.js` | query matcher + inline result builders |
 | `lib/errors.js` | humanized errors + suggestions |
 | `lib/logger.js` | framed logs + boot banner |
-| `index.js` / `index.d.ts` | export door + TypeScript types |
+| `types/telegram-bot-api/` | vendored Bot API types (MIT); no runtime code |
+| `index.js` / `index.d.ts` | export door + typed method/payload surface |
 
 <a id="changelog"></a>
 ## 🕐 Changelog
 
+- **Unreleased — Bot API 10.3** — rich messages, animated emoji, drafts, live photos, all 185 typed method payloads; 48 offline checks and richer live verification. Details: [`CHANGELOG.md`](CHANGELOG.md).
 - **3.1.0** — wizard: choice buttons (reply/inline), `edit`/`delete` modes, auto cleanup, programmatic helpers · tests 24 → 30
 - **3.0.0** — production-grade grammY parity: axios keep-alive, transformers, menus, inline query, limiter
 - **2.0.0** — engine rewritten from scratch, multipart transport, native Node webhook

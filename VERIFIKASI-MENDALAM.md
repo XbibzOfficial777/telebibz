@@ -5,23 +5,34 @@
 **Runtime yang diuji:** Node.js v20.20.2  
 **Acuan Telegram:** Bot API 10.3 / pembaruan resmi terakhir 2026-08-24.
 
-> Audit ini menguji perilaku lokal dan transport HTTP terhadap server tiruan. Tidak ada token bot yang digunakan; hasilnya bukan jaminan bahwa setiap endpoint berhasil untuk semua bot/chat/permission di Telegram produksi.
+> Test otomatis menggunakan mock/server lokal. Tes live terpisah pada bot milik pengguna dilakukan 2026-09-28; token/chat ID tidak dicatat dalam laporan. Hasilnya tidak membuktikan setiap endpoint bekerja di semua bot/chat/permission Telegram produksi.
 
 ## Hasil pengujian
 
 | Pemeriksaan | Hasil |
 |---|---:|
 | Test fitur yang sudah ada (`test/all.test.js`) | **30/30 lulus** |
-| Test audit/regresi baru (`test/audit.test.js`) | **17/17 lulus** |
+| Test audit/regresi baru (`test/audit.test.js`) | **18/18 lulus** |
 | Sintaks semua JS (`node --check`) | **lulus** |
 | Test payload dan consumer TypeScript (`npm run typecheck`) | **lulus** |
 | Registry runtime dibandingkan 1:1 dengan method signatures vendored | **185/185, unik, sinkron** |
 | `npm audit --omit=dev` | **0 vulnerability** |
-| `npm pack --dry-run` | **berhasil**, 53 file; 803.4 kB unpacked (tarball 165.0 kB) |
+| `npm pack --dry-run` | **berhasil**, 53 file; 839.0 kB unpacked (tarball 177.8 kB) |
 | YAML CI/release workflow | **valid**, parser lokal |
 | `git diff --check` | **lulus** |
 
 Test transport menggunakan HTTP server lokal: memeriksa JSON, upload multipart `attach://`, pembentukan `ApiError`, dan unduhan file. Test lain memeriksa session adapter yang membaca hasil deserialize, error boundary, filter regex global, composer `route/lazy/fork`, update guest/business, retry poller, antrean throttler, proteksi webhook, opsi `apiRoot`, dan proxy untuk metode API baru.
+
+### Live smoke test Rich Message (2026-09-28)
+
+- `getMe` dan `getChat` berhasil untuk bot/chat yang diberikan pengguna.
+- `sendRichMessage` mode blocks, HTML, dan Markdown berhasil; rich HTML media reference dengan upload multipart nested juga berhasil.
+- Animated custom emoji dikonfirmasi `is_animated: true` lewat `getCustomEmojiStickers`, lalu berhasil dikirim sebagai rich text.
+- Rich media block photo, audio, document, video, voice note, collage, slideshow; `sendLivePhoto`; dan standalone `sendAnimation` GIF berhasil. Rich animation block berhasil dengan MP4, sedangkan GIF di rich animation block menerima `RICH_MESSAGE_VIDEO_INVALID` (GIF tetap diterima oleh metode `sendAnimation`).
+- `sendMessageDraft` dan `sendRichMessageDraft` berhasil sebagai preview sementara.
+- Pengiriman ephemeral gagal dengan HTTP 400 `BOT_NOT_ADMIN` pada `sendRichMessage` maupun `sendMessage`; dicatat sebagai belum lolos, bukan dianggap berhasil.
+- Percobaan awal menemukan mismatch `rich.button()` (menghasilkan RichTextButton, bukan tombol block). Implementasi lokal diperbaiki: `rich.button()` menghasilkan `RichMessageButton`, `rich.buttonText()` untuk RichTextButton. Test offline/typecheck sesudah perbaikan lulus. Perbaikan tersebut belum dipush.
+- Pesan test sengaja dibiarkan di chat sesuai izin pengguna. Callback button tidak diklik; edit/hapus, paid media (berpotensi melibatkan Stars), guest-query nyata, dan seluruh 185 endpoint tidak diuji live.
 
 Jalankan ulang dengan:
 

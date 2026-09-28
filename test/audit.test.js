@@ -261,7 +261,8 @@ async function main() {
     assert.equal(message.blocks[2].items[0].blocks[0].text, 'item satu');
     assert.equal(message.blocks[3].is_compact, true);
     assert.equal(message.blocks[4].is_open, true);
-    assert.equal(message.blocks[5].buttons[0].button.callback_data, 'ok');
+    assert.equal(message.blocks[5].buttons[0].callback_data, 'ok');
+    assert.deepEqual(rich.buttonText('Inline', { callback_data: 'inline' }), { type: 'button', button: { text: 'Inline', callback_data: 'inline' } });
     assert.deepEqual(new RichMessageBuilder().add(rich.paragraph('ok')).rtl().build(), { blocks: [{ type: 'paragraph', text: 'ok' }], is_rtl: true });
     assert.deepEqual(new RichMessageBuilder().markdown('draft').buildDraft(), { markdown: 'draft' });
     assert.deepEqual(rich.draftBlocks([rich.paragraph('partial'), rich.thinking('working')]), { blocks: [{ type: 'paragraph', text: 'partial' }, { type: 'thinking', text: 'working' }] });
@@ -269,9 +270,43 @@ async function main() {
     assert.throws(() => inputRichMessage({ html: 'x', markdown: 'y' }), /tepat satu/);
     assert.throws(() => rich.heading('bad', 7), /1–6/);
     assert.throws(() => rich.button('Link', { url: 'https://example.com' }, 'link'), /callback button/);
-    assert.throws(() => rich.buttons([], 'justify'), /align/);
+    assert.throws(() => rich.buttons([rich.button('OK', { callback_data: 'ok' })], 'justify'), /align/);
     assert.deepEqual(InputMediaBuilder.livePhoto('video', 'photo'), { type: 'live_photo', media: 'video', photo: 'photo' });
     assert.deepEqual(InputPaidMediaBuilder.livePhoto('video', 'photo'), { type: 'live_photo', media: 'video', photo: 'photo' });
+  });
+
+  await test('Seluruh family RichText dan InputRichBlock builder memancarkan discriminant schema', () => {
+    const { rich } = require('..');
+    const entities = [
+      rich.bold('x'), rich.italic('x'), rich.underline('x'), rich.strikethrough('x'), rich.spoiler('x'),
+      rich.subscript('x'), rich.superscript('x'), rich.marked('x'), rich.code('x'), rich.dateTime('now', 1),
+      rich.textMention('x', { id: 1, is_bot: false, first_name: 'A' }), rich.customEmoji('emoji-id', '✨'),
+      rich.mathText('x'), rich.url('x', 'https://example.com'), rich.email('a@b.com', 'a@b.com'),
+      rich.phone('123', '+123'), rich.bankCard('1234', '1234'), rich.mention('@bot', 'bot'),
+      rich.hashtag('#test', 'test'), rich.cashtag('$TEST', 'TEST'), rich.botCommand('/start', 'start'),
+      rich.anchorText('anchor'), rich.anchorLink('link', 'anchor'), rich.reference('ref', 'anchor'),
+      rich.referenceLink('ref', 'anchor'), rich.buttonText('btn', { callback_data: 'cb' }),
+    ];
+    assert.deepEqual(entities.map((entity) => entity.type), [
+      'bold', 'italic', 'underline', 'strikethrough', 'spoiler', 'subscript', 'superscript', 'marked', 'code', 'date_time',
+      'text_mention', 'custom_emoji', 'mathematical_expression', 'url', 'email_address', 'phone_number', 'bank_card_number',
+      'mention', 'hashtag', 'cashtag', 'bot_command', 'anchor', 'anchor_link', 'reference', 'reference_link', 'button',
+    ]);
+    const media = (type) => ({ type, media: `${type}-file-id` });
+    const blocks = [
+      rich.paragraph('x'), rich.heading('x'), rich.pre('x'), rich.footer('x'), rich.divider(), rich.mathBlock('x'),
+      rich.anchor('a'), rich.list(['x']), rich.quote([rich.paragraph('x')]), rich.expandableQuote('x'), rich.pullQuote('x'),
+      rich.collage([rich.photo(media('photo'))]), rich.slideshow([rich.video(media('video'))]),
+      rich.table([[{ text: 'x', align: 'left', valign: 'middle' }]]), rich.details('s', [rich.paragraph('x')]),
+      rich.map({ latitude: 0, longitude: 0 }, 1, 100, 100), rich.animation(media('animation')), rich.audio(media('audio')),
+      rich.document(media('document')), rich.photo(media('photo')), rich.video(media('video')),
+      rich.voiceNote(media('voice_note')), rich.buttons([rich.button('x', { url: 'https://example.com' })]), rich.thinking('x'),
+    ];
+    assert.deepEqual(blocks.map((item) => item.type), [
+      'paragraph', 'heading', 'pre', 'footer', 'divider', 'mathematical_expression', 'anchor', 'list', 'blockquote',
+      'expandable_blockquote', 'pullquote', 'collage', 'slideshow', 'table', 'details', 'map', 'animation', 'audio',
+      'document', 'photo', 'video', 'voice_note', 'buttons', 'thinking',
+    ]);
   });
 
   await test('Context memetakan rich send/edit, live photo, ephemeral dan draft ke payload Bot API', async () => {
