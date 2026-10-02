@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 480" fill="none">
+  <defs>
+    <linearGradient id="panel" x1="75" y1="34" x2="499" y2="435" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#334847"/>
+      <stop offset="1" stop-color="#24343a"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="104" y1="84" x2="464" y2="384" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9bb9b0"/>
+      <stop offset="1" stop-color="#5f8178"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="560" height="480" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="14"/>
+      <feGaussianBlur stdDeviation="14"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix values="0 0 0 0 0.03 0 0 0 0 0.12 0 0 0 0 0.11 0 0 0 0.22 0"/>
+      <feBlend in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+  <circle cx="286" cy="238" r="192" fill="#5f8178" fill-opacity=".08"/>
+  <circle cx="286" cy="238" r="145" stroke="#729087" stroke-opacity=".2" stroke-width="1.5" stroke-dasharray="4 9"/>
+  <g filter="url(#shadow)">
+    <rect x="76" y="64" width="402" height="314" rx="27" fill="url(#panel)" stroke="#536a68" stroke-width="1.5"/>
+    <path d="M77 91c0-14.912 12.088-27 27-27h346c14.912 0 27 12.088 27 27v17H77V91Z" fill="#2d4146"/>
+    <circle cx="101" cy="85" r="5" fill="#a17e7a"/>
+    <circle cx="118" cy="85" r="5" fill="#a69c83"/>
+    <circle cx="135" cy="85" r="5" fill="#7f9b8d"/>
+    <text x="174" y="90" fill="#bbc8c2" font-family="ui-monospace,monospace" font-size="11">bot.js · TeleBibz</text>
+    <text x="111" y="146" fill="#9bb9b0" font-family="ui-monospace,monospace" font-size="13">const</text>
+    <text x="155" y="146" fill="#f0eee1" font-family="ui-monospace,monospace" font-size="13">bot = new TeleBibz(token);</text>
+    <text x="111" y="181" fill="#a8b6c4" font-family="ui-monospace,monospace" font-size="13">bot</text>
+    <text x="139" y="181" fill="#c0bdab" font-family="ui-monospace,monospace" font-size="13">.start</text>
+    <text x="189" y="181" fill="#eee9dc" font-family="ui-monospace,monospace" font-size="13">((ctx) =&gt; {</text>
+    <text x="135" y="209" fill="#91ada3" font-family="ui-monospace,monospace" font-size="12">return</text>
+    <text x="184" y="209" fill="#c0bdab" font-family="ui-monospace,monospace" font-size="12">ctx</text>
+    <text x="210" y="209" fill="#f0eee1" font-family="ui-monospace,monospace" font-size="12">.reply(</text>
+    <text x="253" y="209" fill="#bcc9b7" font-family="ui-monospace,monospace" font-size="12">'Halo!'</text>
+    <text x="301" y="209" fill="#f0eee1" font-family="ui-monospace,monospace" font-size="12">);</text>
+    <text x="111" y="237" fill="#eee9dc" font-family="ui-monospace,monospace" font-size="13">});</text>
+    <rect x="110" y="275" width="152" height="36" rx="11" fill="#314b49" stroke="#58716a"/>
+    <circle cx="128" cy="293" r="5" fill="#9bb9b0"/>
+    <text x="141" y="297" fill="#c0cec8" font-family="ui-monospace,monospace" font-size="11">bot.launch()</text>
+  </g>
+  <g transform="rotate(-2 399 317)">
+    <rect x="306" y="260" width="202" height="127" rx="19" fill="#fff" stroke="#e2eae4" stroke-width="2"/>
+    <circle cx="334" cy="288" r="14" fill="#e9efeb"/>
+    <path d="m328 288 11-5-3.5 11-2.2-3-2.4 1.5.6-3.4-3.5-1.1Z" fill="#45665e"/>
+    <text x="355" y="285" fill="#273936" font-family="ui-sans-serif,system-ui" font-size="10" font-weight="700">TeleBibz Bot</text>
+    <text x="355" y="299" fill="#73817c" font-family="ui-sans-serif,system-ui" font-size="8">Online</text>
+    <rect x="327" y="315" width="150" height="48" rx="12" fill="#edf1ed"/>
+    <text x="340" y="335" fill="#34443f" font-family="ui-sans-serif,system-ui" font-size="10">Update received</text>
+    <text x="340" y="350" fill="#34443f" font-family="ui-sans-serif,system-ui" font-size="10">Response delivered.</text>
+  </g>
+  <circle cx="460" cy="124" r="24" fill="#aab2a3" fill-opacity=".95"/>
+  <path d="M450 124.5c0-1.105.895-2 2-2h16c1.105 0 2 .895 2 2v2c0 1.105-.895 2-2 2h-5v10c0 1.105-.895 2-2 2h-2c-1.105 0-2-.895-2-2v-10h-5c-1.105 0-2-.895-2-2v-2Z" fill="#24343a"/>
+  <circle cx="110" cy="367" r="11" fill="#98b4aa"/>
+  <circle cx="475" cy="214" r="7" fill="#9aa99f"/>
+</svg>

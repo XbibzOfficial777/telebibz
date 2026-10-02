@@ -1,0 +1,65 @@
+---
+title: Update lifecycle and architecture
+description: Understand polling, context creation, middleware order, and update handling.
+---
+
+# Update lifecycle and architecture
+
+TeleBibz receives Telegram updates, wraps each update in a `Context`, and runs it through the registered middleware and handlers. Handlers can use `ctx.api` to call Bot API methods.
+
+## Overview
+
+```text
+Telegram Bot API
+      │ getUpdates / webhook
+      ▼
+  TeleBibz transport
+      │ Update object
+      ▼
+ session and middleware
+      │ Context
+      ▼
+ matching handlers ───► ctx.api ───► Telegram Bot API
+```
+
+The bot instance owns its API client, configuration, session middleware, handler pipeline, and polling lifecycle. Keep one polling process per bot token unless your deployment uses a coordinated update strategy.
+
+## Long-polling lifecycle
+
+`bot.launch()` initializes the bot, starts requesting updates, and processes each returned update. The library tracks the polling promise in `bot.runPromise`; call `bot.stop()` during shutdown, then wait for that promise to settle.
+
+```js
+await bot.launch();
+```
+
+`launch()` resolves after startup; it does not mean the bot has permanently finished polling. In a long-running service, keep the process alive and install appropriate shutdown handling.
+
+## Middleware order
+
+Middleware and handlers run in registration order. A middleware can inspect or enrich `ctx`, stop processing by not calling `next()`, or call `await next()` to continue down the chain. Code after `next()` runs as control returns from downstream middleware.
+
+```js
+bot.use(async (ctx, next) => {
+  const started = Date.now();
+  await next();
+  console.log(`Handled in ${Date.now() - started} ms`);
+});
+
+bot.cmd('ping', (ctx) => ctx.reply('pong'));
+```
+
+Register shared middleware before the handlers that should pass through it. See [middleware and Composer](/en/guide/middleware).
+
+## Context is an update snapshot
+
+Each handler receives a `ctx` for one update. Fields such as `ctx.from`, `ctx.chat`, and `ctx.msg` depend on the update type and can be absent. Check optional fields before using them; a callback query or channel update does not have the same shape as a private text message.
+
+The Context exposes the raw `ctx.update`, an API client at `ctx.api`, and shortcuts for common replies, files, keyboards, and callbacks. See the [Context reference](/en/reference/context).
+
+## Polling or webhook
+
+Long polling is straightforward for a single always-on process. A webhook lets Telegram deliver updates to a public HTTPS endpoint, which can suit managed hosting or serverless setups. Do not run polling and a webhook for the same token at the same time. See [polling and webhooks](/en/guide/deployment).
+
+## `handleUpdate()` for tests and integrations
+
+`bot.handleUpdate(update)` sends a supplied update through the same middleware pipeline without opening a poller. Use it to replay fixtures or connect a custom transport. It does not validate that the update came from Telegram; validate request signatures/secrets at your HTTP boundary.

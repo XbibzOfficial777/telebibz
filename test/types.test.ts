@@ -1,6 +1,16 @@
-import { TeleBibz, rich, type TelegramMethodName, type TelegramMethodPayload, TelegramTypes } from '..';
+import { Composer, TeleBibz, rich, type TelegramMethodName, type TelegramMethodPayload, TelegramTypes } from '..';
 
 const bot = new TeleBibz('123456:TESTTOKEN', { silent: true });
+const privateRoutes = new Composer();
+privateRoutes.filter((ctx) => ctx.chat?.type === 'private').command('profile', (ctx) => ctx.reply('profile'));
+bot.use(privateRoutes);
+bot.filter((ctx) => ctx.chat?.type === 'private', (ctx) => ctx.reply('private filter'));
+bot.drop((ctx) => ctx.from?.is_bot === true, (ctx) => ctx.reply('drop route'));
+bot.branch((ctx) => Boolean(ctx.chat), (ctx) => ctx.reply('chat'), (ctx) => ctx.reply('no chat'));
+bot.route((ctx) => ctx.chat?.type ?? 'unknown', { private: (ctx) => ctx.reply('private') });
+bot.lazy(() => (ctx) => ctx.reply('lazy'));
+bot.fork((ctx) => ctx.reply('fork'));
+bot.inlineQuery('*', (ctx) => ctx.answerInlineQuery([]));
 const message = rich.blocks([
   rich.heading('Typed rich content', 2),
   rich.paragraph(['Status: ', rich.bold('ready')]),
