@@ -27,6 +27,7 @@ const bot = new TeleBibz(process.env.BOT_TOKEN, {
 | Opsi | Kegunaan |
 | --- | --- |
 | `allowedUpdates` | Membatasi jenis update yang diminta saat long polling. Default-nya mencakup jenis update umum dan Business yang didukung library. |
+| `maxConcurrentUpdates` | Maksimum update aktif per instance; default `256`. Update dengan session key sama tetap berurutan, sedangkan key berbeda berjalan paralel. |
 | `onError(err, ctx)` | Handler error khusus. Jika tidak disetel, TeleBibz memakai reporter error bawaannya. `ctx` bisa tidak tersedia untuk error polling. |
 | `silent` | Jika `true`, sembunyikan banner dan log boot. |
 | `dropPending` | Buang update lama saat polling dimulai. Bisa juga diberikan ke `launch({ dropPending: true })`. |

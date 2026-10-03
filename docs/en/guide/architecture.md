@@ -63,7 +63,14 @@ The Context exposes the raw `ctx.update`, an API client at `ctx.api`, and shortc
 
 ## Polling or webhook
 
-Long polling is straightforward for a single always-on process. A webhook lets Telegram deliver updates to a public HTTPS endpoint, which can suit managed hosting or serverless setups. Do not run polling and a webhook for the same token at the same time. See [polling and webhooks](/en/guide/deployment).
+| Consideration | Long polling | Webhook |
+| --- | --- | --- |
+| Update delivery | The process requests `getUpdates`. | Telegram sends POST requests to the server. |
+| Infrastructure | No public bot endpoint is required. | Requires a public HTTPS URL and reachable route. |
+| Startup | `bot.launch()` | `bot.init()`, `bot.webhook()`, then `setWebhook`. |
+| Suitable for | Development, workers, and a simple VPS. | Existing web servers or serverless platforms. |
+
+Do not run polling and a webhook for the same token at the same time. See [polling and webhooks](/en/guide/deployment).
 
 ## `handleUpdate()` for tests and integrations
 

@@ -49,6 +49,16 @@ Concurrency terutama membantu handler asynchronous yang menunggu database, HTTP,
 
 Handler yang tidak memanggil `next()` menghentikan alur untuk update itu. Jadi satu handler yang cocok biasanya menjadi pemilik respons, kecuali sengaja meneruskan middleware.
 
+```js
+bot.use(async (ctx, next) => {
+  const started = Date.now();
+  await next();
+  console.log(`Ditangani dalam ${Date.now() - started} ms`);
+});
+
+bot.cmd('ping', (ctx) => ctx.reply('pong'));
+```
+
 ## `Context` adalah snapshot satu update
 
 `ctx` mewakili satu update masuk, bukan sesi koneksi Telegram yang berubah terus. Akses umum meliputi `ctx.update`, `ctx.from`, `ctx.chat`, `ctx.msg`, `ctx.chatId`, `ctx.msgId`, `ctx.api`, `ctx.session`, dan `ctx.match`. Field tertentu tidak tersedia untuk semua jenis update—misalnya inline query tidak memiliki message biasa.

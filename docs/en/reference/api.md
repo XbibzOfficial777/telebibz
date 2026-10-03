@@ -48,9 +48,31 @@ Successful calls resolve to the endpoint result. Failed calls reject with an API
 
 Do not assume a request succeeded until its promise resolves. Handle transient errors with retry transformers where safe; invalid payloads, missing permissions, and authorization failures need a correction rather than an automatic retry.
 
+```js
+try {
+  await ctx.api.getChat(ctx.chatId);
+} catch (err) {
+  console.error(err?.error_code, err?.description || err?.message);
+}
+```
+
 ## Transformers
 
 Use `bot.api.config.use(transformer)` to wrap outgoing calls. The package exports helpers such as `autoRetry()` and `throttler()` for retry and request pacing. See [rate limits and errors](/en/guide/reliability).
+
+```js
+bot.api.config.use(async (prev, method, payload) => {
+  const started = Date.now();
+  try {
+    const result = await prev(method, payload);
+    console.log(method, 'ok', Date.now() - started);
+    return result;
+  } catch (err) {
+    console.error(method, 'failed', err);
+    throw err;
+  }
+});
+```
 
 ## Files
 

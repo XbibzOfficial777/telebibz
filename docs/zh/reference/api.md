@@ -48,9 +48,31 @@ await bot.api.setMyCommands({ commands: [{ command: 'start', description: '开�
 
 只有 Promise 成功完成后，才能认定请求成功。符合条件的临时错误可使用重试 transformer；无效 payload、权限不足和授权错误需要修正，不能依靠自动重试解决。
 
+```js
+try {
+  await ctx.api.getChat(ctx.chatId);
+} catch (err) {
+  console.error(err?.error_code, err?.description || err?.message);
+}
+```
+
 ## Transformer
 
 使用 `bot.api.config.use(transformer)` 包装出站请求。软件包提供 `autoRetry()` 和 `throttler()` 等辅助工具，用于重试和控制请求节奏。详见[速率限制与错误](/zh/guide/reliability)。
+
+```js
+bot.api.config.use(async (prev, method, payload) => {
+  const started = Date.now();
+  try {
+    const result = await prev(method, payload);
+    console.log(method, 'ok', Date.now() - started);
+    return result;
+  } catch (err) {
+    console.error(method, 'failed', err);
+    throw err;
+  }
+});
+```
 
 ## 文件
 

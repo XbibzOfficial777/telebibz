@@ -48,11 +48,38 @@ console.log(calls.find((call) => call.method === 'sendMessage'));
 
 ## 内置传输选项
 
-Constructor 支持 `transport`、`apiRoot`、`proxy`、`timeoutMs` 和附加 `headers`。`apiRoot` 可指向本地 Bot API 服务器。请分开管理测试与生产凭据，不要记录授权请求头。
+Constructor 支持 `transport`、`apiRoot`、`proxy`、`timeoutMs` 和附加 `headers`。`apiRoot` 可指向本地 Bot API 服务器。若要显式使用这些选项创建 transport，可调用 `createTransport`：
+
+```js
+const { TeleBibz, createTransport } = require('@xbibzlibrary/telebibz');
+
+const token = process.env.BOT_TOKEN;
+const transport = createTransport(token, {
+  apiRoot: 'https://api.telegram.org',
+  proxy: process.env.HTTPS_PROXY,
+  timeoutMs: 30_000,
+  headers: { 'x-client-name': 'telebibz-app' },
+});
+const bot = new TeleBibz(token, { transport });
+```
+
+`createTransport(token, options)` 也可通过 `apiRoot` 指向本地 Bot API 服务。请分开管理测试与生产凭据，并避免记录授权请求头。
 
 ## 代理
 
 必要时可将 `proxy` 设为 HTTP(S) 代理地址。请确认运行环境能够解析代理且出站 TLS 配置正确。代理凭据应存放在平台密钥中。
+
+```js
+const { TeleBibz, createTransport } = require('@xbibzlibrary/telebibz');
+const token = process.env.BOT_TOKEN;
+const bot = new TeleBibz(token, {
+  transport: createTransport(token, {
+    proxy: process.env.HTTPS_PROXY,
+  }),
+});
+```
+
+不要将代理凭据写入代码。请存入托管平台的 Secret，并限制访问权限。
 
 ## 用 Transformer 处理中间 API 请求
 

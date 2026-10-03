@@ -105,6 +105,129 @@ Transformer 顺序是有意设置的：先添加 `throttler()`，再添加 `auto
 - 长任务应放入带唯一 update ID 的 durable queue；合适时尽快回复，并通过唯一约束/outbox 防止 replay 重复 side effect。
 - 没有用户同意、授权接收者名单、速率预算和停止机制时，不要发送 broadcast。
 
+## 持久化 inbox/outbox 与幂等处理
+
+Webhook delivery 可能重试，进程也可能在收到更新与执行副作用之间停止。请按 **at-least-once** 设计：使用 `(bot_id, update_id)` 作为主键，避免重复修改数据库；并在同一事务中把外部操作写入 outbox。
+
+```sql
+CREATE TABLE bot_inbox (
+  bot_id       text        NOT NULL,
+  update_id    bigint      NOT NULL,
+  payload      jsonb       NOT NULL,
+  received_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (bot_id, update_id)
+);
+
+CREATE TABLE bot_outbox (
+  id               bigserial   PRIMARY KEY,
+  bot_id           text        NOT NULL,
+  event_key        text        NOT NULL,
+  method           text        NOT NULL,
+  payload          jsonb       NOT NULL,
+  attempts         integer     NOT NULL DEFAULT 0,
+  next_attempt_at  timestamptz NOT NULL DEFAULT now(),
+  delivered_at     timestamptz,
+  UNIQUE (bot_id, event_key)
+);
+
+CREATE INDEX bot_outbox_pending_idx
+  ON bot_outbox (next_attempt_at, id)
+  WHERE delivered_at IS NULL;
+```
+
+以下示例使用 `pg`，并假设 `applyBusinessChange(client, update)` 只写数据库；不要在事务中发起 HTTP 请求。请将 `pg` 添加为应用的直接依赖。
+
+```js
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const botId = process.env.BOT_ID;
+
+async function recordUpdateOnce(update, eventKey, apiPayload) {
+  const client = await pool.connect();
+  let transactionOpen = false;
+  try {
+    await client.query('BEGIN');
+    transactionOpen = true;
+    const inserted = await client.query(
+      `INSERT INTO bot_inbox (bot_id, update_id, payload)
+       VALUES ($1, $2, $3::jsonb)
+       ON CONFLICT (bot_id, update_id) DO NOTHING
+       RETURNING update_id`,
+      [botId, update.update_id, JSON.stringify(update)],
+    );
+    if (inserted.rowCount === 0) {
+      await client.query('ROLLBACK');
+      transactionOpen = false;
+      return false;
+    }
+
+    await applyBusinessChange(client, update); // 仅执行应用自己的数据库写入
+    await client.query(
+      `INSERT INTO bot_outbox (bot_id, event_key, method, payload)
+       VALUES ($1, $2, 'sendMessage', $3::jsonb)
+       ON CONFLICT (bot_id, event_key) DO NOTHING`,
+      [botId, eventKey, JSON.stringify(apiPayload)],
+    );
+    await client.query('COMMIT');
+    transactionOpen = false;
+    return true;
+  } catch (err) {
+    if (transactionOpen) await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+bot.on(':text', async (ctx) => {
+  await recordUpdateOnce(ctx.update, `${ctx.update.update_id}:reply`, {
+    chat_id: ctx.chatId,
+    text: '更改已记录。',
+  });
+});
+```
+
+Outbox worker 可调用 `await bot.api.callApi(row.method, row.payload)`，然后将记录标记为已发送。多个 worker 需要短时 claim/lease 机制；不要在 HTTP 请求期间一直占用数据库事务。Telegram 发送仍是 **at-least-once**：若 API 已成功但 `delivered_at` 更新失败，消息可能再次发送。使用 `event_key` 做内部去重，并让通知易于核对。
+
+## 多副本拓扑与更新所有权
+
+| 进程类型 | 扩展方式 | 所需状态与协调 |
+| --- | --- | --- |
+| Long poller | 每个 token 只有一个活动 owner；从 `replicas: 1` 开始。 | 故障切换需要带 fencing token 的 leader lease，或由 orchestrator 控制进程替换。不要让两个 poller 同时运行。 |
+| Webhook ingress | 在 HTTPS load balancer 后运行多个无状态副本。 | 共享数据库/session store、幂等 inbox，并验证相同的 secret header。Telegram 可能重试 delivery。 |
+| Outbox/queue worker | 根据队列深度和吞吐需求增加 consumer。 | Broker/分布式 claim、重试预算、共享速率限制，以及业务需要时的 per-chat 顺序。 |
+
+TeleBibz 的 session 串行化和 `limiter()` 仅作用于单个实例。多个 webhook replica 可能同时收到 session key 相同的更新；若 read/modify/write 必须有序，请使用分布式锁/共享 session store，或按 key 分片。`throttler()` 也只作用于单个 `ApiClient`；多个 worker 共用一个 token/chat 时应采用集中式预算。
+
+## 健康检查、drain 与运行手册
+
+将 **liveness**（进程能够响应）与 **readiness**（进程已初始化、未处于 drain 状态且最低限度依赖已就绪）分开。不要让 liveness 依赖 Telegram API；上游短暂故障不应导致所有 replica 重启。
+
+```js
+const http = require('node:http');
+let draining = false;
+const healthServer = http.createServer(async (req, res) => {
+  if (req.url === '/livez') return res.writeHead(200).end('ok');
+  if (req.url !== '/readyz') return res.writeHead(404).end();
+
+  let databaseReady = false;
+  try { await database.ping(); databaseReady = true; } catch {}
+  const ready = !draining && Boolean(bot.botInfo) && databaseReady;
+  res.writeHead(ready ? 200 : 503, { 'content-type': 'text/plain' });
+  res.end(ready ? 'ready' : 'not ready');
+});
+healthServer.listen(process.env.HEALTH_PORT || 8080, '0.0.0.0');
+```
+
+`database.ping()` 表示 driver 提供且带超时的健康检查。收到 `SIGTERM` 时，先设置 `draining = true`，停止接收新的 ingress 更新，等待正在处理的 handler/outbox 工作完成；若运行 poller，则调用 `bot.stop()`，最后关闭连接池。正常关闭或部署时保持 `dropPending: false`。
+
+运维检查清单：
+
+- **部署：** 同一 token 的 poller 逐个滚动更新；Webhook 先用 canary，并验证 secret header 和 body size 限制。
+- **监控：** `pending_update_count`/最旧更新年龄、队列深度与年龄、handler p95、session store 延迟、API 错误、HTTP 429 `retry_after`、轮询 409 冲突和 outbox 失败。
+- **恢复：** 验证数据库备份并演练恢复；故障切换后，先确认只有一个 poller 持有 lease/fencing token，再允许旧 worker 恢复。
+- **更换密钥：** 通过官方流程轮换 token/secret，更新 secret manager，然后检查 `getMe()` 和 `getWebhookInfo()`；不要输出密钥值。
+
 ::: details Long polling 的最小 Dockerfile
 ```dockerfile
 FROM node:22-bookworm-slim

@@ -11,16 +11,14 @@ TeleBibz 支持长轮询和 Node.js HTTP Webhook 处理器。每个机器人令�
 
 `bot.launch()` 会初始化机器人并开始向 Telegram 请求更新：
 
+长轮询适合单个持续运行的进程。要优雅关闭，请调用 `bot.stop()` 并等待 `bot.runPromise`：
+
 ```js
 const bot = new TeleBibz(process.env.BOT_TOKEN);
 bot.cmd('start', (ctx) => ctx.reply('机器人已上线。'));
 
 bot.launch().catch(console.error);
-```
 
-长轮询适合单个持续运行的进程。要优雅关闭，请调用 `bot.stop()` 并等待 `bot.runPromise`：
-
-```js
 async function shutdown() {
   bot.stop();
   await bot.runPromise;
@@ -51,6 +49,23 @@ server.listen(3000, '0.0.0.0');
 ## 设置、删除与检查 Webhook
 
 可通过 `bot.api` 调用 Bot API 配置更新接收。使用 `setWebhook` 设置公开 HTTPS 地址，并将 `secret_token` 设为与 `bot.webhook({ secretToken })` 相同的值。可使用 `getWebhookInfo` 检查状态，切换回轮询前调用 `deleteWebhook`。支持选项与要求请参阅 Telegram 的 [setWebhook 文档](https://core.telegram.org/bots/api#setwebhook)。
+
+```js
+await bot.api.setWebhook(process.env.WEBHOOK_URL, {
+  secret_token: process.env.TELEGRAM_WEBHOOK_SECRET,
+  allowed_updates: ['message', 'callback_query'],
+  drop_pending_updates: false,
+});
+const info = await bot.api.getWebhookInfo();
+console.log({ url: info.url, pending: info.pending_update_count, lastError: info.last_error_message });
+```
+
+若要切换回轮询且保留待处理更新，请先删除 Webhook：
+
+```js
+await bot.api.deleteWebhook({ drop_pending_updates: false });
+await bot.launch();
+```
 
 不要记录 Webhook 密钥，也不要提供无认证的管理路由来修改 Webhook 设置。
 

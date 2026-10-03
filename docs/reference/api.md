@@ -39,6 +39,11 @@ Method yang punya shortcut positional tetap menerima payload Bot API melalui `ca
 
 API client memiliki proxy runtime: jika sebuah properti method tidak didefinisikan sebagai shortcut, pemanggilan `bot.api.someTelegramMethod(payload)` diteruskan sebagai `callApi('someTelegramMethod', payload)`. Ini memberi fallback untuk method baru, tetapi nama/properti dynamic pada JavaScript tidak memvalidasi payload. Untuk TypeScript, gunakan `callApi()`/`raw()` agar nama dan payload diuji oleh tipe.
 
+```js
+await bot.api.getChat(chatId);
+await bot.api.setMyCommands({ commands: [{ command: 'start', description: 'Mulai' }] });
+```
+
 ## Response dan error
 
 Promise menghasilkan object hasil Telegram langsung; request yang gagal melempar `ApiError` dengan informasi seperti `description`, `error_code`, `method`, dan `parameters`. Gunakan `onError` untuk error di middleware dan `humanize(error)` untuk saran pemecahan masalah.

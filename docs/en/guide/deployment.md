@@ -11,16 +11,14 @@ TeleBibz supports long polling and a Node.js HTTP webhook handler. Choose one up
 
 `bot.launch()` initializes the bot and starts requesting updates from Telegram:
 
+Long polling is convenient for a single continuously running process. For graceful shutdown, call `bot.stop()` and wait for `bot.runPromise`:
+
 ```js
 const bot = new TeleBibz(process.env.BOT_TOKEN);
 bot.cmd('start', (ctx) => ctx.reply('The bot is online.'));
 
 bot.launch().catch(console.error);
-```
 
-Long polling is convenient for a single continuously running process. For graceful shutdown, call `bot.stop()` and wait for `bot.runPromise`:
-
-```js
 async function shutdown() {
   bot.stop();
   await bot.runPromise;
@@ -51,6 +49,23 @@ Expose the server through a public HTTPS URL and configure Telegram to send upda
 ## Set, remove, and inspect a webhook
 
 Use Bot API methods through `bot.api` to configure delivery. For example, call `setWebhook` with the public HTTPS URL and the same `secret_token` used by `bot.webhook({ secretToken })`. Use `getWebhookInfo` to inspect status and `deleteWebhook` before switching back to polling. See Telegram's [setWebhook documentation](https://core.telegram.org/bots/api#setwebhook) for supported options and requirements.
+
+```js
+await bot.api.setWebhook(process.env.WEBHOOK_URL, {
+  secret_token: process.env.TELEGRAM_WEBHOOK_SECRET,
+  allowed_updates: ['message', 'callback_query'],
+  drop_pending_updates: false,
+});
+const info = await bot.api.getWebhookInfo();
+console.log({ url: info.url, pending: info.pending_update_count, lastError: info.last_error_message });
+```
+
+To switch back to polling without discarding queued updates, remove the webhook first:
+
+```js
+await bot.api.deleteWebhook({ drop_pending_updates: false });
+await bot.launch();
+```
 
 Do not log the webhook secret. Do not expose an unauthenticated administrative route for changing webhook settings.
 

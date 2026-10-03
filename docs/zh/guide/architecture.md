@@ -63,7 +63,14 @@ Context 提供原始 `ctx.update`、API 客户端 `ctx.api`，以及回复、文
 
 ## 长轮询还是 Webhook
 
-长轮询适合单个持续运行的进程。Webhook 会将更新推送到公开的 HTTPS 地址，适合托管平台或无服务器环境。同一令牌不要同时运行轮询和 Webhook。详见[轮询与 Webhook](/zh/guide/deployment)。
+| 对比项 | 长轮询 | Webhook |
+| --- | --- | --- |
+| 更新接收 | 进程主动请求 `getUpdates`。 | Telegram 向服务器发送 POST 请求。 |
+| 基础设施 | 无需公开的机器人接口。 | 需要可从公网访问的 HTTPS 地址和路由。 |
+| 启动方式 | `bot.launch()` | `bot.init()`、`bot.webhook()`，然后调用 `setWebhook`。 |
+| 适用场景 | 开发、worker、简单 VPS。 | 已有 Web 服务或无服务器平台。 |
+
+同一令牌不要同时运行轮询和 Webhook。详见[轮询与 Webhook](/zh/guide/deployment)。
 
 ## 测试与集成中的 `handleUpdate()`
 

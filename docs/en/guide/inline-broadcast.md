@@ -1,52 +1,58 @@
 ---
 title: Inline mode and broadcast
-description: Answer inline queries and send controlled messages to a recipient list.
+description: Build inline results and send paced, personalized broadcasts with the actual TeleBibz API.
 ---
 
 # Inline mode and broadcast
 
 ## Inline mode
 
-Enable inline mode for the bot with @BotFather, then handle `inline_query` updates. Results must be sent with `ctx.answerInlineQuery(...)` within Telegram's time limit.
+Enable Inline Mode for the bot through @BotFather before testing. A user can then call the bot from a chat with `@your_bot query`; Telegram delivers an `inline_query` update. Register a handler with `bot.inlineQuery(trigger, handler)`.
 
 ```js
-bot.inlineQuery(/.*/, async (ctx) => {
-  const query = ctx.inline_query.query;
+const { iq } = require('@xbibzlibrary/telebibz');
+
+bot.inlineQuery('*', async (ctx) => {
+  const query = ctx.inline_query.query?.trim() || '';
   await ctx.answerInlineQuery([
-    {
-      type: 'article',
-      id: 'result-1',
-      title: query ? `Search for ${query}` : 'Example result',
-      input_message_content: {
-        message_text: query ? `You searched for: ${query}` : 'Hello from TeleBibz',
-      },
-    },
-  ], { cache_time: 10 });
+    iq.article('echo', 'Send this text', {
+      message_text: query || 'Type a query after the bot name.',
+    }),
+  ], { cache_time: 0, is_personal: true });
 });
 ```
 
-Use unique result IDs within a response and return a result type supported by Telegram. `ctx.answerInlineQuery(results, options)` wraps Telegram's `answerInlineQuery` method.
+The `'*'` trigger matches every inline query. A regular string is matched case-insensitively as a substring; a `RegExp` is matched as a pattern. `matchInlineQuery(trigger)` is the same predicate for `bot.filter` or `bot.on` when combining it with other conditions.
 
 ### The `iq` builder
 
-The exported `iq` helper creates common inline-result objects. Check the installed package declarations for the supported signature, then pass the results to `ctx.answerInlineQuery`. For full control, pass ordinary Bot API result objects directly.
+| Helper | Result |
+| --- | --- |
+| `iq.article(id, title, extra?)` | Plain-text article with `input_message_content`. |
+| `iq.richArticle(id, title, richMessage, extra?)` | Article containing a Rich Message. |
+| `iq.photo(id, photoUrl, thumbnailUrl?, extra?)` | Photo from a URL. |
+| `iq.gif(id, gifUrl, thumbnailUrl?, extra?)` | GIF from a URL. |
+| `iq.video(id, url, thumbnailUrl, title, extra?)` | MP4 video. |
+| `iq.audio(id, url, title, extra?)` | Audio. |
+| `iq.location(id, latitude, longitude, title, extra?)` | Location. |
+| `iq.sticker(id, fileId, extra?)` | Sticker by Telegram file ID. |
+
+Result IDs must be unique within one inline response and comply with Telegram's format and size limits. Answer each query before Telegram's deadline; choose `cache_time` and `is_personal` to match the privacy and personalization of the result.
 
 ## Broadcast
 
-`bot.broadcast(recipients, send, options?)` sends to a supplied list of chat IDs with configurable concurrency and delay. Only message people who opted in and are allowed to receive the content.
+`bot.broadcast(chatIds, message, options)` sends `sendMessage` requests sequentially. `message` can be a string, a `sendMessage` payload object (for example, `{ text, parse_mode }`), or a function `(chatId) => payload`—including an async function—to personalize each message. The result contains `terkirim` (sent count), `gagal` (failed count), and `errors` entries with `chatId` and the error message.
 
 ```js
-bot.cmd('broadcast', async (ctx) => {
-  if (!isAdmin(ctx.from?.id)) return;
+const result = await bot.broadcast(
+  optedInChatIds,
+  (chatId) => ({ text: `There is an update for account ${chatId}.` }),
+  { delay: 50 },
+);
 
-  const result = await bot.broadcast(
-    optedInChatIds,
-    (chatId) => bot.api.sendMessage(chatId, 'Service announcement'),
-    { concurrency: 3, delayMs: 100 },
-  );
-
-  await ctx.reply(`Sent: ${result.sent}; failed: ${result.failed}`);
-});
+console.log(`Sent: ${result.terkirim}; failed: ${result.gagal}`);
 ```
 
-The `send` callback is responsible for making the Bot API request. Handle per-recipient failures, avoid logging personal data, and respect Telegram rate limits. For large campaigns, persist recipients and use a queue rather than relying on one in-memory process. See [rate limits and errors](/en/guide/reliability).
+The default delay is 35 ms between recipients. Increase it to lower request throughput, and add a retry/throttler transformer when appropriate. Broadcast does not manage recipients or consent: store recipient data under an appropriate privacy policy, message only people who expect it, and handle users who block the bot.
+
+Bots generally cannot start a private conversation. A user must open the bot and press **Start** first. For large campaigns, use a durable queue, limit parallel workers, persist each recipient's result, and provide an opt-out flow appropriate for the product and applicable rules.

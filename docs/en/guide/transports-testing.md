@@ -48,11 +48,38 @@ Use a non-production token-shaped value in tests. The custom transport prevents 
 
 ## Built-in transport options
 
-The constructor supports `transport`, `apiRoot`, `proxy`, `timeoutMs`, and additional `headers`. `apiRoot` can target a local Bot API server. Keep test and production credentials separate, and do not log authorization headers.
+The constructor supports `transport`, `apiRoot`, `proxy`, `timeoutMs`, and additional `headers`. `apiRoot` can target a local Bot API server. To build a transport with those options explicitly, use `createTransport`:
+
+```js
+const { TeleBibz, createTransport } = require('@xbibzlibrary/telebibz');
+
+const token = process.env.BOT_TOKEN;
+const transport = createTransport(token, {
+  apiRoot: 'https://api.telegram.org',
+  proxy: process.env.HTTPS_PROXY,
+  timeoutMs: 30_000,
+  headers: { 'x-client-name': 'telebibz-app' },
+});
+const bot = new TeleBibz(token, { transport });
+```
+
+`createTransport(token, options)` can also use a local Bot API server through `apiRoot`. Keep test and production credentials separate, and do not log authorization headers.
 
 ## Proxy
 
 Set `proxy` to an HTTP(S) proxy address when required by the deployment network. Verify that the runtime can resolve the proxy and that outbound TLS is configured correctly. Use a platform secret for any proxy credentials.
+
+```js
+const { TeleBibz, createTransport } = require('@xbibzlibrary/telebibz');
+const token = process.env.BOT_TOKEN;
+const bot = new TeleBibz(token, {
+  transport: createTransport(token, {
+    proxy: process.env.HTTPS_PROXY,
+  }),
+});
+```
+
+Do not hard-code proxy credentials. Store them in the hosting platform's secret manager and restrict access.
 
 ## Transformers as API middleware
 
