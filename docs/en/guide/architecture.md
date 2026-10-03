@@ -68,3 +68,9 @@ Long polling is straightforward for a single always-on process. A webhook lets T
 ## `handleUpdate()` for tests and integrations
 
 `bot.handleUpdate(update)` sends a supplied update through the same middleware pipeline without opening a poller. Use it to replay fixtures or connect a custom transport. It does not validate that the update came from Telegram; validate request signatures/secrets at your HTTP boundary.
+
+## Further reading
+
+- [Production operations](/en/guide/production-patterns)
+- [Troubleshooting](/en/guide/troubleshooting)
+- [Bot API reference](/en/reference/api)

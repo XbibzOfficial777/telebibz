@@ -35,12 +35,13 @@ Handlers receive a `Context`; fields that are not present in every update are op
 
 ## Method names, payloads, and results
 
-`TelegramMethodName`, `TelegramMethodPayload<M>`, and `TelegramMethodResult<M>` are derived from the Telegram Bot API schema included in the package. `callApi()` and `raw()` infer payload and response types from the method name:
+`TelegramMethodName`, `TelegramMethodArguments<M>`, `TelegramMethodPayload<M>`, and `TelegramMethodResult<M>` are derived from the Telegram Bot API schema included in the package. `callApi()` and `raw()` infer argument tuples and response types from the method name:
 
 ```ts
 import {
   TeleBibz,
   type TelegramMethodName,
+  type TelegramMethodArguments,
   type TelegramMethodPayload,
   type TelegramMethodResult,
 } from '@xbibzlibrary/telebibz';
@@ -51,9 +52,10 @@ const payload: TelegramMethodPayload<typeof method> = {
   chat_id: 123456789,
   text: 'Hello from TypeScript',
 };
+const args: TelegramMethodArguments<typeof method> = [payload];
 
 async function send() {
-  const result: TelegramMethodResult<typeof method> = await bot.api.callApi(method, payload);
+  const result: TelegramMethodResult<typeof method> = await bot.api.callApi(method, ...args);
   return result;
 }
 ```
@@ -79,7 +81,7 @@ File inputs support strings or paths, `Buffer`, `Uint8Array`, and streams throug
 ## Exported types
 
 - `TeleBibzOptions`, `SessionOptions`, `Handler`, `Context`, `Composer`, `BotError`, `ApiClient`, and `ApiError`.
-- `TelegramFileInput`, `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, and `TelegramApiPayloads`.
+- `TelegramFileInput`, `TelegramMethodName`, `TelegramMethodArguments<M>`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, and `TelegramApiPayloads`.
 - `TelegramTypes` as a type namespace for Bot API objects.
 - Rich Message types and file-input types.
 

@@ -5,6 +5,8 @@ description: Fix common issues when running a TeleBibz bot.
 
 # FAQ and troubleshooting
 
+For a step-by-step diagnosis of transports, webhooks, sessions, and Bot API errors, see the [troubleshooting guide](/en/guide/troubleshooting).
+
 ## The bot does not respond
 
 1. Check that the Node.js process is running without errors.

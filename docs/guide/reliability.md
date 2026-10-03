@@ -45,8 +45,7 @@ TeleBibz membungkus pipeline handler dengan error boundary bawaan. Atur `onError
 ```js
 const bot = new TeleBibz(token, {
   onError: (err, ctx) => {
-    console.error('Update gagal:', err);
-    if (ctx?.chatId) console.error('Chat:', ctx.chatId);
+    console.error('Update gagal:', { err, updateId: ctx?.update?.update_id });
   },
 });
 ```

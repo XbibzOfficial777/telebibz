@@ -40,7 +40,7 @@ await bot.api.getChat(chatId);
 await bot.api.setMyCommands({ commands: [{ command: 'start', description: 'Start' }] });
 ```
 
-Use the exact Telegram method name and payload fields. The [generated method list](/en/reference/methods) links each registered method to Telegram's reference.
+Use the exact Telegram method name and payload fields. The [generated method list](/en/reference/methods) links all 185 registered names to their argument tuple, payload, result type, and Telegram's field reference.
 
 ## Responses and errors
 

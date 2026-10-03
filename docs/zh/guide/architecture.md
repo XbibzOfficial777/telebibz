@@ -68,3 +68,9 @@ Context 提供原始 `ctx.update`、API 客户端 `ctx.api`，以及回复、文
 ## 测试与集成中的 `handleUpdate()`
 
 `bot.handleUpdate(update)` 可在不启动轮询的情况下，将指定更新传入相同的中间件管线。可用于重放测试样本或接入自定义传输。它不会验证更新是否来自 Telegram；请在 HTTP 边界验证请求密钥。
+
+## 延伸阅读
+
+- [生产运维模式](/zh/guide/production-patterns)
+- [故障排查](/zh/guide/troubleshooting)
+- [Bot API 参考](/zh/reference/api)

@@ -35,12 +35,13 @@ main().catch(console.error);
 
 ## 方法名、payload 与返回值
 
-`TelegramMethodName`、`TelegramMethodPayload<M>` 和 `TelegramMethodResult<M>` 源自软件包附带的 Telegram Bot API schema。`callApi()` 和 `raw()` 会根据方法名推断 payload 与响应类型：
+`TelegramMethodName`、`TelegramMethodArguments<M>`、`TelegramMethodPayload<M>` 和 `TelegramMethodResult<M>` 源自软件包附带的 Telegram Bot API schema。`callApi()` 和 `raw()` 会根据方法名推断参数元组与响应类型：
 
 ```ts
 import {
   TeleBibz,
   type TelegramMethodName,
+  type TelegramMethodArguments,
   type TelegramMethodPayload,
   type TelegramMethodResult,
 } from '@xbibzlibrary/telebibz';
@@ -51,9 +52,10 @@ const payload: TelegramMethodPayload<typeof method> = {
   chat_id: 123456789,
   text: '来自 TypeScript 的问候',
 };
+const args: TelegramMethodArguments<typeof method> = [payload];
 
 async function send() {
-  const result: TelegramMethodResult<typeof method> = await bot.api.callApi(method, payload);
+  const result: TelegramMethodResult<typeof method> = await bot.api.callApi(method, ...args);
   return result;
 }
 ```
@@ -79,7 +81,7 @@ bot.cmd('status', (ctx) => ctx.replyWithRichMessage(rich.blocks([
 ## 导出的类型
 
 - `TeleBibzOptions`、`SessionOptions`、`Handler`、`Context`、`Composer`、`BotError`、`ApiClient` 和 `ApiError`。
-- `TelegramFileInput`、`TelegramMethodName`、`TelegramMethodPayload<M>`、`TelegramMethodResult<M>`、`TelegramApiMethods` 和 `TelegramApiPayloads`。
+- `TelegramFileInput`、`TelegramMethodName`、`TelegramMethodArguments<M>`、`TelegramMethodPayload<M>`、`TelegramMethodResult<M>`、`TelegramApiMethods` 和 `TelegramApiPayloads`。
 - 作为 Bot API 对象类型命名空间的 `TelegramTypes`。
 - Rich Message 类型和文件输入类型。
 

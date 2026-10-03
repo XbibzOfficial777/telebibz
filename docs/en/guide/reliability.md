@@ -1,76 +1,80 @@
 ---
 title: Rate limits and errors
-description: Retry temporary Bot API failures and report handler errors safely.
+description: Handle 429 responses, limit bursts, and report recoverable errors safely.
 ---
 
 # Rate limits and errors
 
-Telegram can return temporary network or rate-limit errors. Retry carefully, limit request volume, and keep handler errors visible in logs.
+Telegram applies global rules as well as chat- and method-specific limits. Avoid uncontrolled parallel calls; when a 429 response arrives, read Telegram's `retry_after` value and schedule the next attempt accordingly.
 
-## Automatic retry and API queue
+## Automatic retry and the API queue
 
-TeleBibz provides API transformers for retries and throttling:
+`autoRetry()` retries eligible errors that include `parameters.retry_after`. `throttler()` queues outgoing calls and spaces them apart.
 
 ```js
 const { autoRetry, throttler } = require('@xbibzlibrary/telebibz');
 
-bot.api.config.use(autoRetry());
-bot.api.config.use(throttler());
+bot.api.config.use(throttler({ perSecond: 25 }));
+bot.api.config.use(autoRetry({ maxRetry: 5, baseDelayMs: 500 }));
 ```
 
-`autoRetry()` uses Telegram's `retry_after` value for rate-limit responses and retries eligible temporary failures. `throttler()` queues API calls to reduce request bursts. Transformers apply to API requests, not arbitrary code in handlers. Review their defaults and tune them for your workload and Telegram's documented limits.
+By default, `autoRetry()` makes up to five retries for failures with `retry_after`, adding `baseDelayMs * attempt` between tries. The default `throttler()` limits this client to 28 calls per second. It is local to one instance/process; multiple workers need a shared queue or rate limiter.
+
+Add transformers after creating `bot` and before making requests. The newest transformer becomes the outer layer; the order above puts `autoRetry()` outside `throttler()`, so each retry also passes through the queue.
 
 ## Limit updates per user
 
-Apply a policy in middleware when an application needs per-user limits. A production limiter should use a shared store if the bot runs in multiple processes.
+`limiter()` is an in-memory middleware that limits updates from one user. Its default is three updates in two seconds:
 
 ```js
-const lastSeen = new Map();
-const minimumIntervalMs = 500;
+const { limiter } = require('@xbibzlibrary/telebibz');
 
-bot.use(async (ctx, next) => {
-  const userId = ctx.from?.id;
-  if (userId) {
-    const now = Date.now();
-    const previous = lastSeen.get(userId) ?? 0;
-    if (now - previous < minimumIntervalMs) return;
-    lastSeen.set(userId, now);
-  }
-  return next();
-});
+bot.use(limiter({
+  windowMs: 2_000,
+  limit: 3,
+  onExceeded: (ctx) => ctx.reply('Please try again shortly.'),
+}));
 ```
 
-This in-memory example resets on restart and does not coordinate workers. For abuse prevention, also consider chat IDs, command cost, and application-level authorization.
+Register the limiter before the handlers it should protect. The default key uses `from.id`, falling back to the chat ID when no sender is present. Buckets live in a process-local `Map`, so this is not distributed protection; use a shared store when several workers need consistent limits.
 
 ## Handler and Bot API errors
 
-Set `onError(err, ctx)` to report errors from handlers. A Context may not exist for polling or startup failures. Catch expected errors close to the operation and avoid returning internal stack traces to users.
+TeleBibz wraps the handler pipeline in a built-in error boundary. Set `onError(err, ctx)` in the constructor to report errors to logging/telemetry. A handler error includes the original error and, when available, Context; fatal polling errors may have no Context.
 
 ```js
 const bot = new TeleBibz(token, {
   onError: (err, ctx) => {
-    console.error('TeleBibz error:', err);
-    if (ctx?.chatId) console.error('Chat ID:', ctx.chatId);
+    console.error('Update failed:', { err, updateId: ctx?.update?.update_id });
   },
-});
-
-bot.cmd('profile', async (ctx) => {
-  try {
-    await ctx.reply(await loadProfile(ctx.from.id));
-  } catch (error) {
-    console.error('Could not load profile:', error);
-    await ctx.reply('The profile is temporarily unavailable.');
-  }
 });
 ```
 
-Bot API failures include Telegram's description and error metadata in the thrown error. Use `autoRetry` for eligible transient errors; do not retry invalid requests or authorization failures indefinitely.
+Outside a handler, wrap direct API calls in `try/catch`. `ApiError` can include `description`, `error_code`, `method`, `payload`, and Telegram response parameters. `humanize(error)` returns `pesan` and `saran` (the library's current Indonesian property names), plus `method` and `code` when available.
 
-## Common issues
+```js
+const { humanize } = require('@xbibzlibrary/telebibz');
 
-- **409 Conflict:** another poller is using `getUpdates` for the same bot token. Stop the duplicate process.
-- **429 Too Many Requests:** slow down and honor `retry_after`; avoid parallel request bursts.
-- **Network timeout:** check the host's outbound access and proxy configuration. Retry only operations that are safe to repeat.
-- **Handler failure:** inspect the `onError` report and keep a minimal reproducible example.
+try {
+  await bot.api.getChat(chatId);
+} catch (err) {
+  const info = humanize(err);
+  console.error(info.pesan, info.saran);
+}
+```
 
-See [polling and webhooks](/en/guide/deployment) and the [FAQ](/en/faq).
+Avoid logging the full payload or personal identifiers unless needed and appropriately protected.
+
+## Common errors
+
+| Error | First check |
+| --- | --- |
+| `409 Conflict` | Another poller uses the token; stop the duplicate instance or switch to webhooks. |
+| `429 Too Many Requests` | Honor `retry_after`; inspect per-chat as well as global request volume. |
+| `chat not found` | Verify the ID; a private user usually needs to open the bot and press **Start**. |
+| `bot was blocked by the user` | Mark the recipient inactive and stop retrying broadcasts to them. |
+| `not enough rights` | Check the bot's admin status and chat permissions. |
+| `message is not modified` | The edit did not change the content; it is usually safe to ignore. |
+| Parse-entity error | Validate escaping and HTML/Markdown tags before sending. |
+
+Never log bot tokens, sensitive data, or full message content without a clear need. For transformer retries, transport queues, and test doubles, see [Transport and testing](/en/guide/transports-testing); for broadcast safety, see [Inline mode and broadcast](/en/guide/inline-broadcast).

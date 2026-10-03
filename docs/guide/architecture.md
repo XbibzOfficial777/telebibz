@@ -71,3 +71,9 @@ Jangan gunakan polling dan webhook sekaligus untuk token bot yang sama. Satu tok
 `bot.handleUpdate(update)` menjalankan satu update mentah melalui pipeline yang sama tanpa memulai polling. Ini berguna untuk webhook/serverless, replay fixture test, dan pemeriksaan handler. Sebelum memanggilnya di aplikasi, pastikan body sudah diparse dan validasi request dilakukan oleh server/framework-mu.
 
 Lihat [handler & filter](/guide/handlers), [middleware](/guide/middleware), [polling & webhook](/guide/deployment), dan [transport/testing](/guide/transports-testing) untuk contoh operasional.
+
+## Panduan lanjutan
+
+- [Pola operasi produksi](/guide/production-patterns)
+- [Pemecahan masalah](/guide/troubleshooting)
+- [Referensi Telegram API](/reference/api)

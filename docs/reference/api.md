@@ -33,7 +33,7 @@ await bot.api.callApi('sendMessage', {
 await ctx.api.raw('getChat', { chat_id: ctx.chatId });
 ```
 
-Method yang punya shortcut positional tetap menerima payload Bot API melalui `callApi()`. Nama method harus persis seperti yang digunakan Telegram, misalnya `getChatMember`.
+Method yang punya shortcut positional tetap menerima payload Bot API melalui `callApi()`. Nama method harus persis seperti yang digunakan Telegram, misalnya `getChatMember`. [Daftar 185 method yang terindeks](/reference/methods) menautkan setiap nama ke tuple argumen, payload, return type, serta dokumentasi field Telegram.
 
 ## Proxy untuk nama lain
 

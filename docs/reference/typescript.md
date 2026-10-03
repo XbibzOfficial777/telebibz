@@ -35,12 +35,13 @@ Handler menerima `Context`; properti update yang tidak selalu tersedia ditandai 
 
 ## Tipe nama, payload, dan hasil method
 
-`TelegramMethodName`, `TelegramMethodPayload<M>`, dan `TelegramMethodResult<M>` berasal dari schema Telegram Bot API yang disertakan dalam package. `callApi()` dan `raw()` menginferensikan payload serta response dari nama method:
+`TelegramMethodName`, `TelegramMethodArguments<M>`, `TelegramMethodPayload<M>`, dan `TelegramMethodResult<M>` berasal dari schema Telegram Bot API yang disertakan dalam package. `callApi()` dan `raw()` menginferensikan tuple argumen serta response dari nama method:
 
 ```ts
 import {
   TeleBibz,
   type TelegramMethodName,
+  type TelegramMethodArguments,
   type TelegramMethodPayload,
   type TelegramMethodResult,
 } from '@xbibzlibrary/telebibz';
@@ -51,9 +52,10 @@ const payload: TelegramMethodPayload<typeof method> = {
   chat_id: 123456789,
   text: 'Halo dari TypeScript',
 };
+const args: TelegramMethodArguments<typeof method> = [payload];
 
 async function send() {
-  const result: TelegramMethodResult<typeof method> = await bot.api.callApi(method, payload);
+  const result: TelegramMethodResult<typeof method> = await bot.api.callApi(method, ...args);
   return result;
 }
 ```
@@ -79,7 +81,7 @@ File input mendukung string/path, `Buffer`, `Uint8Array`, dan stream melalui cla
 ## Tipe yang diekspor
 
 - `TeleBibzOptions`, `SessionOptions`, `Handler`, `Context`, `Composer`, `BotError`, `ApiClient`, dan `ApiError`.
-- `TelegramFileInput`, `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, dan `TelegramApiPayloads`.
+- `TelegramFileInput`, `TelegramMethodName`, `TelegramMethodArguments<M>`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, dan `TelegramApiPayloads`.
 - `TelegramTypes` sebagai namespace type untuk objek Bot API.
 - Tipe Rich Message serta tipe input file.
 

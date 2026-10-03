@@ -57,7 +57,7 @@ const locales = [
     lead: `Registry TeleBibz mencakup **${TELEGRAM_API_METHODS.length} nama metode**. Daftar ini dibuat otomatis dari source saat build.`,
     warning: '> Nama metode tidak menjamin endpoint dapat digunakan tanpa syarat. Izin, chat, update, dan batasan Telegram tetap berlaku.',
     callTitle: 'Pemanggilan',
-    callNote: 'Method yang memiliki shortcut menerima argumen sesuai shortcut; method lainnya dapat dipanggil memakai nama method dan object payload. Deklarasi TypeScript memeriksa method, payload, dan hasil.',
+    callNote: 'Daftar berikut dibuat dari registry dan deklarasi package. Setiap entri menghubungkan tuple argumen, payload, dan hasil yang dapat diperiksa IDE; gunakan link Telegram untuk deskripsi field dan batasan endpoint.',
     relatedTitle: 'Referensi terkait',
     related: ['- [Referensi Telegram API](/reference/api)', '- [Tipe TypeScript](/reference/typescript)', '- [Opsi bot](/reference/options)'],
   },
@@ -70,7 +70,7 @@ const locales = [
     lead: `The TeleBibz registry includes **${TELEGRAM_API_METHODS.length} method names**. This page is generated from the source registry during the docs build.`,
     warning: '> A method name does not guarantee that every request is available. Telegram permissions, chat context, updates, and endpoint limits still apply.',
     callTitle: 'Calling methods',
-    callNote: 'Use the documented shortcut signature where one exists. Otherwise call the method with its name and a payload object. TypeScript declarations validate the method, payload, and result.',
+    callNote: 'This index is generated from the method registry and package declarations. Each entry links the type-safe argument tuple, payload, and result; use the Telegram link for field descriptions and endpoint constraints.',
     relatedTitle: 'Related references',
     related: ['- [Bot API reference](/en/reference/api)', '- [TypeScript](/en/reference/typescript)', '- [Bot options](/en/reference/options)'],
   },
@@ -83,7 +83,7 @@ const locales = [
     lead: `TeleBibz 注册表包含 **${TELEGRAM_API_METHODS.length} 个方法名称**。本页在文档构建时根据源码自动生成。`,
     warning: '> 方法名称不代表请求一定可用。实际调用仍受 Telegram 权限、聊天上下文、更新类型和接口限制约束。',
     callTitle: '调用方法',
-    callNote: '优先使用已提供的快捷方法签名；其他方法可通过方法名称和 payload 对象调用。TypeScript 声明会检查方法、参数和返回值。',
+    callNote: '以下索引根据方法注册表和 package 声明生成。每个条目都链接到可由 IDE 检查的参数元组、payload 和返回类型；字段说明与接口限制请查看 Telegram 链接。',
     relatedTitle: '相关参考',
     related: ['- [Bot API 参考](/zh/reference/api)', '- [TypeScript](/zh/reference/typescript)', '- [Bot 配置项](/zh/reference/options)'],
   },
@@ -123,6 +123,20 @@ for (const locale of locales) {
   ];
   for (const { title, methods } of methodSections(locale.locale)) {
     lines.push(`## ${title}`, '', methods.map((method) => `- [${method}](https://core.telegram.org/bots/api#${method.toLowerCase()})`).join('\n'), '');
+    lines.push(`### ${locale.locale === 'id' ? 'Payload dan hasil bertipe' : locale.locale === 'en' ? 'Typed payloads and results' : '类型化 payload 与结果'}`, '');
+    for (const method of methods) {
+      lines.push(
+        `::: details ${method}`,
+        '',
+        `- ${locale.locale === 'id' ? 'Argumen' : locale.locale === 'en' ? 'Arguments' : '参数'}: \`TelegramMethodArguments<'${method}'>\``,
+        `- Payload: \`TelegramMethodPayload<'${method}'>\``,
+        `- ${locale.locale === 'id' ? 'Hasil' : locale.locale === 'en' ? 'Result' : '返回值'}: \`Promise<TelegramMethodResult<'${method}'>>\``,
+        `- ${locale.locale === 'id' ? 'Field dan batasan endpoint' : locale.locale === 'en' ? 'Field definitions and endpoint constraints' : '字段定义与接口限制'}: [${method}](https://core.telegram.org/bots/api#${method.toLowerCase()}).`,
+        '',
+        ':::',
+        '',
+      );
+    }
   }
   lines.push(`## ${locale.relatedTitle}`, '', ...locale.related, '');
   fs.mkdirSync(path.dirname(locale.target), { recursive: true });

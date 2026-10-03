@@ -5,6 +5,8 @@ description: Jawaban masalah umum saat menjalankan bot TeleBibz.
 
 # FAQ & pemecahan masalah
 
+Untuk alur diagnosis per transport, webhook, session, dan Bot API, lihat [panduan pemecahan masalah](/guide/troubleshooting).
+
 ## Bot tidak merespons
 
 1. Pastikan proses Node.js masih berjalan tanpa error.

@@ -5,6 +5,8 @@ description: 解决运行 TeleBibz 机器人时常见的问题。
 
 # 常见问题与排查
 
+关于 transport、Webhook、session 与 Bot API 的逐步诊断，请查看[故障排查指南](/zh/guide/troubleshooting)。
+
 ## 机器人没有响应
 
 1. 检查 Node.js 进程是否仍在运行，且没有错误。

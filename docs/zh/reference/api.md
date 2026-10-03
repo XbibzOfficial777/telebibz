@@ -40,7 +40,7 @@ await bot.api.getChat(chatId);
 await bot.api.setMyCommands({ commands: [{ command: 'start', description: '开始' }] });
 ```
 
-请使用准确的 Telegram 方法名和 payload 字段。已注册方法列表详见[生成的方法列表](/zh/reference/methods)。
+请使用准确的 Telegram 方法名和 payload 字段。[生成的方法列表](/zh/reference/methods)包含 185 个已注册名称，并链接到各自的参数元组、payload、返回类型和 Telegram 字段文档。
 
 ## 响应与错误
 
