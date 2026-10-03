@@ -287,11 +287,15 @@ function methodSections(locale) {
   }).filter((group) => group.methods.length);
 }
 
-function escapeHtmlCell(value) {
-  return String(value || '—')
+function escapeHtmlText(value) {
+  return String(value || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+    .replace(/>/g, '&gt;');
+}
+
+function escapeHtmlCell(value) {
+  return escapeHtmlText(value || '—')
     .replace(/\|/g, '&#124;')
     .replace(/`/g, '&#96;')
     .replace(/\s+/g, ' ')
@@ -349,7 +353,7 @@ for (const locale of locales) {
         '',
         `**${labels.endpoint}:** [${method.name}](https://core.telegram.org/bots/api#${method.name.toLowerCase()})`,
         '',
-        method.description || (locale.locale === 'zh' ? 'Telegram 未在 package 声明中提供方法说明。' : locale.locale === 'id' ? 'Deskripsi metode tidak tersedia di deklarasi package.' : 'No method description is available in the package declarations.'),
+        escapeHtmlText(method.description || (locale.locale === 'zh' ? 'Telegram 未在 package 声明中提供方法说明。' : locale.locale === 'id' ? 'Deskripsi metode tidak tersedia di deklarasi package.' : 'No method description is available in the package declarations.')),
         '',
         `- ${labels.arguments}: \`TelegramMethodArguments<'${method.name}'>\``,
         `- Payload: ${!method.hasPayload ? labels.noPayload : method.payloadOptional ? labels.payloadOptional : labels.payloadRequired}`,
