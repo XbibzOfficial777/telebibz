@@ -12,6 +12,7 @@ description: Constructor options, lifecycle methods, sessions, and transport set
 | Option | Type (summary) | Default or notes |
 | --- | --- | --- |
 | `allowedUpdates` | `string[]` | Update types requested during polling; the default includes common types and Business updates supported by this release. |
+| `maxConcurrentUpdates` | `number` | `256`; active-update limit per instance, must be a positive integer. Updates sharing a session key run in order. |
 | `onError` | `(err, ctx?) => unknown` | Built-in reporter if omitted. Context may be absent for errors outside handlers. |
 | `silent` | `boolean` | `false`; hides boot banner and logs. When enabled, install your own shutdown handler because the built-in signal handler is also omitted. |
 | `dropPending` | `boolean` | `false`; can be overridden in `launch()` options. |

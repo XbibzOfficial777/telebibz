@@ -45,6 +45,20 @@ await bot.launch();
 
 `launch()` memulai poll loop dan mengembalikan instance setelah inisialisasi. Loop update berjalan selama proses hidup. Untuk graceful shutdown, panggil `bot.stop()` dan tunggu `bot.runPromise` jika aplikasi perlu memastikan poller sudah selesai.
 
+## Pemrosesan konkuren
+
+Secara default, satu instance TeleBibz dapat menjalankan hingga 256 update sekaligus. Poller tidak menunggu satu handler selesai sebelum mengambil dan mengirim update berikutnya; jumlah pekerjaan aktif dibatasi dan intake diberi backpressure.
+
+```js
+const bot = new TeleBibz(process.env.BOT_TOKEN, {
+  maxConcurrentUpdates: 256, // default: 256; gunakan bilangan bulat positif
+});
+```
+
+Update dengan session key yang sama tetap diproses berurutan agar read/modify/write `ctx.session` tidak saling menimpa. Secara default key session memakai pengirim dan chat; jika `session.getKey` dikustomisasi, key tersebut juga menentukan urutan. Update dari key berbeda dapat berjalan paralel. Batas ini berlaku untuk polling dan pemanggilan `handleUpdate()` dari webhook.
+
+Concurrency terutama membantu handler asynchronous yang menunggu database, HTTP, atau I/O lain. Callback JavaScript yang CPU-bound tetap berbagi event loop proses. Batas ini juga tidak menaikkan rate limit Telegram untuk pesan keluar; gunakan retry atau throttling API bila diperlukan. Saat `bot.stop()` dipanggil, poller berhenti menerima pekerjaan baru lalu menunggu update yang sudah diterima selesai.
+
 ## Urutan pipeline
 
 1. **Session**: muat state sesuai key update ke `ctx.session`.

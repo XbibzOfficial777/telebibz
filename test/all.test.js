@@ -6,7 +6,7 @@ const { TeleBibz, btn, url, kb, webApp, copy, humanize, File, InlineKeyboard,
   Menu, MenuContainer, iq, autoRetry, throttler, limiter, InputMediaBuilder } = require('..');
 
 let N = 0, OK = 0;
-const TOTAL = 30;
+const TOTAL = 33;
 const t = (nama, fn) => {
   const done = () => { N++; if (N === TOTAL) { console.log(`\n${OK}/${N} lulus`); process.exit(OK === N ? 0 : 1); } };
   Promise.resolve()
@@ -16,7 +16,7 @@ const t = (nama, fn) => {
 };
 
 /* ===== harness: bot dengan transport palsu (merekam panggilan API) ===== */
-function buatBot(overrides = {}) {
+function buatBot(overrides = {}, options = {}) {
   const calls = [];
   const transport = async (method, payload = {}) => {
     calls.push({ method, payload });
@@ -25,7 +25,7 @@ function buatBot(overrides = {}) {
     if (overrides[method]) return overrides[method](payload);
     return true;
   };
-  const bot = new TeleBibz('123456:TESTTOKEN-TESTTOKEN-TESTTOKEN-TESTOKEN', { silent: true, transport });
+  const bot = new TeleBibz('123456:TESTTOKEN-TESTTOKEN-TESTTOKEN-TESTOKEN', { ...options, silent: true, transport });
   return { bot, calls, me: null };
 }
 async function boot(b) { await b.init(); }
@@ -200,6 +200,68 @@ t('launch: getUpdates 409 → retry halus; stop() resolve runPromise', async () 
   bot.stop();
   await bot.runPromise;
   assert.ok(polls >= 2, `harus retry minimal sekali, polls=${polls}`);
+});
+
+/* ===== Concurrency: 256 pengguna berbeda diproses tanpa serial menunggu ===== */
+t('handleUpdate menjalankan 256 pengguna secara konkuren secara default', async () => {
+  const { bot } = buatBot();
+  await boot(bot);
+  const target = 256;
+  let active = 0, peak = 0, started = 0, release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const fallback = setTimeout(release, 1000);
+  bot.on(':text', async () => {
+    active++;
+    started++;
+    peak = Math.max(peak, active);
+    if (started === target) release();
+    await gate;
+    active--;
+  });
+  const updates = Array.from({ length: target }, (_, i) => ({
+    update_id: 10000 + i,
+    message: { message_id: i + 1, date: 1, text: `user-${i}`, from: { id: i + 1 }, chat: { id: i + 1, type: 'private' } },
+  }));
+  await Promise.all(updates.map((update) => bot.handleUpdate(update)));
+  clearTimeout(fallback);
+  assert.equal(started, target);
+  assert.equal(peak, target, 'semua 256 update harus dapat berjalan bersamaan');
+});
+
+t('maxConcurrentUpdates membatasi worker update dan memvalidasi nilai', async () => {
+  const { bot } = buatBot({}, { maxConcurrentUpdates: 3 });
+  await boot(bot);
+  let active = 0, peak = 0;
+  bot.on(':text', async () => {
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    active--;
+  });
+  const updates = Array.from({ length: 12 }, (_, i) => ({
+    update_id: 20000 + i,
+    message: { message_id: i + 1, date: 1, text: `user-${i}`, from: { id: i + 1 }, chat: { id: i + 1, type: 'private' } },
+  }));
+  await Promise.all(updates.map((update) => bot.handleUpdate(update)));
+  assert.equal(peak, 3);
+  assert.throws(() => new TeleBibz('123456:TESTTOKEN', { maxConcurrentUpdates: 0 }), /maxConcurrentUpdates/);
+});
+
+t('update dari session key sama tetap berurutan untuk menjaga state', async () => {
+  const { bot } = buatBot();
+  await boot(bot);
+  const order = [];
+  bot.on(':text', async (ctx) => {
+    order.push(`start:${ctx.msg.text}`);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    order.push(`end:${ctx.msg.text}`);
+  });
+  const makeUpdate = (update_id, text) => ({
+    update_id,
+    message: { message_id: update_id, date: 1, text, from: { id: 700 }, chat: { id: 700, type: 'private' } },
+  });
+  await Promise.all([bot.handleUpdate(makeUpdate(1, 'first')), bot.handleUpdate(makeUpdate(2, 'second'))]);
+  assert.deepEqual(order, ['start:first', 'end:first', 'start:second', 'end:second']);
 });
 
 /* ===== 15. Proxy API generik: metode apapun ===== */

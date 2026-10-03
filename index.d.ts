@@ -68,6 +68,8 @@ export interface SessionOptions {
 }
 export interface TeleBibzOptions {
   allowedUpdates?: string[];
+  /** Maximum active updates per bot process. Default: 256. Updates sharing a session key are serialized. */
+  maxConcurrentUpdates?: number;
   onError?: (err: unknown, ctx?: Context) => unknown;
   silent?: boolean;
   dropPending?: boolean;

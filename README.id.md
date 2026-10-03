@@ -202,6 +202,7 @@ jadi `BotError` dan mengalir ke `opts.onError` atau reporter manusiawi.
 ```js
 const bot = new TeleBibz('TOKEN', {
   allowedUpdates: [...],   // batasi tipe update (default: tipe umum + Business)
+  maxConcurrentUpdates: 256, // batas update aktif (default: 256)
   onError: (err, ctx) {},  // handle error sendiri (default: reporter manusiawi)
   silent: false,           // tanpa banner boot
   dropPending: false,      // buang update lama saat start

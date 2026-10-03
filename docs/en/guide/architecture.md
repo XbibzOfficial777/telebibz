@@ -34,6 +34,20 @@ await bot.launch();
 
 `launch()` resolves after startup; it does not mean the bot has permanently finished polling. In a long-running service, keep the process alive and install appropriate shutdown handling.
 
+## Concurrent processing
+
+A TeleBibz instance processes up to 256 updates concurrently by default. The poller dispatches an update without waiting for the previous handler to finish, while applying backpressure and bounding the amount of queued work.
+
+```js
+const bot = new TeleBibz(process.env.BOT_TOKEN, {
+  maxConcurrentUpdates: 256, // default: 256; use a positive integer
+});
+```
+
+Updates with the same session key remain ordered so concurrent read/modify/write operations on `ctx.session` do not overwrite one another. By default, the key uses the sender and chat; a custom `session.getKey` also defines the ordering key. Different keys can run concurrently. This limit applies to polling and webhook calls to `handleUpdate()`.
+
+Concurrency helps most when handlers await a database, HTTP request, or other I/O. CPU-bound JavaScript callbacks still share the process event loop. This option does not raise Telegram's outbound API rate limits; use API retries or throttling when needed. On `bot.stop()`, the poller stops accepting work and waits for already received updates to finish.
+
 ## Middleware order
 
 Middleware and handlers run in registration order. A middleware can inspect or enrich `ctx`, stop processing by not calling `next()`, or call `await next()` to continue down the chain. Code after `next()` runs as control returns from downstream middleware.

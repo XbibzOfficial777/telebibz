@@ -12,6 +12,7 @@ const { TeleBibz } = require('@xbibzlibrary/telebibz');
 
 const bot = new TeleBibz(process.env.BOT_TOKEN, {
   allowedUpdates: ['message', 'callback_query'],
+  maxConcurrentUpdates: 256, // maksimum update aktif; default 256
   silent: false,
   dropPending: false,
   onError: (err, ctx) => {
@@ -35,6 +36,8 @@ const bot = new TeleBibz(process.env.BOT_TOKEN, {
 | `proxy` | Alamat proxy HTTP(S) untuk koneksi Telegram. |
 | `timeoutMs` | Timeout request transport dalam milidetik. |
 | `headers` | Header tambahan untuk request transport. |
+
+`maxConcurrentUpdates` harus berupa bilangan bulat positif. Polling dan pemanggilan `handleUpdate()` dari webhook memakai batas yang sama; update selanjutnya menunggu slot tersedia. Concurrency ini paling bermanfaat untuk handler asynchronous/I/O—JavaScript yang CPU-bound tetap berjalan pada event loop yang sama. Batas API keluar Telegram terpisah dari batas pemrosesan update; gunakan `autoRetry` atau `throttler` bila bot perlu mengatur retry dan laju pengiriman.
 
 ## Environment variable
 

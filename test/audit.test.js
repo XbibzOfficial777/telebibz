@@ -77,6 +77,30 @@ async function main() {
     assert.equal(data.get('7:7').count, 2);
   });
 
+  await test('session.getKey dihitung sekali dan menjaga urutan lintas update', async () => {
+    let keyCalls = 0;
+    const storage = new Map();
+    const bot = new TeleBibz('123456:TESTTOKEN', {
+      silent: true,
+      transport: async () => true,
+      session: { storage, getKey: (ctx) => { keyCalls++; return String(ctx.from.id); } },
+    });
+    const observed = [];
+    bot.on(':text', async (ctx) => {
+      observed.push(ctx.session.count || 0);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      ctx.session.count = (ctx.session.count || 0) + 1;
+    });
+    const makeUpdate = (update_id, chatId) => ({
+      update_id,
+      message: { message_id: update_id, date: 1, text: 'increment', from: { id: 7 }, chat: { id: chatId, type: 'group' } },
+    });
+    await Promise.all([bot.handleUpdate(makeUpdate(1, 70)), bot.handleUpdate(makeUpdate(2, 71))]);
+    assert.equal(keyCalls, 2, 'getKey hanya perlu dipanggil sekali untuk setiap update');
+    assert.deepEqual(observed, [0, 1]);
+    assert.equal(storage.get('7').count, 2);
+  });
+
   await test('guest_message diteruskan ke Context dan answerGuestQuery membentuk payload resmi', async () => {
     const calls = [];
     const bot = new TeleBibz('123456:TESTTOKEN', { silent: true, transport: async (m, p) => { calls.push({ m, p }); return true; } });
@@ -133,6 +157,35 @@ async function main() {
     await pollLoop({ api, handleUpdate: async () => {}, allowedUpdates: [], dropPending: false, shouldStop: () => stopped, onFatal: () => fatals++ });
     assert.equal(calls, 3);
     assert.equal(fatals, 0);
+  });
+
+  await test('poller dispatch batch secara konkuren dan menunggu handler saat stop', async () => {
+    const updates = Array.from({ length: 12 }, (_, i) => ({ update_id: i + 1 }));
+    let polls = 0, stopped = false, active = 0, peak = 0, entered = 0, release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const fallback = setTimeout(release, 1000);
+    const api = { callApi: async () => {
+      polls++;
+      if (polls === 1) return updates;
+      stopped = true;
+      return [];
+    } };
+    await pollLoop({
+      api,
+      handleUpdate: async () => {
+        active++;
+        entered++;
+        peak = Math.max(peak, active);
+        if (entered === updates.length) release();
+        await gate;
+        active--;
+      },
+      allowedUpdates: [], dropPending: false, shouldStop: () => stopped, maxInFlightUpdates: updates.length,
+    });
+    clearTimeout(fallback);
+    assert.equal(entered, updates.length);
+    assert.equal(peak, updates.length, 'poller tidak boleh menunggu satu update sebelum dispatch berikutnya');
+    assert.equal(active, 0, 'pollLoop menyelesaikan graceful drain sebelum return');
   });
 
   await test('throttler tetap menjalankan antrean setelah satu request gagal', async () => {

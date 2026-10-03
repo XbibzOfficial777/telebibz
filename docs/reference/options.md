@@ -12,6 +12,7 @@ description: Referensi opsi constructor, lifecycle, session, dan transport.
 | Opsi | Tipe ringkas | Default / catatan |
 | --- | --- | --- |
 | `allowedUpdates` | `string[]` | Daftar update untuk polling; default mencakup jenis umum dan Business yang didukung versi ini. |
+| `maxConcurrentUpdates` | `number` | `256`; batas update aktif per instance, wajib bilangan bulat positif. Session key sama diproses berurutan. |
 | `onError` | `(err, ctx?) => unknown` | Reporter bawaan jika tidak disetel; context bisa tidak ada untuk error di luar handler. |
 | `silent` | `boolean` | `false`; menyembunyikan banner/log boot. Bila aktif, pasang sendiri handler shutdown karena handler sinyal bawaan juga tidak dipasang. |
 | `dropPending` | `boolean` | `false`; bisa dioverride melalui opsi `launch()`. |
@@ -21,6 +22,8 @@ description: Referensi opsi constructor, lifecycle, session, dan transport.
 | `proxy` | `string` | Alamat proxy HTTP(S) bila dibutuhkan. |
 | `timeoutMs` | `number` | Batas waktu request transport dalam milidetik. |
 | `headers` | `Record<string, string>` | Header tambahan transport. |
+
+Pemrosesan konkuren berlaku untuk polling dan webhook. Update dengan session key sama diserialkan agar perubahan session tidak saling menimpa; API Telegram untuk pesan keluar tetap memiliki rate limit tersendiri. Lihat [arsitektur & siklus update](/guide/architecture#pemrosesan-konkuren).
 
 `SessionOptions` menerima `initial()`, `getKey(ctx)`, dan `storage`. Storage dapat berupa `Map` atau adapter dengan `read(key)`, `write(key, value)`, dan `delete(key)` yang boleh asynchronous. Lihat [File & session](/guide/files-sessions#session-bawaan).
 

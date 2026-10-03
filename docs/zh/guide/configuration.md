@@ -12,6 +12,7 @@ const { TeleBibz } = require('@xbibzlibrary/telebibz');
 
 const bot = new TeleBibz(process.env.BOT_TOKEN, {
   allowedUpdates: ['message', 'callback_query'],
+  maxConcurrentUpdates: 256, // 同时处理上限；默认 256
   silent: false,
   dropPending: false,
   onError: (err, ctx) => {
@@ -26,6 +27,7 @@ const bot = new TeleBibz(process.env.BOT_TOKEN, {
 | 选项 | 用途 |
 | --- | --- |
 | `allowedUpdates` | 限制长轮询请求的更新类型。默认值包含常用类型及当前版本支持的 Business 更新。 |
+| `maxConcurrentUpdates` | 每个机器人实例的最大活动更新数；默认 `256`。相同会话键的更新保持顺序，不同会话键可并行处理。 |
 | `onError(err, ctx)` | 自定义错误报告函数。未设置时使用内置报告器；轮询错误可能没有 `ctx`。 |
 | `silent` | 为 `true` 时隐藏启动横幅和启动日志。 |
 | `dropPending` | 启动轮询时丢弃旧更新。也可通过 `launch({ dropPending: true })` 传入。 |
@@ -35,6 +37,8 @@ const bot = new TeleBibz(process.env.BOT_TOKEN, {
 | `proxy` | Telegram 请求使用的 HTTP(S) 代理地址。 |
 | `timeoutMs` | 传输请求超时时间，单位为毫秒。 |
 | `headers` | 传输请求的附加请求头。 |
+
+`maxConcurrentUpdates` 必须是正整数。长轮询和 Webhook 对 `handleUpdate()` 的调用共用此上限；超出的更新会等待空闲槽位。并发对异步/I/O 密集型处理器最有效；CPU 密集型 JavaScript 仍运行在同一个事件循环中。Telegram 出站 API 的限流与更新处理并发上限相互独立；需要控制重试或发送速率时可使用 `autoRetry` 或 `throttler`。
 
 ## 环境变量
 

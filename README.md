@@ -201,6 +201,7 @@ and flows to `opts.onError` or the humanized reporter.
 ```js
 const bot = new TeleBibz('TOKEN', {
   allowedUpdates: [...],   // limit update types (default: common + Business types)
+  maxConcurrentUpdates: 256, // active update limit (default: 256)
   onError: (err, ctx) {},  // custom error handler (default: humanized reporter)
   silent: false,           // hide boot banner
   dropPending: false,      // discard old updates on start

@@ -12,6 +12,7 @@ const { TeleBibz } = require('@xbibzlibrary/telebibz');
 
 const bot = new TeleBibz(process.env.BOT_TOKEN, {
   allowedUpdates: ['message', 'callback_query'],
+  maxConcurrentUpdates: 256, // maximum active updates; default 256
   silent: false,
   dropPending: false,
   onError: (err, ctx) => {
@@ -26,6 +27,7 @@ const bot = new TeleBibz(process.env.BOT_TOKEN, {
 | Option | Purpose |
 | --- | --- |
 | `allowedUpdates` | Limits update types requested during long polling. The default includes common types and Business updates supported by this version. |
+| `maxConcurrentUpdates` | Maximum active updates per bot instance; default `256`. Updates with the same session key stay ordered, while different keys run concurrently. |
 | `onError(err, ctx)` | Custom error reporter. TeleBibz uses its built-in reporter when omitted. `ctx` may be unavailable for polling errors. |
 | `silent` | Hides the startup banner and boot logs when `true`. |
 | `dropPending` | Drops old updates when polling starts. It can also be passed to `launch({ dropPending: true })`. |
@@ -35,6 +37,8 @@ const bot = new TeleBibz(process.env.BOT_TOKEN, {
 | `proxy` | HTTP(S) proxy address for Telegram requests. |
 | `timeoutMs` | Transport request timeout in milliseconds. |
 | `headers` | Additional transport request headers. |
+
+`maxConcurrentUpdates` must be a positive integer. Polling and webhook calls to `handleUpdate()` share this limit; further updates wait for a slot. Concurrency helps most with asynchronous/I/O-bound handlers—CPU-bound JavaScript still runs on the same event loop. Telegram's outbound API limits are separate from update-processing concurrency; use `autoRetry` or `throttler` when you need retry and send-rate control.
 
 ## Environment variables
 

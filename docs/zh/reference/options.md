@@ -12,6 +12,7 @@ description: Constructor 选项、生命周期方法、会话与传输设置。
 | 选项 | 类型（摘要） | 默认值或说明 |
 | --- | --- | --- |
 | `allowedUpdates` | `string[]` | 轮询请求的更新类型；默认包含常见类型和当前版本支持的 Business 更新。 |
+| `maxConcurrentUpdates` | `number` | `256`；每个实例的活动更新上限，必须为正整数。相同会话键的更新按顺序处理。 |
 | `onError` | `(err, ctx?) => unknown` | 未设置时使用内置报告器。处理器之外的错误可能没有 Context。 |
 | `silent` | `boolean` | 默认 `false`；隐藏启动横幅和日志。启用后内置信号处理器也不会安装，需自行处理关闭。 |
 | `dropPending` | `boolean` | 默认 `false`；可由 `launch()` 选项覆盖。 |
@@ -21,6 +22,8 @@ description: Constructor 选项、生命周期方法、会话与传输设置。
 | `proxy` | `string` | 所需的 HTTP(S) 代理地址。 |
 | `timeoutMs` | `number` | 传输请求超时毫秒数。 |
 | `headers` | `Record<string, string>` | 传输请求的附加请求头。 |
+
+长轮询与 Webhook 均支持并发处理。相同会话键的更新会串行执行，避免会话写入冲突；Telegram 出站 API 仍受其自身速率限制。详见[更新处理流程与架构](/zh/guide/architecture#并发处理)。
 
 `SessionOptions` 接受 `initial()`、`getKey(ctx)` 和 `storage`。存储可以是 `Map`，也可以是提供 `read(key)`、`write(key, value)` 和 `delete(key)` 的适配器；这些方法可为异步函数。详见[文件与会话](/zh/guide/files-sessions#会话)。
 
