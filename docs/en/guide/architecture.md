@@ -9,18 +9,9 @@ TeleBibz receives Telegram updates, wraps each update in a `Context`, and runs i
 
 ## Overview
 
-```text
-Telegram Bot API
-      │ getUpdates / webhook
-      ▼
-  TeleBibz transport
-      │ Update object
-      ▼
- session and middleware
-      │ Context
-      ▼
- matching handlers ───► ctx.api ───► Telegram Bot API
-```
+<WorkflowCanvas flow="telebibz" locale="en" />
+
+Drag nodes to rearrange the map, then select a node to inspect its responsibility. This is the primary dispatch path; error handling and deployment details are covered in their dedicated guides.
 
 The bot instance owns its API client, configuration, session middleware, handler pipeline, and polling lifecycle. Keep one polling process per bot token unless your deployment uses a coordinated update strategy.
 

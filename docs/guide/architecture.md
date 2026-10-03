@@ -9,29 +9,9 @@ TeleBibz memisahkan alur masuk (Telegram update), pemrosesan middleware, context
 
 ## Gambaran umum
 
-```text
-Telegram Bot API
-      │
-      ├── long polling: getUpdates → pollLoop
-      └── webhook: HTTP request → bot.webhook() / handleUpdate()
-                                │
-                                ▼
-                       Context(update, api, botInfo)
-                                │
-                    session middleware (Map/adapter)
-                                │
-                     wizard conversation middleware
-                                │
-                      built-in error boundary
-                                │
-                    handler dan middleware aplikasi
-                                │
-                       ctx.reply() / ctx.api.*
-                                │
-             ApiClient → transformer berurutan → transport
-                                │
-                      Telegram Bot API
-```
+<WorkflowCanvas flow="telebibz" locale="id" />
+
+Seret node untuk menyusun ulang peta, lalu pilih node untuk melihat tanggung jawabnya. Diagram merangkum jalur utama; cabang error dan kebijakan deployment dijelaskan di bab terkait.
 
 Transport bawaan memakai Axios untuk request JSON dan multipart. Dependency/transport detail dapat berubah antarversi, jadi baca `package.json` repository untuk versi yang sedang dipakai.
 

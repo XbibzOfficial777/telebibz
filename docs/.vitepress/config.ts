@@ -1,9 +1,12 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vitepress'
 
 const themeDir = path.dirname(fileURLToPath(import.meta.url))
+const repoRoot = path.resolve(themeDir, '../..')
+const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')) as { version: string }
 const fromGitHubActions = process.env.GITHUB_ACTIONS === 'true'
 const rawAsset = 'https://raw.githubusercontent.com/XbibzOfficial777/telebibz/main/assets'
 const siteLogo = fromGitHubActions
@@ -31,7 +34,7 @@ const versionMenu = (label: string) => ({
   ],
 })
 const versionMenuZh = {
-  text: '版本 3.1.5',
+  text: `版本 ${pkg.version}`,
   items: [
     { text: 'npm 软件包', link: 'https://www.npmjs.com/package/@xbibzlibrary/telebibz' },
     { text: 'GitHub 仓库', link: repository },
@@ -186,7 +189,7 @@ const themeEn = {
     { text: 'Guides', link: '/en/guide/getting-started' },
     { text: 'Bot API', link: '/en/reference/api' },
     { text: 'Examples', link: '/en/examples' },
-    versionMenu('v3.1.5'),
+    versionMenu(`v${pkg.version}`),
   ],
   sidebar: sidebarEn,
   outline: { level: [2, 3], label: 'On this page' },
@@ -236,7 +239,7 @@ const themeId = {
     { text: 'Panduan', link: '/guide/getting-started' },
     { text: 'Referensi API', link: '/reference/api' },
     { text: 'Contoh', link: '/examples' },
-    versionMenu('v3.1.5'),
+    versionMenu(`v${pkg.version}`),
   ],
   sidebar: sidebarId,
   footer: { message: 'Dokumentasi TeleBibz', copyright: 'TeleBibz · MIT License' },

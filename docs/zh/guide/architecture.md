@@ -9,18 +9,9 @@ TeleBibz 接收 Telegram 更新，将每个更新包装为 `Context`，再传入
 
 ## 流程概览
 
-```text
-Telegram Bot API
-      │ getUpdates / Webhook
-      ▼
-  TeleBibz 传输层
-      │ Update 对象
-      ▼
- 会话与中间件
-      │ Context
-      ▼
-匹配的处理器 ───► ctx.api ───► Telegram Bot API
-```
+<WorkflowCanvas flow="telebibz" locale="zh" />
+
+拖动节点可重新排列流程图，选择节点可查看其职责。该图概括主要分发路径；错误处理和部署细节请参阅对应指南。
 
 机器人实例管理 API 客户端、配置、会话中间件、处理管线和轮询生命周期。除非部署方案协调了更新处理，否则每个机器人令牌只运行一个轮询进程。
 
