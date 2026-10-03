@@ -88,4 +88,4 @@ Periksa `getWebhookInfo()` saat Telegram belum mengirim update. Pastikan DNS/HTT
 
 ## Serverless dan framework lain
 
-Hubungkan request framework ke `bot.webhook()` hanya jika framework menyediakan request stream Node.js yang masih dapat dibaca. Untuk platform yang sudah mem-parse body, validasi header secret di adapter platform lalu teruskan object JSON ke `await bot.handleUpdate(update)`. Panggil `await bot.init()` bila handler membutuhkan `ctx.me`/informasi bot sebelum update pertama.
+Hubungkan request framework ke `bot.webhook()` hanya jika framework menyediakan request stream Node.js yang masih dapat dibaca. Untuk platform yang sudah mem-parse body, validasi header secret di adapter platform lalu teruskan object JSON ke `await bot.handleUpdate(update)`. Panggil `await bot.init()` bila handler membutuhkan `ctx.me`/informasi bot sebelum update pertama. Untuk adapter, lihat [transport & testing](/guide/transports-testing).

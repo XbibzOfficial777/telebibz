@@ -7,6 +7,10 @@ description: 通过快捷方法、callApi 或 raw 调用 Telegram Bot API。
 
 每个 `TeleBibz` 实例都通过 `bot.api` 提供 API 客户端；处理器中可使用 `ctx.api`。常见接口提供便捷快捷方法，软件包注册表中的其他方法可通过 `callApi()` 和动态方法代理访问。
 
+::: tip 完整的 payload 字段参考
+本地[185 个方法、950 个字段的参考表](/zh/reference/methods)为每个方法列出字段名、类型、必填/可选状态和说明。展开方法即可查看完整字段；Telegram 链接用于补充最新接口规则和限制，而不是替代本地 schema。
+:::
+
 ## API 快捷方法
 
 ```js
@@ -15,7 +19,7 @@ await bot.api.sendMessage(chatId, '你好');
 await bot.api.sendPhoto(chatId, photoInput, { caption: '照片' });
 ```
 
-常用快捷方法采用更方便的位置参数，并可附加包含 Telegram 其他字段的 payload 对象。Context 快捷方法（如 `ctx.reply()`）会根据当前更新推断目标聊天。详见 [Context](/zh/reference/context)。
+常用快捷方法采用更方便的位置参数，并可附加包含 Telegram 其他字段的 payload 对象。Context 快捷方法（如 `ctx.reply()`）会根据当前更新推断目标聊天。详见 [Context](/zh/reference/context)。 [生成的方法与参数参考](/zh/reference/methods)提供完整字段表。
 
 ## `callApi()` 与 `raw()`
 
@@ -58,7 +62,7 @@ try {
 
 ## Transformer
 
-使用 `bot.api.config.use(transformer)` 包装出站请求。软件包提供 `autoRetry()` 和 `throttler()` 等辅助工具，用于重试和控制请求节奏。详见[速率限制与错误](/zh/guide/reliability)。
+使用 `bot.api.config.use(transformer)` 包装出站请求。软件包提供 `autoRetry()` 和 `throttler()` 等辅助工具，用于重试和控制请求节奏。详见[速率限制与错误](/zh/guide/reliability)。 本地传输和测试适配器请参阅[传输与测试](/zh/guide/transports-testing)。
 
 ```js
 bot.api.config.use(async (prev, method, payload) => {

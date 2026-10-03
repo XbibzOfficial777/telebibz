@@ -126,13 +126,17 @@ CREATE TABLE bot_outbox (
   payload          jsonb       NOT NULL,
   attempts         integer     NOT NULL DEFAULT 0,
   next_attempt_at  timestamptz NOT NULL DEFAULT now(),
+  lease_until      timestamptz,
+  lease_token      uuid,
   delivered_at     timestamptz,
+  dead_at          timestamptz,
+  last_error       text,
   UNIQUE (bot_id, event_key)
 );
 
 CREATE INDEX bot_outbox_pending_idx
   ON bot_outbox (next_attempt_at, id)
-  WHERE delivered_at IS NULL;
+  WHERE delivered_at IS NULL AND dead_at IS NULL;
 ```
 
 以下示例使用 `pg`，并假设 `applyBusinessChange(client, update)` 只写数据库；不要在事务中发起 HTTP 请求。请将 `pg` 添加为应用的直接依赖。
@@ -188,6 +192,80 @@ bot.on(':text', async (ctx) => {
 ```
 
 Outbox worker 可调用 `await bot.api.callApi(row.method, row.payload)`，然后将记录标记为已发送。多个 worker 需要短时 claim/lease 机制；不要在 HTTP 请求期间一直占用数据库事务。Telegram 发送仍是 **at-least-once**：若 API 已成功但 `delivered_at` 更新失败，消息可能再次发送。使用 `event_key` 做内部去重，并让通知易于核对。
+
+## Outbox worker：lease、带抖动重试与 dead-letter
+
+共享 worker 可用 `SKIP LOCKED` 安全 claim job，但仍需按 bot 和 chat 控制速率。请在上方 outbox DDL 中加入 lease/dead-letter 字段。claim 使用一个原子 statement；Telegram HTTP 请求必须在事务之外执行。
+
+```sql
+WITH ready AS (
+  SELECT id
+  FROM bot_outbox
+  WHERE bot_id = $1
+    AND delivered_at IS NULL
+    AND dead_at IS NULL
+    AND next_attempt_at <= now()
+    AND (lease_until IS NULL OR lease_until < now())
+  ORDER BY next_attempt_at, id
+  LIMIT $2
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE bot_outbox AS job
+SET attempts = job.attempts + 1,
+    lease_until = now() + interval '45 seconds',
+    lease_token = $3::uuid
+FROM ready
+WHERE job.id = ready.id
+RETURNING job.*;
+```
+
+将上面的 claim SQL 保存为 `CLAIM_BOT_OUTBOX_SQL`，供下方 JavaScript helper 使用。每个 batch 的 `$3` 使用新的 UUID。lease 应长于 API timeout；长任务需要续租。`bot_id` 确保 worker 只处理正确的 token；如需保持顺序，请按 `chat_id` 分区，每个分区同一时刻只处理一个 job。
+
+```js
+const { randomUUID } = require('node:crypto');
+const MAX_ATTEMPTS = 8;
+const backoffMs = (attempt) => Math.floor(
+  Math.random() * Math.min(5 * 60 * 1000, 1000 * 2 ** Math.min(attempt, 8)),
+);
+
+async function claimBotOutbox(botId, limit = 20) {
+  const leaseToken = randomUUID();
+  const { rows } = await pool.query(CLAIM_BOT_OUTBOX_SQL, [botId, limit, leaseToken]);
+  return rows;
+}
+
+async function deliverTelegramJob(job) {
+  try {
+    await bot.api.callApi(job.method, job.payload);
+    const ack = await pool.query(
+      `UPDATE bot_outbox
+       SET delivered_at = now(), lease_until = NULL, lease_token = NULL, last_error = NULL
+       WHERE id = $1 AND bot_id = $2 AND lease_token = $3
+       RETURNING id`,
+      [job.id, job.bot_id, job.lease_token],
+    );
+    if (!ack.rowCount) logger.warn({ jobId: job.id }, 'Lease changed after send; reconcile the result');
+  } catch (err) {
+    const retryAfter = Number(err?.parameters?.retry_after || 0);
+    const retryable = retryAfter > 0 || Number(err?.error_code) >= 500
+      || ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN'].includes(err?.code);
+    const dead = !retryable || job.attempts >= MAX_ATTEMPTS;
+    const delayMs = dead ? 0 : Math.max(retryAfter * 1000, backoffMs(job.attempts));
+    const saved = await pool.query(
+      `UPDATE bot_outbox
+       SET next_attempt_at = now() + ($4::double precision * interval '1 millisecond'),
+           lease_until = NULL, lease_token = NULL, last_error = $5,
+           dead_at = CASE WHEN $3::boolean THEN now() ELSE NULL END
+       WHERE id = $1 AND bot_id = $2 AND lease_token = $6
+       RETURNING id`,
+      [job.id, job.bot_id, dead, delayMs, safeTelegramErrorCode(err), job.lease_token],
+    );
+    if (!saved.rowCount) logger.warn({ jobId: job.id }, 'Lease changed; stale worker did not overwrite the new claim');
+  }
+}
+```
+
+Telegram 的 `retry_after` 优先于本地 backoff；还应使用分布式 limiter（如 Redis token bucket），因为内置 `throttler()` 只限制一个 `ApiClient`。请提供 `safeTelegramErrorCode(err)`，仅保存 allowlist 中的 API/network 代码，不要保存原始 error body 或消息。永久错误进入 dead-letter，交由 operator 对账。如果 Telegram 已接收请求但响应丢失，或 `delivered_at` 更新失败，job 可能再次发送：该方案是 **at-least-once**，不是 exactly-once。若原始 error body 可能含敏感数据，不要直接存储。
 
 ## 多副本拓扑与更新所有权
 

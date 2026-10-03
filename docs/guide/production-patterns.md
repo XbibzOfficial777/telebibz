@@ -126,13 +126,17 @@ CREATE TABLE bot_outbox (
   payload          jsonb       NOT NULL,
   attempts         integer     NOT NULL DEFAULT 0,
   next_attempt_at  timestamptz NOT NULL DEFAULT now(),
+  lease_until      timestamptz,
+  lease_token      uuid,
   delivered_at     timestamptz,
+  dead_at          timestamptz,
+  last_error       text,
   UNIQUE (bot_id, event_key)
 );
 
 CREATE INDEX bot_outbox_pending_idx
   ON bot_outbox (next_attempt_at, id)
-  WHERE delivered_at IS NULL;
+  WHERE delivered_at IS NULL AND dead_at IS NULL;
 ```
 
 Contoh berikut memakai `pg` dan menganggap `applyBusinessChange(client, update)` hanya mengubah database—jangan melakukan HTTP call di dalam transaksi. Tambahkan `pg` sebagai dependency langsung aplikasi.
@@ -188,6 +192,80 @@ bot.on(':text', async (ctx) => {
 ```
 
 Worker outbox mengirim `await bot.api.callApi(row.method, row.payload)`, lalu menandai row terkirim. Beberapa worker perlu mekanisme claim/lease singkat; jangan menahan transaksi database selama HTTP request. Pengiriman Telegram tetap **at-least-once**: bila API sukses tetapi penandaan `delivered_at` gagal, pesan dapat terkirim ulang. Gunakan `event_key` untuk deduplikasi internal dan buat notifikasi mudah direkonsiliasi.
+
+## Worker outbox: lease, retry berjitter, dan dead-letter
+
+Worker bersama dapat mengambil job secara aman dengan `SKIP LOCKED`, tetapi tetap harus membatasi budget per bot dan per chat. Tambahkan kolom lease/dead-letter pada DDL outbox di atas. Claim adalah satu statement atomik; HTTP request Telegram dijalankan sesudahnya, di luar transaksi.
+
+```sql
+WITH ready AS (
+  SELECT id
+  FROM bot_outbox
+  WHERE bot_id = $1
+    AND delivered_at IS NULL
+    AND dead_at IS NULL
+    AND next_attempt_at <= now()
+    AND (lease_until IS NULL OR lease_until < now())
+  ORDER BY next_attempt_at, id
+  LIMIT $2
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE bot_outbox AS job
+SET attempts = job.attempts + 1,
+    lease_until = now() + interval '45 seconds',
+    lease_token = $3::uuid
+FROM ready
+WHERE job.id = ready.id
+RETURNING job.*;
+```
+
+Simpan SQL claim di atas sebagai konstanta `CLAIM_BOT_OUTBOX_SQL` untuk helper JavaScript berikut. Gunakan UUID baru sebagai `$3` untuk setiap batch. Sesuaikan lease dengan timeout API dan perpanjang untuk operasi lama. `bot_id` membatasi worker pada token yang benar; untuk menjaga urutan, partisi job menurut `chat_id` dan hanya proses satu job per partisi sekaligus.
+
+```js
+const { randomUUID } = require('node:crypto');
+const MAX_ATTEMPTS = 8;
+const backoffMs = (attempt) => Math.floor(
+  Math.random() * Math.min(5 * 60 * 1000, 1000 * 2 ** Math.min(attempt, 8)),
+);
+
+async function claimBotOutbox(botId, limit = 20) {
+  const leaseToken = randomUUID();
+  const { rows } = await pool.query(CLAIM_BOT_OUTBOX_SQL, [botId, limit, leaseToken]);
+  return rows;
+}
+
+async function deliverTelegramJob(job) {
+  try {
+    await bot.api.callApi(job.method, job.payload);
+    const ack = await pool.query(
+      `UPDATE bot_outbox
+       SET delivered_at = now(), lease_until = NULL, lease_token = NULL, last_error = NULL
+       WHERE id = $1 AND bot_id = $2 AND lease_token = $3
+       RETURNING id`,
+      [job.id, job.bot_id, job.lease_token],
+    );
+    if (!ack.rowCount) logger.warn({ jobId: job.id }, 'Lease changed after send; reconcile the result');
+  } catch (err) {
+    const retryAfter = Number(err?.parameters?.retry_after || 0);
+    const retryable = retryAfter > 0 || Number(err?.error_code) >= 500
+      || ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN'].includes(err?.code);
+    const dead = !retryable || job.attempts >= MAX_ATTEMPTS;
+    const delayMs = dead ? 0 : Math.max(retryAfter * 1000, backoffMs(job.attempts));
+    const saved = await pool.query(
+      `UPDATE bot_outbox
+       SET next_attempt_at = now() + ($4::double precision * interval '1 millisecond'),
+           lease_until = NULL, lease_token = NULL, last_error = $5,
+           dead_at = CASE WHEN $3::boolean THEN now() ELSE NULL END
+       WHERE id = $1 AND bot_id = $2 AND lease_token = $6
+       RETURNING id`,
+      [job.id, job.bot_id, dead, delayMs, safeTelegramErrorCode(err), job.lease_token],
+    );
+    if (!saved.rowCount) logger.warn({ jobId: job.id }, 'Lease changed; stale worker did not overwrite the new claim');
+  }
+}
+```
+
+`retry_after` dari Telegram lebih kuat daripada backoff lokal; gunakan juga limiter terdistribusi (misalnya Redis token bucket) karena `throttler()` bawaan hanya membatasi satu `ApiClient`. Sediakan `safeTelegramErrorCode(err)` yang hanya menyimpan kode error allowlist/network, bukan body atau pesan mentah. Error permanen masuk dead-letter untuk rekonsiliasi operator. Jika Telegram menerima request tetapi respons hilang atau update `delivered_at` gagal, job bisa dikirim ulang: desain ini **at-least-once**, bukan exactly-once. Jangan menyimpan body error mentah jika dapat berisi data sensitif.
 
 ## Topologi multi-replica dan kepemilikan update
 

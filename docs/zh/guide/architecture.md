@@ -78,6 +78,8 @@ Context 提供原始 `ctx.update`、API 客户端 `ctx.api`，以及回复、文
 
 ## 延伸阅读
 
+- [处理器与过滤器](/zh/guide/handlers)
+- [Transport 与测试](/zh/guide/transports-testing)
 - [生产运维模式](/zh/guide/production-patterns)
 - [故障排查](/zh/guide/troubleshooting)
 - [Bot API 参考](/zh/reference/api)

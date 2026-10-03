@@ -78,6 +78,8 @@ Do not run polling and a webhook for the same token at the same time. See [polli
 
 ## Further reading
 
+- [Handlers and filters](/en/guide/handlers)
+- [Transport and testing](/en/guide/transports-testing)
 - [Production operations](/en/guide/production-patterns)
 - [Troubleshooting](/en/guide/troubleshooting)
 - [Bot API reference](/en/reference/api)

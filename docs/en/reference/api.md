@@ -7,6 +7,10 @@ description: Call Telegram Bot API methods through shortcuts, callApi, or raw.
 
 Each `TeleBibz` instance exposes an API client at `bot.api`; handlers can use `ctx.api`. Common methods have convenience shortcuts, while every method in the package registry is available through `callApi()` and the dynamic method proxy.
 
+::: tip Full payload-field reference
+The local [185-method, 950-field reference](/en/reference/methods) has a per-method table with field name, type, required/optional status, and description. Expand a method to inspect every field; Telegram links supplement the local schema with current endpoint rules and limits.
+:::
+
 ## API shortcuts
 
 ```js
@@ -15,7 +19,7 @@ await bot.api.sendMessage(chatId, 'Hello');
 await bot.api.sendPhoto(chatId, photoInput, { caption: 'Photo' });
 ```
 
-Shortcuts use ergonomic positional arguments for common methods and accept an optional payload object for additional Telegram fields. Context shortcuts such as `ctx.reply()` infer the relevant chat and message from the current update. See [Context](/en/reference/context).
+Shortcuts use ergonomic positional arguments for common methods and accept an optional payload object for additional Telegram fields. Context shortcuts such as `ctx.reply()` infer the relevant chat and message from the current update. See [Context](/en/reference/context). The [generated methods and parameter reference](/en/reference/methods) contains the full field tables.
 
 ## `callApi()` and `raw()`
 
@@ -58,7 +62,7 @@ try {
 
 ## Transformers
 
-Use `bot.api.config.use(transformer)` to wrap outgoing calls. The package exports helpers such as `autoRetry()` and `throttler()` for retry and request pacing. See [rate limits and errors](/en/guide/reliability).
+Use `bot.api.config.use(transformer)` to wrap outgoing calls. The package exports helpers such as `autoRetry()` and `throttler()` for retry and request pacing. See [rate limits and errors](/en/guide/reliability). For local transport and test adapters, see [transport and testing](/en/guide/transports-testing).
 
 ```js
 bot.api.config.use(async (prev, method, payload) => {

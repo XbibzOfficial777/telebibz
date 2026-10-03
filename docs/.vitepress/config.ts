@@ -180,7 +180,7 @@ const commonSearch = {
 
 const sharedTheme = {
   logo: siteLogo,
-  outline: { level: [2, 3], label: 'Di halaman ini' },
+  outline: { level: [2, 3] as [number, number], label: 'Di halaman ini' },
   editLink: { pattern: `${repository}/edit/main/docs/:path`, text: 'Sarankan perbaikan di GitHub' },
   socialLinks: [{ icon: 'github', link: repository }],
   search: commonSearch,
@@ -193,12 +193,15 @@ const themeEn = {
   langMenuLabel: 'Language',
   nav: [
     { text: 'Guides', link: '/en/guide/getting-started' },
-    { text: 'Bot API', link: '/en/reference/api' },
+    { text: 'Reference', items: [
+      { text: 'Bot API', link: '/en/reference/api' },
+      { text: 'Methods & parameters (185)', link: '/en/reference/methods' },
+    ] },
     { text: 'Examples', link: '/en/examples' },
     versionMenu(`v${pkg.version}`),
   ],
   sidebar: sidebarEn,
-  outline: { level: [2, 3], label: 'On this page' },
+  outline: { level: [2, 3] as [number, number], label: 'On this page' },
   editLink: { pattern: `${repository}/edit/main/docs/:path`, text: 'Suggest an edit on GitHub' },
   footer: { message: 'TeleBibz documentation', copyright: 'TeleBibz · MIT License' },
   docFooter: { prev: 'Previous page', next: 'Next page' },
@@ -218,12 +221,15 @@ const themeZh = {
   langMenuLabel: '选择语言',
   nav: [
     { text: '指南', link: '/zh/guide/getting-started' },
-    { text: 'Bot API', link: '/zh/reference/api' },
+    { text: '参考', items: [
+      { text: 'Bot API', link: '/zh/reference/api' },
+      { text: '方法与参数（185）', link: '/zh/reference/methods' },
+    ] },
     { text: '示例', link: '/zh/examples' },
     versionMenuZh,
   ],
   sidebar: sidebarZh,
-  outline: { level: [2, 3], label: '本页目录' },
+  outline: { level: [2, 3] as [number, number], label: '本页目录' },
   editLink: { pattern: `${repository}/edit/main/docs/:path`, text: '在 GitHub 上建议修改' },
   footer: { message: 'TeleBibz 文档', copyright: 'TeleBibz · MIT License' },
   docFooter: { prev: '上一页', next: '下一页' },
@@ -243,7 +249,10 @@ const themeId = {
   langMenuLabel: 'Bahasa',
   nav: [
     { text: 'Panduan', link: '/guide/getting-started' },
-    { text: 'Referensi API', link: '/reference/api' },
+    { text: 'Referensi', items: [
+      { text: 'Bot API', link: '/reference/api' },
+      { text: 'Metode & parameter (185)', link: '/reference/methods' },
+    ] },
     { text: 'Contoh', link: '/examples' },
     versionMenu(`v${pkg.version}`),
   ],
