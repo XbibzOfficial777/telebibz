@@ -23,6 +23,8 @@ description: Constructor options, lifecycle methods, sessions, and transport set
 | `timeoutMs` | `number` | Transport request timeout in milliseconds. |
 | `headers` | `Record<string, string>` | Additional transport headers. |
 
+Concurrent processing applies to polling and webhooks. Updates sharing a session key run in order, while outbound API calls have their own limits. See [update lifecycle and architecture](/en/guide/architecture#concurrent-processing).
+
 `SessionOptions` accepts `initial()`, `getKey(ctx)`, and `storage`. Storage can be a `Map` or an adapter with `read(key)`, `write(key, value)`, and `delete(key)` methods, which may be asynchronous. See [Files and sessions](/en/guide/files-sessions#sessions).
 
 ## Lifecycle

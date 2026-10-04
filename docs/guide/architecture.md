@@ -63,7 +63,7 @@ bot.cmd('ping', (ctx) => ctx.reply('pong'));
 
 `ctx` mewakili satu update masuk, bukan sesi koneksi Telegram yang berubah terus. Akses umum meliputi `ctx.update`, `ctx.from`, `ctx.chat`, `ctx.msg`, `ctx.chatId`, `ctx.msgId`, `ctx.api`, `ctx.session`, dan `ctx.match`. Field tertentu tidak tersedia untuk semua jenis update—misalnya inline query tidak memiliki message biasa.
 
-Context meneruskan konteks Business jika tersedia. Balasan di konteks business otomatis membawa `business_connection_id` sesuai implementasi library.
+Context meneruskan konteks Business jika tersedia. Balasan di konteks business otomatis membawa `business_connection_id` sesuai implementasi library. Untuk shortcut dan field lengkap, lihat [referensi Context](/reference/context).
 
 ## Polling dibanding webhook
 

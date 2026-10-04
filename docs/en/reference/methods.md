@@ -18,7 +18,9 @@ await bot.api.callApi('sendMessage', { chat_id: chatId, text: 'Hello' });
 await bot.api.getMe();
 ```
 
+::: tip How to read this reference
 Expand a method to inspect payload status, fields, types, required/optional status, descriptions, and result type. Parameter tables are generated from `types/telegram-bot-api/methods.d.ts`; method and field descriptions are retained from the English Bot API comments to preserve their technical meaning. Use the Telegram link for the latest endpoint rules.
+:::
 
 ## Messages, media, and reactions
 

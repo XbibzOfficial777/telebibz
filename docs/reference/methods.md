@@ -18,7 +18,9 @@ await bot.api.callApi('sendMessage', { chat_id: chatId, text: 'Hello' });
 await bot.api.getMe();
 ```
 
+::: tip Cara membaca referensi
 Buka setiap metode untuk melihat status payload, field, tipe, required/optional, deskripsi, serta tipe hasil. Deklarasi parameter dihasilkan dari `types/telegram-bot-api/methods.d.ts`; deskripsi method/field mengikuti komentar Bot API berbahasa Inggris agar makna teknisnya tetap tepat. Tautan Telegram menjadi rujukan untuk aturan endpoint terbaru.
+:::
 
 ## Pesan, media, dan reaksi
 

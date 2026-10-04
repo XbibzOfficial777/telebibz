@@ -18,7 +18,9 @@ await bot.api.callApi('sendMessage', { chat_id: chatId, text: 'Hello' });
 await bot.api.getMe();
 ```
 
+::: tip 如何阅读此参考
 展开方法可查看 payload 状态、字段、类型、必填/可选状态、说明和返回类型。参数表由 `types/telegram-bot-api/methods.d.ts` 生成；method 与 field 说明保留 Bot API 英文注释，以避免改变技术含义。最新接口规则请以 Telegram 链接为准。
+:::
 
 ## 消息、媒体与互动
 

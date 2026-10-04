@@ -59,6 +59,7 @@ const locales = [
     lead: `Registry TeleBibz mencakup **${TELEGRAM_API_METHODS.length} nama metode**. Daftar dibuat dari registry dan deklarasi Bot API di repository.`,
     warning: '> Nama metode tidak menjamin endpoint dapat digunakan tanpa syarat. Izin, chat, update, dan batasan Telegram tetap berlaku.',
     callTitle: 'Pemanggilan',
+    detailsTitle: 'Cara membaca referensi',
     callNote: 'Buka setiap metode untuk melihat status payload, field, tipe, required/optional, deskripsi, serta tipe hasil. Deklarasi parameter dihasilkan dari `types/telegram-bot-api/methods.d.ts`; deskripsi method/field mengikuti komentar Bot API berbahasa Inggris agar makna teknisnya tetap tepat. Tautan Telegram menjadi rujukan untuk aturan endpoint terbaru.',
     relatedTitle: 'Referensi terkait',
     related: ['- [Referensi Telegram API](/reference/api)', '- [Tipe TypeScript](/reference/typescript)', '- [Opsi bot](/reference/options)'],
@@ -79,6 +80,7 @@ const locales = [
     lead: `The TeleBibz registry includes **${TELEGRAM_API_METHODS.length} method names**. This index is generated from the repository registry and Bot API declarations.`,
     warning: '> A method name does not guarantee that every request is available. Telegram permissions, chat context, updates, and endpoint limits still apply.',
     callTitle: 'Calling methods',
+    detailsTitle: 'How to read this reference',
     callNote: 'Expand a method to inspect payload status, fields, types, required/optional status, descriptions, and result type. Parameter tables are generated from `types/telegram-bot-api/methods.d.ts`; method and field descriptions are retained from the English Bot API comments to preserve their technical meaning. Use the Telegram link for the latest endpoint rules.',
     relatedTitle: 'Related references',
     related: ['- [Bot API reference](/en/reference/api)', '- [TypeScript](/en/reference/typescript)', '- [Bot options](/en/reference/options)'],
@@ -99,6 +101,7 @@ const locales = [
     lead: `TeleBibz 注册表包含 **${TELEGRAM_API_METHODS.length} 个方法名称**。本索引由仓库注册表和 Bot API 声明生成。`,
     warning: '> 方法名称不代表请求一定可用。实际调用仍受 Telegram 权限、聊天上下文、更新类型和接口限制约束。',
     callTitle: '调用方法',
+    detailsTitle: '如何阅读此参考',
     callNote: '展开方法可查看 payload 状态、字段、类型、必填/可选状态、说明和返回类型。参数表由 `types/telegram-bot-api/methods.d.ts` 生成；method 与 field 说明保留 Bot API 英文注释，以避免改变技术含义。最新接口规则请以 Telegram 链接为准。',
     relatedTitle: '相关参考',
     related: ['- [Bot API 参考](/zh/reference/api)', '- [TypeScript](/zh/reference/typescript)', '- [Bot 配置项](/zh/reference/options)'],
@@ -337,7 +340,9 @@ for (const locale of locales) {
     'await bot.api.getMe();',
     '```',
     '',
+    `::: tip ${locale.detailsTitle}`,
     locale.callNote,
+    ':::',
     '',
   ];
 

@@ -126,13 +126,17 @@ CREATE TABLE bot_outbox (
   payload          jsonb       NOT NULL,
   attempts         integer     NOT NULL DEFAULT 0,
   next_attempt_at  timestamptz NOT NULL DEFAULT now(),
+  lease_until      timestamptz,
+  lease_token      uuid,
   delivered_at     timestamptz,
+  dead_at          timestamptz,
+  last_error       text,
   UNIQUE (bot_id, event_key)
 );
 
 CREATE INDEX bot_outbox_pending_idx
   ON bot_outbox (next_attempt_at, id)
-  WHERE delivered_at IS NULL;
+  WHERE delivered_at IS NULL AND dead_at IS NULL;
 ```
 
 The example below uses `pg` and assumes `applyBusinessChange(client, update)` only writes to the database—do not make HTTP calls inside the transaction. Add `pg` as a direct application dependency.
@@ -188,6 +192,80 @@ bot.on(':text', async (ctx) => {
 ```
 
 An outbox worker can send `await bot.api.callApi(row.method, row.payload)`, then mark the row delivered. Multiple workers need a short claim/lease mechanism; do not hold a database transaction open during the HTTP request. Telegram sends are still **at-least-once**: if the API succeeds but setting `delivered_at` fails, a message may be sent again. Use `event_key` for internal deduplication and make notifications easy to reconcile.
+
+## Outbox workers: leases, jittered retries, and a dead-letter path
+
+Shared workers can claim jobs safely with `SKIP LOCKED`, but must still enforce a per-bot and per-chat budget. Add the lease/dead-letter columns to the outbox DDL above. Claim in one atomic statement; make the Telegram HTTP request afterwards, outside a transaction.
+
+```sql
+WITH ready AS (
+  SELECT id
+  FROM bot_outbox
+  WHERE bot_id = $1
+    AND delivered_at IS NULL
+    AND dead_at IS NULL
+    AND next_attempt_at <= now()
+    AND (lease_until IS NULL OR lease_until < now())
+  ORDER BY next_attempt_at, id
+  LIMIT $2
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE bot_outbox AS job
+SET attempts = job.attempts + 1,
+    lease_until = now() + interval '45 seconds',
+    lease_token = $3::uuid
+FROM ready
+WHERE job.id = ready.id
+RETURNING job.*;
+```
+
+Store the claim SQL above as `CLAIM_BOT_OUTBOX_SQL` for the JavaScript helper below. Use a fresh UUID as `$3` for each batch. Set the lease longer than the API timeout and renew it for long operations. `bot_id` restricts a worker to the correct token; to preserve ordering, partition jobs by `chat_id` and process one job per partition at a time.
+
+```js
+const { randomUUID } = require('node:crypto');
+const MAX_ATTEMPTS = 8;
+const backoffMs = (attempt) => Math.floor(
+  Math.random() * Math.min(5 * 60 * 1000, 1000 * 2 ** Math.min(attempt, 8)),
+);
+
+async function claimBotOutbox(botId, limit = 20) {
+  const leaseToken = randomUUID();
+  const { rows } = await pool.query(CLAIM_BOT_OUTBOX_SQL, [botId, limit, leaseToken]);
+  return rows;
+}
+
+async function deliverTelegramJob(job) {
+  try {
+    await bot.api.callApi(job.method, job.payload);
+    const ack = await pool.query(
+      `UPDATE bot_outbox
+       SET delivered_at = now(), lease_until = NULL, lease_token = NULL, last_error = NULL
+       WHERE id = $1 AND bot_id = $2 AND lease_token = $3
+       RETURNING id`,
+      [job.id, job.bot_id, job.lease_token],
+    );
+    if (!ack.rowCount) logger.warn({ jobId: job.id }, 'Lease changed after send; reconcile the result');
+  } catch (err) {
+    const retryAfter = Number(err?.parameters?.retry_after || 0);
+    const retryable = retryAfter > 0 || Number(err?.error_code) >= 500
+      || ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN'].includes(err?.code);
+    const dead = !retryable || job.attempts >= MAX_ATTEMPTS;
+    const delayMs = dead ? 0 : Math.max(retryAfter * 1000, backoffMs(job.attempts));
+    const saved = await pool.query(
+      `UPDATE bot_outbox
+       SET next_attempt_at = now() + ($4::double precision * interval '1 millisecond'),
+           lease_until = NULL, lease_token = NULL, last_error = $5,
+           dead_at = CASE WHEN $3::boolean THEN now() ELSE NULL END
+       WHERE id = $1 AND bot_id = $2 AND lease_token = $6
+       RETURNING id`,
+      [job.id, job.bot_id, dead, delayMs, safeTelegramErrorCode(err), job.lease_token],
+    );
+    if (!saved.rowCount) logger.warn({ jobId: job.id }, 'Lease changed; stale worker did not overwrite the new claim');
+  }
+}
+```
+
+Telegram's `retry_after` takes precedence over local backoff; also use a distributed limiter (for example, a Redis token bucket), because the built-in `throttler()` only limits one `ApiClient`. Provide `safeTelegramErrorCode(err)` that stores only an allow-listed API/network code, not a raw error body or message. Permanent errors go to a dead-letter path for operator reconciliation. If Telegram accepts a request but its response is lost or updating `delivered_at` fails, the job can be sent again: this design is **at-least-once**, not exactly-once. Do not store raw error bodies if they can contain sensitive data.
 
 ## Multi-replica topology and update ownership
 
