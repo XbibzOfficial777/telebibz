@@ -3,6 +3,7 @@ import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDelete
 import type { CallbackQuery } from "./markup.js";
 import type { Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from "./message.js";
 import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from "./payment.js";
+import type { SharedWidgetQuery, WidgetQuery } from "./widget.js";
 /** Internal namespace used to make some message types more accurate */
 export declare namespace Update {
     /** Internal type holding properties that message updates in private chats share. */
@@ -55,6 +56,10 @@ export interface Update {
     message_reaction_count?: MessageReactionCountUpdated;
     /** New incoming inline query */
     inline_query?: InlineQuery;
+    /** A query sent to the bot by a widget in a message sent by the bot or via the bot */
+    widget_query?: WidgetQuery;
+    /** A query sent to the bot from a forwarded message with a shared widget created by the bot */
+    shared_widget_query?: SharedWidgetQuery;
     /** The result of an inline query that was chosen by a user and sent to their chat partner. Please see our documentation on the feedback collecting for details on how to enable these updates for your bot. */
     chosen_inline_result?: ChosenInlineResult;
     /** New incoming callback query */

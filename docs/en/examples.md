@@ -17,6 +17,7 @@ The TeleBibz repository includes JavaScript examples in [`examples/`](https://gi
 | [`06-menu.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/06-menu.js) | Menus with submenus. |
 | [`07-inline-query.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/07-inline-query.js) | Inline mode. |
 | [`08-rich-message.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/08-rich-message.js) | Rich Messages, callbacks, and drafts. |
+| [`09-widget.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/09-widget.js) | Bot API 10.4 HTML widgets: send, answer queries, edit data. |
 
 The repository examples use `require('..')` because they run from inside the repository. In a separate bot project, use `require('@xbibzlibrary/telebibz')` instead.
 ## Service bot with throttling and graceful shutdown

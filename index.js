@@ -3,7 +3,7 @@
 'use strict';
 
 const { TeleBibz } = require('./lib/telebibz');
-const { ApiError, createTransport } = require('./lib/net');
+const { ApiError, createTransport, createDownloader } = require('./lib/net');
 const { File, InputFile, InputMediaBuilder, InputPaidMediaBuilder } = require('./lib/file');
 const { rich, RichMessageBuilder, inputRichMessage } = require('./lib/rich');
 const { TELEGRAM_API_METHODS } = require('./lib/telegram-methods');
@@ -37,10 +37,10 @@ module.exports = {
   File, InputFile, InputMediaBuilder, InputPaidMediaBuilder,
   // Rich Messages (Bot API 10.3)
   rich, RichMessageBuilder, inputRichMessage,
-  // complete raw Bot API method registry (185 methods)
+  // complete raw Bot API method registry (193 methods, Bot API 10.4)
   TELEGRAM_API_METHODS,
   // api & transport
-  makeApi, createTransport, ApiError,
+  makeApi, createTransport, createDownloader, ApiError,
   // anti-spam & keandalan
   autoRetry, throttler, limiter, broadcast,
   // inline mode

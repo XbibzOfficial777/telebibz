@@ -24,7 +24,7 @@ const groups = [
   },
   {
     key: 'inline',
-    test: (m) => /(Inline|WebApp|Guest|Prepared)/.test(m),
+    test: (m) => /(Inline|WebApp|Guest|Prepared|Widget)/.test(m),
     id: 'Inline query, Web App, dan guest', en: 'Inline queries, Web Apps, and guest updates', zh: 'Inline 查询、Web App 与访客更新',
   },
   {

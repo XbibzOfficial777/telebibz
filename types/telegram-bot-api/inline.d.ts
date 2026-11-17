@@ -3,6 +3,7 @@ import type { InlineKeyboardMarkup, WebAppInfo } from "./markup.js";
 import type { LinkPreviewOptions, Location, MessageEntity, ParseMode } from "./message.js";
 import type { LabeledPrice } from "./payment.js";
 import type { InputRichMessage } from "./rich.js";
+import type { InputSharedWidgetMessageContent, InputWidgetMessageContent } from "./widget.js";
 /** This object represents an incoming inline query. When the user sends an empty query, your bot could return some default or trending results. */
 export interface InlineQuery {
     /** Unique identifier for this query */
@@ -559,7 +560,7 @@ export interface InlineQueryResultCachedAudio {
 - InputVenueMessageContent
 - InputContactMessageContent
 - InputInvoiceMessageContent */
-export type InputMessageContent = InputTextMessageContent | InputRichMessageContent | InputLocationMessageContent | InputVenueMessageContent | InputContactMessageContent | InputInvoiceMessageContent;
+export type InputMessageContent = InputTextMessageContent | InputRichMessageContent | InputWidgetMessageContent | InputSharedWidgetMessageContent | InputLocationMessageContent | InputVenueMessageContent | InputContactMessageContent | InputInvoiceMessageContent;
 /** Represents the content of a text message to be sent as the result of an inline query. */
 export interface InputTextMessageContent {
     /** Text of the message to be sent, 1-4096 characters */

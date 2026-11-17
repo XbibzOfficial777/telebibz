@@ -5,9 +5,10 @@ import type { AcceptedGiftTypes, BotCommand, BusinessConnection, ChatAdministrat
 import type { ForceReply, InlineKeyboardMarkup, KeyboardButton, PreparedKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove } from "./markup.js";
 import type { EphemeralMessageParameters, File, GameHighScore, LinkPreviewOptions, MaskPosition, Message, MessageEntity, MessageId, ParseMode, Poll, PreparedInlineMessage, ReactionType, ReplyParameters, SentGuestMessage, SentWebAppMessage, Sticker, StickerSet, Story, SuggestedPostParameters } from "./message.js";
 import type { PassportElementError } from "./passport.js";
-import type { BotAccessSettings, Gifts, LabeledPrice, OwnedGifts, ShippingOption, StarAmount, StarTransactions } from "./payment.js";
+import type { BotAccessSettings, Gifts, LabeledPrice, OwnedGifts, ShippingOption, StarAmount, StarTransactions, UniqueGift } from "./payment.js";
 import type { InputRichMessage } from "./rich.js";
 import type { BotCommandScope, BotDescription, BotName, BotShortDescription, MenuButton } from "./settings.js";
+import type { ChatShareThemeBackdrops } from "./share-theme.js";
 import type { StoryArea } from "./story.js";
 import type { Update } from "./update.js";
 /** Extracts the parameters of a given method name */
@@ -142,6 +143,78 @@ export type ApiMethods<F> = {
         /** Additional interface options. An object for an inline keyboard, custom reply keyboard, instructions to remove a reply keyboard or to force a reply from the user. */
         reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
     }): Message.RichMessageMessage;
+    /** Use this method to send a message with an HTML widget. Currently, in the production environment, widgets can be sent only to private chats, and sent widgets automatically have protected content and therefore can't be forwarded. On success, the sent Message is returned. */
+    sendWidget(args: {
+        /** Unique identifier for the target chat or username of the target supergroup in the format @username */
+        chat_id: number | string;
+        /** Unique identifier for the target message thread (topic) of a forum; for forum supergroups and private chats of bots with forum topic mode enabled only */
+        message_thread_id?: number;
+        /** HTML code of the widget, 1-32768 bytes. The code must not exceed 4096 bytes when compressed by zlib with the maximum compression level. */
+        html: string;
+        /** Width of the widget in logical pixels; omit if the widget must occupy the whole width of the message bubble. The width is clamped by the app to the range from 200 to the maximum width of the message bubble. */
+        width?: number;
+        /** Height of the widget in logical pixels; omit if the height of the widget isn't fixed. The height is clamped by the app to the range 50-600. */
+        height?: number;
+        /** Public data of the widget, 0-1024 bytes, which will be available wherever the widget is shown. If the widget is shared, then all messages with it will have the same public data. */
+        public_data?: string;
+        /** Data of the widget, which is specific to the message, 0-1024 bytes */
+        chat_data?: string;
+        /** Widget caption, 0-1024 characters after entities parsing */
+        caption?: string;
+        /** Mode for parsing entities in the widget caption. See formatting options for more details. */
+        parse_mode?: ParseMode;
+        /** A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode */
+        caption_entities?: MessageEntity[];
+        /** Pass True if the caption must be shown above the widget */
+        show_caption_above_media?: boolean;
+        /** Pass True to allow the widget to send queries to the bot */
+        allow_queries?: boolean;
+        /** Pass True to create a shared widget, which can be sent again using the method sendSharedWidget */
+        is_shared?: boolean;
+        /** Sends the message silently. Users will receive a notification with no sound. */
+        disable_notification?: boolean;
+        /** Protects the contents of the sent message from forwarding and saving */
+        protect_content?: boolean;
+        /** Pass True to allow up to 1000 messages per second, ignoring broadcasting limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will be withdrawn from the bot's balance. */
+        allow_paid_broadcast?: boolean;
+        /** Unique identifier of the message effect to be added to the message; for private chats only */
+        message_effect_id?: string;
+        /** Description of the message to reply to */
+        reply_parameters?: ReplyParameters;
+        /** Additional interface options. An object for an inline keyboard, custom reply keyboard, instructions to remove a reply keyboard or to force a reply from the user. */
+        reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
+    }): Message.WidgetMessage;
+    /** Use this method to send again a shared widget created by the bot. Currently, in the production environment, widgets can be sent only to private chats, and sent widgets automatically have protected content and therefore can't be forwarded. On success, the sent Message is returned. */
+    sendSharedWidget(args: {
+        /** Unique identifier for the target chat or username of the target supergroup in the format @username */
+        chat_id: number | string;
+        /** Unique identifier for the target message thread (topic) of a forum; for forum supergroups and private chats of bots with forum topic mode enabled only */
+        message_thread_id?: number;
+        /** Unique identifier of the shared widget */
+        widget_id: string;
+        /** Data of the widget, which is specific to the message, 0-1024 bytes */
+        chat_data?: string;
+        /** Widget caption, 0-1024 characters after entities parsing */
+        caption?: string;
+        /** Mode for parsing entities in the widget caption. See formatting options for more details. */
+        parse_mode?: ParseMode;
+        /** A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode */
+        caption_entities?: MessageEntity[];
+        /** Pass True if the caption must be shown above the widget */
+        show_caption_above_media?: boolean;
+        /** Sends the message silently. Users will receive a notification with no sound. */
+        disable_notification?: boolean;
+        /** Protects the contents of the sent message from forwarding and saving */
+        protect_content?: boolean;
+        /** Pass True to allow up to 1000 messages per second, ignoring broadcasting limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will be withdrawn from the bot's balance. */
+        allow_paid_broadcast?: boolean;
+        /** Unique identifier of the message effect to be added to the message; for private chats only */
+        message_effect_id?: string;
+        /** Description of the message to reply to */
+        reply_parameters?: ReplyParameters;
+        /** Additional interface options. An object for an inline keyboard, custom reply keyboard, instructions to remove a reply keyboard or to force a reply from the user. */
+        reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
+    }): Message.WidgetMessage;
     /** Use this method to forward messages of any kind. Service messages and messages with protected content can't be forwarded. On success, the sent Message is returned. */
     forwardMessage(args: {
         /** Unique identifier for the target chat or username of the target bot, supergroup or channel in the format `@username` */
@@ -1354,6 +1427,8 @@ export type ApiMethods<F> = {
         user_id: number;
     }): ChatMember;
     /** Use this method to get the last messages from the personal chat (i.e., the chat currently added to their profile) of a given user. On success, an Array of Message objects is returned. */
+    /** Use this method to get the list of backdrops, which can be used as the background of a theme of the screen for sharing a link to a user or a chat. Requires no parameters. Returns a ChatShareThemeBackdrops object. */
+    getChatShareThemeBackdrops(): ChatShareThemeBackdrops;
     getUserPersonalChatMessages(args: {
         /** Unique identifier for the target user */
         user_id: number;
@@ -1480,6 +1555,13 @@ export type ApiMethods<F> = {
         /** An object describing the message to be sent */
         result: InlineQueryResult;
     }): SentGuestMessage;
+    /** Use this method to send an answer to a query from a widget. The query must be answered within 15 seconds. The answer is received only by the widget that sent the query and doesn't change data of the widget; use editMessageWidgetData or editSharedWidgetData to change it. On success, True is returned. */
+    answerWidgetQuery(args: {
+        /** Unique identifier for the query to be answered */
+        widget_query_id: string;
+        /** Data to be returned to the widget, 0-1024 bytes */
+        data?: string;
+    }): true;
     /** Use this method to get the list of boosts added to a chat by a user. Requires administrator rights in the chat. Returns a UserChatBoosts object. */
     getUserChatBoosts(args: {
         /** Unique identifier for the chat or username of the channel (in the format `@channelusername`) */
@@ -1726,6 +1808,28 @@ export type ApiMethods<F> = {
         /** An object for an inline keyboard. */
         reply_markup?: InlineKeyboardMarkup;
     }): (Update.Edited & Message) | true;
+    /** Use this method to edit data of a widget in a message sent by the bot or via the bot (for inline bots). Public data of a shared widget can be changed at most once per second. On success, True is returned. */
+    editMessageWidgetData(args: {
+        /** Required if inline_message_id is not specified. Unique identifier for the target chat or username of the target supergroup in the format `@username`. */
+        chat_id?: number | string;
+        /** Required if inline_message_id is not specified. Identifier of the message with the widget. */
+        message_id?: number;
+        /** Required if chat_id and message_id are not specified. Identifier of the inline message. */
+        inline_message_id?: string;
+        /** New public data of the widget, 0-1024 bytes; pass an empty string to remove the public data. If omitted, then the public data isn't changed. */
+        public_data?: string;
+        /** New data of the widget, which is specific to the message, 0-1024 bytes; pass an empty string to remove the data. If omitted, then the data isn't changed. */
+        chat_data?: string;
+    }): true;
+    /** Use this method to edit public data of a shared widget created by the bot. A shared widget can be edited at most once per second. On success, True is returned. */
+    editSharedWidgetData(args: {
+        /** Unique identifier of the shared widget */
+        widget_id: string;
+        /** New public data of the widget, 0-1024 bytes; pass an empty string to remove the public data */
+        public_data: string;
+        /** The maximum amount of time in seconds that the public data of the widget may be cached client-side; 5-3600. If omitted, then the current value is kept, which is 30 by default. */
+        cache_time?: number;
+    }): true;
     /** Use this method to stop a poll which was sent by the bot. On success, the stopped Poll is returned. */
     stopPoll(args: {
         /** Unique identifier of the business connection on behalf of which the message to be edited was sent */
@@ -1975,6 +2079,13 @@ export type ApiMethods<F> = {
         /** The amount of Telegram Stars that will be paid for the transfer from the business account balance. If positive, then the can_transfer_stars business bot right is required. */
         star_count: number;
     }): true;
+    /** Deletes a regular gift owned by a managed business account without receiving Telegram Stars for it. Requires the can_convert_gifts_to_stars business bot right. The gift can be deleted only if it isn't limited (the field total_count of the Gift is omitted) and wasn't refunded. Returns True on success. */
+    deleteBusinessAccountGift(args: {
+        /** Unique identifier of the business connection */
+        business_connection_id: string;
+        /** Unique identifier of the regular gift that should be deleted */
+        owned_gift_id: string;
+    }): true;
     /** Posts a story on behalf of a managed business account. Requires the can_manage_stories business bot right. Returns Story on success. */
     postStory(args: {
         /** Unique identifier of the business connection */
@@ -2185,6 +2296,11 @@ export type ApiMethods<F> = {
         /** Custom emoji identifier of a sticker from the sticker set; pass an empty string to drop the thumbnail and use the first sticker as the thumbnail */
         custom_emoji_id?: string;
     }): true;
+    /** Use this method to get information about a unique gift by its name. Returns a UniqueGift object on success. */
+    getUniqueGift(args: {
+        /** Unique name of the gift */
+        name: string;
+    }): UniqueGift;
     /** Returns the list of gifts that can be sent by the bot to users and channel chats. Requires no parameters. Returns a Gifts object. */
     getAvailableGifts(): Gifts;
     /** Sends a gift to the given user or channel chat. The gift can't be converted to Telegram Stars by the receiver. Returns True on success. */
@@ -2429,6 +2545,10 @@ export type ApiMethods<F> = {
         user_id: number;
         /** Custom description for the verification; 0-70 characters. Must be empty if the organization isn't allowed to provide a custom verification description. */
         custom_description?: string;
+        /** Mode for parsing entities in the custom description. See formatting options for more details. */
+        custom_description_parse_mode?: ParseMode;
+        /** A JSON-serialized list of special entities that appear in the custom description, which can be specified instead of custom_description_parse_mode */
+        custom_description_entities?: MessageEntity[];
     }): true;
     /** Verifies a chat on behalf of the organization which is represented by the bot. Returns True on success. */
     verifyChat(args: {
@@ -2436,6 +2556,10 @@ export type ApiMethods<F> = {
         chat_id: number | string;
         /** Custom description for the verification; 0-70 characters. Must be empty if the organization isn't allowed to provide a custom verification description. */
         custom_description?: string;
+        /** Mode for parsing entities in the custom description. See formatting options for more details. */
+        custom_description_parse_mode?: ParseMode;
+        /** A JSON-serialized list of special entities that appear in the custom description, which can be specified instead of custom_description_parse_mode */
+        custom_description_entities?: MessageEntity[];
     }): true;
     /** Removes verification from a user who is currently verified on behalf of the organization represented by the bot. Returns True on success. */
     removeUserVerification(args: {

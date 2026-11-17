@@ -1,21 +1,42 @@
 # Verifikasi Mendalam telebibz
 
 **Tanggal audit:** 2026-09-28  
-**Versi repo:** 3.1.2  
+**Versi repo:** 3.2.0  
 **Runtime yang diuji:** Node.js v20.20.2  
-**Acuan Telegram:** Bot API 10.3 / pembaruan resmi terakhir 2026-08-24.
+**Acuan Telegram:** Bot API 10.4 / pembaruan resmi terakhir 2026-11-09.
 
 > Test otomatis menggunakan mock/server lokal. Tes live terpisah pada bot milik pengguna dilakukan 2026-09-28; token/chat ID tidak dicatat dalam laporan. Hasilnya tidak membuktikan setiap endpoint bekerja di semua bot/chat/permission Telegram produksi.
 
-## Hasil pengujian
+## Verifikasi rilis 3.2.0 — Bot API 10.4 (2026-11-17)
+
+Pemeriksaan yang dijalankan pada rilis 3.2.0, semuanya offline (tanpa token bot):
+
+| Pemeriksaan | Perintah | Hasil |
+|---|---|---|
+| Test offline | `npm test` | **66/66 lulus** (46 `all.test.js` + 20 `audit.test.js`) |
+| Typecheck deklarasi | `npm run typecheck` | **lulus**, 0 error |
+| Registry vs dokumen resmi | scrape `core.telegram.org/bots/api` | **193/193**, 0 hilang, 0 berlebih, 0 duplikat |
+| Dokumentasi | `npm run docs:build` | **lulus**, vitepress 1.6.4, hasil generate deterministik (`git status` bersih setelah generate) |
+| Sintaks contoh | `node --check examples/*.js` | **lulus** (9 contoh) |
+| Isi paket | `npm pack --dry-run` | **berhasil** |
+| ESM & CJS | `import { TeleBibz } from '…'` dan `require('…')` | **lulus** (via `index.mjs` + peta `exports`) |
+
+Cakupan test baru di rilis ini: webhook ACK-instan + dedupe `update_id` + `awaitProcessing` + verifikasi secret token, `widget_query`/`shared_widget_query` beserta `answerWidgetQuery`, filter `:live_photo`/`:rich_message`/`message:widget`, `ctx.downloadFile` terhadap HTTP server lokal dengan `apiRoot` khusus, `btn.disabled`, validasi `allowedUpdates`, `session({ onlyWhenChanged: true })`, dan sinkronisasi registry 193 metode dengan seluruh signature TypeScript.
+
+### Batas verifikasi
+
+- Semua di atas memakai mock/HTTP lokal. **Tidak ada** panggilan live ke Telegram pada rilis ini, jadi widget (`sendWidget`), TON card, dan metode 10.4 lainnya belum diverifikasi terhadap server Telegram sungguhan. Widget juga hanya tersedia untuk private chat pada lingkungan produksi.
+- Klaim "193 metode sinkron" berarti nama method dan bentuk payload sesuai dokumen resmi — bukan jaminan setiap kombinasi nilai payload diterima server.
+
+## Hasil pengujian (2026-09-28, rilis 3.1.x)
 
 | Pemeriksaan | Hasil |
 |---|---:|
-| Test fitur yang sudah ada (`test/all.test.js`) | **30/30 lulus** |
-| Test audit/regresi baru (`test/audit.test.js`) | **18/18 lulus** |
+| Test fitur yang sudah ada (`test/all.test.js`) | **46/46 lulus** |
+| Test audit/regresi baru (`test/audit.test.js`) | **20/20 lulus** |
 | Sintaks semua JS (`node --check`) | **lulus** |
 | Test payload dan consumer TypeScript (`npm run typecheck`) | **lulus** |
-| Registry runtime dibandingkan 1:1 dengan method signatures vendored | **185/185, unik, sinkron** |
+| Registry runtime dibandingkan 1:1 dengan method signatures vendored | **193/193, unik, sinkron** |
 | `npm audit --omit=dev` | **0 vulnerability** |
 | `npm pack --dry-run` | **berhasil**, 53 file; 839.0 kB unpacked (tarball 177.8 kB) |
 | YAML CI/release workflow | **valid**, parser lokal |
@@ -32,7 +53,7 @@ Test transport menggunakan HTTP server lokal: memeriksa JSON, upload multipart `
 - `sendMessageDraft` dan `sendRichMessageDraft` berhasil sebagai preview sementara.
 - Pengiriman ephemeral gagal dengan HTTP 400 `BOT_NOT_ADMIN` pada `sendRichMessage` maupun `sendMessage`; dicatat sebagai belum lolos, bukan dianggap berhasil.
 - Percobaan awal menemukan mismatch `rich.button()` (menghasilkan RichTextButton, bukan tombol block). Implementasi lokal diperbaiki: `rich.button()` menghasilkan `RichMessageButton`, `rich.buttonText()` untuk RichTextButton. Test offline/typecheck sesudah perbaikan lulus. Perbaikan tersebut belum dipush.
-- Pesan test sengaja dibiarkan di chat sesuai izin pengguna. Callback button tidak diklik; edit/hapus, paid media (berpotensi melibatkan Stars), guest-query nyata, dan seluruh 185 endpoint tidak diuji live.
+- Pesan test sengaja dibiarkan di chat sesuai izin pengguna. Callback button tidak diklik; edit/hapus, paid media (berpotensi melibatkan Stars), guest-query nyata, dan seluruh 193 endpoint tidak diuji live.
 
 Jalankan ulang dengan:
 
@@ -49,7 +70,7 @@ npm audit --audit-level=high --omit=dev
 - [Telegram Bot API reference](https://core.telegram.org/bots/api)
 - [Telegram Bot API changelog](https://core.telegram.org/bots/api-changelog)
 
-Per 2026-09-28, halaman resmi mencantumkan perubahan terakhir 2026-08-24 (Bot API 10.3). Perubahan relevan mencakup tipe tombol rich message, parameter `ephemeral_message_parameters`, perubahan `sendMessageDraft`/`sendRichMessageDraft`, serta update `stopped_message_generation`. Perubahan 2026 sebelumnya juga menambahkan guest messages, `answerGuestQuery`, rich messages, dan live photos.
+Per 2026-09-28, halaman resmi mencantumkan perubahan terakhir 2026-08-24 (Bot API 10.4). Perubahan relevan mencakup tipe tombol rich message, parameter `ephemeral_message_parameters`, perubahan `sendMessageDraft`/`sendRichMessageDraft`, serta update `stopped_message_generation`. Perubahan 2026 sebelumnya juga menambahkan guest messages, `answerGuestQuery`, rich messages, dan live photos.
 
 ### Penyesuaian yang dilakukan berdasarkan audit
 
@@ -70,14 +91,14 @@ Per 2026-09-28, halaman resmi mencantumkan perubahan terakhir 2026-08-24 (Bot AP
    await bot.api.setWebhook(url, { secret_token: process.env.TG_WEBHOOK_SECRET });
    ```
 
-9. **API Proxy dan typing method:** nama `then`, `catch`, dan `finally` dikecualikan dari fallback metode generik agar `api` tidak dianggap Promise/thenable. Registry runtime memuat 185 nama; test membandingkannya 1:1 dengan semua signature pada schema TypeScript vendored. `api.callApi(method, payload)`/`api.raw(...)` memakai nama method dan payload yang spesifik pada compile time. Fallback `api.anyMethod(payload)` tetap generik/dinamis dan tidak melakukan validasi schema saat runtime.
-10. **Rich messages / Bot API 10.3:** builder mendukung input HTML, Markdown, blocks terstruktur dan rich-text entities; rich blocks untuk heading, table, lists, details, quotes, media, buttons, maps, collage/slideshow, serta thinking khusus draft. Context/API helper baru untuk rich message send/edit, live photo, streaming drafts, guest query, ephemeral send/edit/delete dan inline rich article. Tests memeriksa payload yang dibentuk, satu-mode validation, upload multipart nested `attach://` di rich media, dan penolakan `File` upload pada rich drafts; builder menyediakan `draftHtml`/`draftMarkdown`/`draftBlocks` serta `buildDraft()`.
+9. **API Proxy dan typing method:** nama `then`, `catch`, dan `finally` dikecualikan dari fallback metode generik agar `api` tidak dianggap Promise/thenable. Registry runtime memuat 193 nama; test membandingkannya 1:1 dengan semua signature pada schema TypeScript vendored. `api.callApi(method, payload)`/`api.raw(...)` memakai nama method dan payload yang spesifik pada compile time. Fallback `api.anyMethod(payload)` tetap generik/dinamis dan tidak melakukan validasi schema saat runtime.
+10. **Rich messages / Bot API 10.4:** builder mendukung input HTML, Markdown, blocks terstruktur dan rich-text entities; rich blocks untuk heading, table, lists, details, quotes, media, buttons, maps, collage/slideshow, serta thinking khusus draft. Context/API helper baru untuk rich message send/edit, live photo, streaming drafts, guest query, ephemeral send/edit/delete dan inline rich article. Tests memeriksa payload yang dibentuk, satu-mode validation, upload multipart nested `attach://` di rich media, dan penolakan `File` upload pada rich drafts; builder menyediakan `draftHtml`/`draftMarkdown`/`draftBlocks` serta `buildDraft()`.
 11. **TypeScript:** vendored `@grammyjs/types@5.0.0` (MIT) menyediakan tipe method/object/payload, tanpa dependency runtime. `npm run typecheck` mengompilasi declaration dan consumer sample, termasuk positive call serta negative `@ts-expect-error` checks; `sendRichMessageDraft` sengaja memakai schema yang tidak menerima upload baru.
 
 ## Batasan dan risiko yang masih ada
 
 - **Tidak ada uji langsung ke Telegram saat audit ini.** Autentikasi token, izin admin, format payload khusus, batas rate Telegram, dukungan fitur per akun, dan respons nyata tetap perlu dites memakai bot staging. README lama mencatat uji live terdahulu; audit ini tidak mengulang uji tersebut.
-- Semua 185 nama method dan payload signature telah tersedia pada type-level melalui `api.callApi()`/`api.raw()` dan schema TypeScript. Proxy shorthand `bot.api.namaMetode({ ...payload })` tetap tanpa pemeriksaan schema runtime. Registry disinkronkan ke schema vendored `@grammyjs/types@5.0.0`; ini bukan live test Telegram dan tidak membuktikan tiap kombinasi nilai payload diterima oleh server.
+- Semua 193 nama method dan payload signature telah tersedia pada type-level melalui `api.callApi()`/`api.raw()` dan schema TypeScript. Proxy shorthand `bot.api.namaMetode({ ...payload })` tetap tanpa pemeriksaan schema runtime. Registry disinkronkan ke schema vendored `@grammyjs/types@5.0.0`; ini bukan live test Telegram dan tidak membuktikan tiap kombinasi nilai payload diterima oleh server.
 - `launch()` tidak otomatis menghapus webhook terdahulu. Sebelum beralih dari webhook ke polling, lakukan `deleteWebhook()` secara eksplisit bila dibutuhkan.
 - Upload multipart membaca sumber file ke memori sebelum mengirim. Untuk file besar, penggunaan RAM dapat meningkat.
 - Session default dan limiter berjalan di memori proses; gunakan storage bersama/persisten bila menjalankan banyak worker atau perlu mempertahankan data setelah restart.

@@ -5,10 +5,12 @@ const assert = require('assert');
 const { TeleBibz, btn, url, kb, webApp, copy, humanize, File, InlineKeyboard,
   Menu, MenuContainer, iq, autoRetry, throttler, limiter, InputMediaBuilder } = require('..');
 
-let N = 0, OK = 0;
-const TOTAL = 33;
+// Hitungan test otomatis: TOTAL diisi dari jumlah test yang terdaftar di akhir berkas,
+// jadi menambah test tidak lagi perlu mengubah konstanta manual (dulu bisa "exit dini").
+let N = 0, OK = 0, TOTAL = 0, REGISTERED = 0;
 const t = (nama, fn) => {
-  const done = () => { N++; if (N === TOTAL) { console.log(`\n${OK}/${N} lulus`); process.exit(OK === N ? 0 : 1); } };
+  REGISTERED++;
+  const done = () => { N++; if (TOTAL && N === TOTAL) { console.log(`\n${OK}/${N} lulus`); process.exit(OK === N ? 0 : 1); } };
   Promise.resolve()
     .then(fn)
     .then(() => { OK++; console.log(`  ✓ ${nama}`); done(); })
@@ -381,18 +383,65 @@ t('ctx.getFile() memilih ukuran photo terbesar', async () => {
 });
 
 /* ===== 14. webhook handler Node murni ===== */
-t('webhook(): body JSON diproses handleUpdate', async () => {
+function fakeRes() {
+  const out = { status: 0, body: '', headers: {} };
+  out.res = {
+    set statusCode(v) { out.status = v; }, get statusCode() { return out.status; },
+    setHeader(k, v) { out.headers[k] = v; }, end(b) { out.body = b === undefined ? '' : String(b); },
+  };
+  return out;
+}
+function fakeReq(update, headers = {}) {
   const { Readable } = require('stream');
+  const req = Readable.from([JSON.stringify(update)]);
+  req.method = 'POST';
+  req.headers = headers;
+  return req;
+}
+
+t('webhook(): balas 200 lebih dulu, handler jalan di latar belakang', async () => {
   const { bot, calls } = buatBot(); await boot(bot);
-  bot.cmd('start', (ctx) => ctx.reply('hai webhook'));
+  bot.cmd('start', async (ctx) => { await new Promise((r) => setTimeout(r, 20)); await ctx.reply('hai webhook'); });
   const handler = bot.webhook();
+  const out = fakeRes();
+  await handler(fakeReq(uMsg('/start')), out.res);
+  assert.strictEqual(out.status, 200, 'harus 200 segera');
+  assert.ok(!texts(calls).some((x) => /hai webhook/.test(x)), 'handler belum selesai saat respons dikirim');
+  await bot.drainWebhook();
+  assert.ok(texts(calls).some((x) => /hai webhook/.test(x)), 'handler tetap selesai setelah respons');
+});
+
+t('webhook(): update_id duplikat tidak diproses dua kali', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.cmd('start', (ctx) => ctx.reply('sekali saja'));
+  const handler = bot.webhook({ awaitProcessing: true });
   const upd = uMsg('/start');
-  const req = Readable.from([JSON.stringify(upd)]);
-  let status = 0, bodyOut = '';
-  const res = { set statusCode(v) { status = v; }, get statusCode() { return status; }, setHeader() {}, end(b) { bodyOut = b; } };
-  await handler(req, res);
-  assert.strictEqual(status, 200);
-  assert.ok(texts(calls).some((x) => /hai webhook/.test(x)));
+  const a = fakeRes(); await handler(fakeReq(upd), a.res);
+  const b = fakeRes(); await handler(fakeReq(upd), b.res);
+  assert.strictEqual(a.status, 200);
+  assert.strictEqual(b.status, 200);
+  assert.match(b.body, /duplicate/, 'duplikat ditandai di respons');
+  assert.strictEqual(texts(calls).filter((x) => /sekali saja/.test(x)).length, 1);
+});
+
+t('webhook(): awaitProcessing=true menunggu handler (mode serverless)', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.cmd('start', (ctx) => ctx.reply('tunggu dulu'));
+  const handler = bot.webhook({ awaitProcessing: true });
+  const out = fakeRes();
+  await handler(fakeReq(uMsg('/start')), out.res);
+  assert.strictEqual(out.status, 200);
+  assert.ok(texts(calls).some((x) => /tunggu dulu/.test(x)), 'handler sudah selesai sebelum respons');
+});
+
+t('webhook(): secret token salah ditolak 401, benar diterima', async () => {
+  const { bot } = buatBot(); await boot(bot);
+  const handler = bot.webhook({ secretToken: 'rahasia_123' });
+  const bad = fakeRes(); await handler(fakeReq(uMsg('/x'), { 'x-telegram-bot-api-secret-token': 'salah' }), bad.res);
+  assert.strictEqual(bad.status, 401);
+  const good = fakeRes();
+  await handler(fakeReq(uMsg('/x'), { 'x-telegram-bot-api-secret-token': 'rahasia_123' }), good.res);
+  assert.strictEqual(good.status, 200);
 });
 /* ===== 25–30. wizard v3.1: tombol + edit/delete ===== */
 t('wizard v3.1: tombol reply — label cocok → nilai; onlyButtons menahan ketikan bebas', async () => {
@@ -499,3 +548,147 @@ t('wizard v3.1: wizard.cancel() membatalkan sesi secara programatis', async () =
   assert.strictEqual(wiz.active(ctx), false);
   assert.strictEqual(await wiz.cancel(ctx), false); // sudah tidak aktif
 });
+
+/* ===== 31+. Bot API 10.4: widget, ephemeral callback, filter baru ===== */
+
+t('registry memuat seluruh 193 metode Bot API 10.4', async () => {
+  const { TELEGRAM_API_METHODS } = require('..');
+  assert.strictEqual(TELEGRAM_API_METHODS.length, 193);
+  for (const m of ['sendWidget', 'sendSharedWidget', 'answerWidgetQuery', 'editMessageWidgetData',
+    'editSharedWidgetData', 'getUniqueGift', 'deleteBusinessAccountGift', 'getChatShareThemeBackdrops']) {
+    assert.ok(TELEGRAM_API_METHODS.includes(m), `${m} belum ada di registry`);
+  }
+});
+
+t('allowedUpdates kosong ditolak cepat dengan pesan jelas', async () => {
+  const { TeleBibz } = require('..');
+  assert.throws(() => new TeleBibz('123456:TESTTOKEN', { allowedUpdates: [], silent: true, transport: async () => true }), /allowedUpdates/);
+  assert.throws(() => new TeleBibz('123456:TESTTOKEN', { allowedUpdates: ['message', 7], silent: true, transport: async () => true }), /string/);
+  assert.doesNotThrow(() => new TeleBibz('123456:TESTTOKEN', { allowedUpdates: ['message'], silent: true, transport: async () => true }));
+});
+
+t('widget_query: routing, ctx.widgetQueryId, dan answerWidgetQuery', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  let seen;
+  bot.on('widget_query', async (ctx) => {
+    seen = { id: ctx.widgetQueryId, from: ctx.from.id, data: ctx.widget_query.data };
+    await ctx.answerWidgetQuery('terima-kasih');
+  });
+  await bot.handleUpdate({
+    update_id: ++uid,
+    widget_query: {
+      id: 'wq-1', from: { id: 777, is_bot: false, first_name: 'Sari' },
+      chat: { id: 777, type: 'private' }, message_id: 9, chat_instance: 'ci',
+      type: { type: 'data' }, data: 'klik', widget_id: 'wid-9',
+    },
+  });
+  assert.deepStrictEqual(seen, { id: 'wq-1', from: 777, data: 'klik' });
+  const ans = calls.find((c) => c.method === 'answerWidgetQuery');
+  assert.ok(ans, 'answerWidgetQuery harus terkirim');
+  assert.deepStrictEqual(ans.payload, { widget_query_id: 'wq-1', data: 'terima-kasih' });
+});
+
+t('shared_widget_query juga dirutekan dan bisa dijawab', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.on('shared_widget_query:data', (ctx) => ctx.answerWidgetQuery('ok'));
+  await bot.handleUpdate({
+    update_id: ++uid,
+    shared_widget_query: { id: 'sq-1', from: { id: 5 }, type: { type: 'data' }, data: 'x', widget_id: 'wid' },
+  });
+  assert.ok(calls.some((c) => c.method === 'answerWidgetQuery' && c.payload.widget_query_id === 'sq-1'));
+});
+
+t('filter baru: :live_photo, :rich_message, dan message:widget', async () => {
+  const { bot } = buatBot(); await boot(bot);
+  const hits = [];
+  bot.on(':live_photo', () => { hits.push('live'); });
+  bot.on(':rich_message', () => { hits.push('rich'); });
+  bot.on('message:widget', () => { hits.push('widget'); });
+  const base = { from: USER, chat: CHAT, date: 1 };
+  await bot.handleUpdate({ update_id: ++uid, message: { message_id: ++mid, ...base, live_photo: { file_id: 'l', file_unique_id: 'l', width: 1, height: 1, duration: 1 } } });
+  await bot.handleUpdate({ update_id: ++uid, message: { message_id: ++mid, ...base, rich_message: { blocks: [] } } });
+  await bot.handleUpdate({ update_id: ++uid, message: { message_id: ++mid, ...base, widget: { html: '<b>x</b>' } } });
+  assert.deepStrictEqual(hits, ['live', 'rich', 'widget']);
+});
+
+t('ctx.replyWithWidget / replyWithSharedWidget / editWidgetData memetakan payload resmi', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.cmd('widget', async (ctx) => {
+    await ctx.replyWithWidget('<b>halo</b>', { is_shared: true, allow_queries: true });
+    await ctx.replyWithSharedWidget('wid-1', { caption: 'lagi' });
+  });
+  await bot.handleUpdate(uMsg('/widget'));
+  const [w, sw] = [calls.find((c) => c.method === 'sendWidget'), calls.find((c) => c.method === 'sendSharedWidget')];
+  assert.strictEqual(w.payload.html, '<b>halo</b>');
+  assert.strictEqual(w.payload.is_shared, true);
+  assert.strictEqual(w.payload.allow_queries, true);
+  assert.strictEqual(sw.payload.widget_id, 'wid-1');
+
+  const c2 = buatBot(); await boot(c2.bot);
+  c2.bot.action('wdata', (ctx) => ctx.editWidgetData({ public_data: 'v2' }));
+  await c2.bot.handleUpdate({ update_id: ++uid, callback_query: { id: 'cbw', data: 'wdata', from: USER, message: { message_id: 33, chat: CHAT, date: 1 } } });
+  const edit = c2.calls.find((c) => c.method === 'editMessageWidgetData');
+  assert.deepStrictEqual(edit.payload, { chat_id: CHAT.id, message_id: 33, public_data: 'v2' });
+});
+
+t('ctx.replyEphemeralToCallback memakai callback_query_id tanpa receiver_user_id', async () => {
+  const { bot, calls } = buatBot(); await boot(bot);
+  bot.action('hint', (ctx) => ctx.replyEphemeralToCallback('cuma kamu'));
+  await bot.handleUpdate({ update_id: ++uid, callback_query: { id: 'cb-eph', data: 'hint', from: USER, message: { message_id: 44, chat: CHAT, date: 1 } } });
+  const send = calls.find((c) => c.method === 'sendMessage');
+  assert.deepStrictEqual(send.payload.ephemeral_message_parameters, { callback_query_id: 'cb-eph' });
+  assert.strictEqual(send.payload.ephemeral_message_parameters.receiver_user_id, undefined);
+});
+
+t('ctx.downloadFile menghormati apiRoot custom dan menulis file', async () => {
+  const http = require('http'); const fs = require('fs'); const os = require('os'); const path = require('path');
+  const server = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('isi:' + req.url); });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const dest = path.join(os.tmpdir(), `telebibz-ctxdl-${process.pid}.txt`);
+  try {
+    const { bot } = buatBot({ getFile: () => ({ file_id: 'f1', file_path: 'docs/a.txt' }) }, { apiRoot: `http://127.0.0.1:${port}` });
+    await boot(bot);
+    bot.on('message:document', (ctx) => ctx.downloadFile(dest));
+    await bot.handleUpdate({ update_id: ++uid, message: { message_id: ++mid, from: USER, chat: CHAT, date: 1, document: { file_id: 'f1', file_unique_id: 'u1' } } });
+    assert.match(fs.readFileSync(dest, 'utf8'), new RegExp(`^isi:/file/bot[^/]+/docs/a\\.txt$`));
+  } finally {
+    if (fs.existsSync(dest)) fs.rmSync(dest, { force: true });
+    server.close();
+  }
+});
+
+t('tombol nonaktif Bot API 10.3: btn.disabled dan InlineKeyboard.disabled', async () => {
+  const { btn, InlineKeyboard } = require('..');
+  assert.deepStrictEqual(btn.disabled('Segera'), { text: 'Segera', disabled: {} });
+  assert.deepStrictEqual(btn('Matikan', null, 'danger'), { text: 'Matikan', disabled: {}, style: 'danger' });
+  const ikb = new InlineKeyboard().text('Aktif', 'a').disabled('Mati').build();
+  assert.deepStrictEqual(ikb.reply_markup.inline_keyboard[0][1], { text: 'Mati', disabled: {} });
+});
+
+t('session onlyWhenChanged tidak menulis ulang session yang tidak berubah', async () => {
+  const { session } = require('../lib/session');
+  const store = new Map();
+  let writes = 0;
+  const storage = {
+    get: (k) => store.get(k),
+    set: (k, v) => { writes += 1; store.set(k, v); },
+    delete: (k) => store.delete(k),
+  };
+  const mw = session({ initial: () => ({ n: 0 }), storage, onlyWhenChanged: true });
+  await mw({ from: { id: 1 }, chat: { id: 2 }, session: undefined }, async () => {});
+  assert.strictEqual(writes, 1, 'session baru tetap ditulis sekali');
+  await mw({ from: { id: 1 }, chat: { id: 2 } }, async () => {});
+  assert.strictEqual(writes, 1, 'tidak ada perubahan → tidak menulis');
+  const ctx2 = { from: { id: 1 }, chat: { id: 2 } };
+  await mw(ctx2, async () => { ctx2.session.n = 5; });
+  assert.strictEqual(writes, 2, 'ada perubahan → menulis');
+  // default (tanpa onlyWhenChanged) tetap menulis setiap update seperti sebelumnya
+  const mw2 = session({ initial: () => ({ n: 0 }), storage });
+  await mw2({ from: { id: 9 }, chat: { id: 9 } }, async () => {});
+  await mw2({ from: { id: 9 }, chat: { id: 9 } }, async () => {});
+  assert.strictEqual(writes, 4);
+});
+
+/* Kunci jumlah test: TOTAL baru diketahui setelah semua test terdaftar di atas. */
+TOTAL = REGISTERED;

@@ -1,6 +1,38 @@
 # Changelog
 
-## Unreleased — Telegram Bot API 10.3 / Rich Messages
+## 3.2.0 — Telegram Bot API 10.4 (2026-11-17)
+
+Rilis ini mengejar Bot API **10.4** (9 November 2026) dan menutup tiga bug runtime yang sebelumnya tidak terdeteksi oleh test suite.
+
+### Bot API 10.4 — permukaan API
+
+- Registry metode naik dari **185 → 193** dan sekarang **persis sama** dengan daftar resmi `core.telegram.org/bots/api` (0 metode berlebih, 0 duplikat):
+  `sendWidget`, `sendSharedWidget`, `answerWidgetQuery`, `editMessageWidgetData`, `editSharedWidgetData`, `getUniqueGift`, `deleteBusinessAccountGift`, `getChatShareThemeBackdrops`.
+- `DEFAULT_UPDATES` / `allowed_updates` sekarang memuat `managed_bot` (9.6), `subscription` (10.2), `widget_query` dan `shared_widget_query` (10.4). Sebelumnya update tipe ini **tidak pernah dikirim Telegram** karena whitelist tidak mencantumkannya.
+- Tipe baru: `Widget`, `WidgetQuery`, `SharedWidgetQuery`, `WidgetQueryType` (+ `WidgetQueryTypeData`, `WidgetQueryTypeSignData`, `WidgetQueryTypeSentTransaction`, `WidgetQueryWallet`), `InputWidgetMessageContent`, `InputSharedWidgetMessageContent`, `TonWalletCard`, `TonWalletCardSticker`, `TonNft`, `TonNftAttribute`, `TonWalletTransfer`, `RichTextTonAddress`, `PaidMessagesWaived`, `ChatShareTheme` (+ `ChatShareThemeEmoji`, `ChatShareThemeUniqueGift`, `ChatShareThemeBackdrop`, `ChatShareThemeBackdrops`), `EmojiType` (+ `EmojiTypeEmoji`, `EmojiTypeCustomEmoji`). `StoryAreaPosition` di-*rename* menjadi `AreaPosition` dengan alias `@deprecated`.
+- Field/parameter baru: `Update.widget_query`, `Update.shared_widget_query`, `Message.widget`, `Message.ton_wallet_transfer`, `Message.paid_messages_waived`, `ExternalReplyInfo.widget`, `TextQuote.rich_texts`, `ReplyParameters.quote_rich_texts`, `ChatFullInfo.ton_wallet_card`, `ChatFullInfo.share_theme`, entity `ton_address` & `bank_card_number`, serta `custom_description_parse_mode`/`custom_description_entities` pada `verifyUser`/`verifyChat`.
+- `EphemeralMessageParameters.receiver_user_id` menjadi **opsional** (10.4 mengizinkan ephemeral reply ke callback query hanya dengan `callback_query_id`).
+- Runtime helper baru: `ctx.replyWithWidget`, `ctx.replyWithSharedWidget`, `ctx.answerWidgetQuery`, `ctx.editWidgetData`, `ctx.widgetQuery`, `ctx.widgetQueryId`, `ctx.replyEphemeralToCallback`; shortcut API `sendWidget`, `sendSharedWidget`, `answerWidgetQuery`, `editMessageWidgetData`, `editSharedWidgetData`, `getUniqueGift`, `deleteBusinessAccountGift`, `getChatShareThemeBackdrops`.
+- Filter baru: `on('widget_query')`, `on('shared_widget_query')`, `on('shared_widget_query:data')`, `on('message:widget')`, serta `:live_photo`, `:rich_message`, `:checklist`, `:widget`, `:paid_media`, `:story`, `:paid_messages_waived`, `:ton_wallet_transfer` (sebelumnya selalu `false`).
+- Tombol nonaktif (10.3): `btn.disabled(text)`, `btn(text, null, style)` dan `InlineKeyboard#disabled()`.
+
+### Bug runtime yang diperbaiki
+
+- **`ctx.downloadFile()` mengabaikan `apiRoot`.** Dulu URL file di-*hardcode* ke `https://api.telegram.org`, sehingga unduhan gagal total untuk pengguna Local Bot API Server (wajib untuk file > 20 MB) dan menembus proxy. Sekarang didelegasikan ke downloader terpusat (`createDownloader`) yang menghormati `apiRoot`, `proxy`, `timeoutMs`, `maxBytes`, dan bisa menulis ke Writable stream. `api.downloadFile(id, dest, { maxBytes, timeoutMs, axios })` dan `api.downloadFilePath()` juga tersedia.
+- **Webhook menahan ACK sampai handler selesai.** Handler yang lambat (> 60 detik) membuat Telegram menganggap delivery gagal dan mengirim ulang update → handler jalan berkali-kali. Sekarang respons `200` dikirim lebih dulu dan update diproses di latar belakang (`bot.drainWebhook()` untuk menunggu), dengan dedupe `update_id` (LRU, default 1000). Mode lama tetap tersedia lewat `webhook({ awaitProcessing: true })` untuk serverless.
+- **Timeout upload multipart** memakai batas long-poll (35 detik) sehingga file besar gagal `ECONNABORTED`. Sekarang upload memakai `uploadTimeoutMs` (default `max(timeoutMs, 300_000)`), dan unduhan punya `downloadTimeoutMs` (default 60 detik).
+- `allowedUpdates: []` kini ditolak dengan `RangeError` (sebelumnya lolos dan membuat bot diam total tanpa penjelasan).
+- `lib/session.js`: ekspresi `delete` yang duplikat dibersihkan; opsi baru `onlyWhenChanged: true` menulis session hanya jika berubah (hemat I/O Redis/DB).
+- `lib/file.js`/`lib/net.js`: agent proxy & keep-alive dipakai bersama lewat `makeAgent()`; downloader memakai agent yang sama.
+
+### Paket, tipe, dan dokumentasi
+
+- `package.json`: versi **3.2.0**, `engines.node >= 20` (Node 18 EOL), `sideEffects: false`, peta `exports` (CJS + ESM + deep import `lib/*`, `types/*`), dan entri ESM baru `index.mjs`.
+- Test otomatis naik dari 48 → **66** (46 di `test/all.test.js` + 20 di `test/audit.test.js`). Harness `test/all.test.js` kini menghitung jumlah test otomatis sehingga menambah test tidak lagi bisa membuat proses keluar lebih awal. Cakupan baru: webhook ACK/dedupe/`awaitProcessing`/secret token, `widget_query` & `shared_widget_query`, filter `:live_photo`/`:rich_message`/`:widget`, `ctx.downloadFile` dengan `apiRoot` lokal, `btn.disabled`, `allowedUpdates` validasi, `session onlyWhenChanged`, dan registry 193 metode.
+- Dokumentasi baru tiga bahasa (id/en/zh): [Mengirim pesan](docs/guide/sending-messages.md), [Widget HTML (10.4)](docs/guide/widgets.md), dan [Studi kasus bot lengkap](docs/guide/full-project.md) — plus `examples/09-widget.js`.
+- Seluruh angka di README (id/en), `VERIFIKASI-MENDALAM.md`, dan CI diperbarui ke 193 metode / 1000 parameter / 66 test / Bot API 10.4.
+
+## 3.1.0 — Telegram Bot API 10.3 / Rich Messages
 
 ### API surface and types
 

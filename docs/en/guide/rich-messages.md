@@ -221,7 +221,7 @@ Telegram can reject this method with a permission error such as `BOT_NOT_ADMIN`.
 
 Use `ctx.editRichMessage(content, extra?)` when the current update has an editable message context, or call the API directly when you already have the target identifiers. The target is selected by `chat_id`/`message_id` or `inline_message_id`, depending on the context. Test with a message the bot is allowed to edit, not an incoming user message.
 
-## Context shortcuts for Bot API 10.3
+## Context shortcuts for Bot API 10.4
 
 | Helper | Purpose |
 | --- | --- |
@@ -237,7 +237,7 @@ Guest queries require a `guest_query_id` from an actual Telegram update. For an 
 
 ## Bot API access and types
 
-The TeleBibz registry recognizes **185 method names** in this release and provides payload types for `api.callApi()` and `api.raw()` in TypeScript. The runtime proxy can also access a newly added method by name, but dynamic JavaScript proxy calls do not validate the payload automatically.
+The TeleBibz registry recognizes **193 method names** in this release and provides payload types for `api.callApi()` and `api.raw()` in TypeScript. The runtime proxy can also access a newly added method by name, but dynamic JavaScript proxy calls do not validate the payload automatically.
 
 ```js
 await ctx.api.callApi('sendRichMessage', {
@@ -246,15 +246,15 @@ await ctx.api.callApi('sendRichMessage', {
 });
 ```
 
-Exported types include `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, `TelegramApiPayloads`, and the `TelegramTypes` namespace. See [TypeScript](/en/reference/typescript) and the [185-method list](/en/reference/methods). Types do not guarantee that every method can succeed in a live request; some require a real update, admin rights, a purchase, or a particular chat context.
+Exported types include `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, `TelegramApiPayloads`, and the `TelegramTypes` namespace. See [TypeScript](/en/reference/typescript) and the [193-method list](/en/reference/methods). Types do not guarantee that every method can succeed in a live request; some require a real update, admin rights, a purchase, or a particular chat context.
 
 ## Payload limits, errors, and validation
 
-The bundled Bot API 10.3 schema records these Rich Message limits: **32,768 UTF-8 characters**, **500 blocks** including nested blocks, **16 nesting levels**, **50 media attachments**, and **20 table columns**. Map blocks allow zoom 0–24 and width/height 0–10,000; button blocks contain 1–8 buttons. Telegram can change these limits, so check the official documentation before building large payloads.
+The bundled Bot API 10.4 schema records these Rich Message limits: **32,768 UTF-8 characters**, **500 blocks** including nested blocks, **16 nesting levels**, **50 media attachments**, and **20 table columns**. Map blocks allow zoom 0–24 and width/height 0–10,000; button blocks contain 1–8 buttons. Telegram can change these limits, so check the official documentation before building large payloads.
 
 - `RICH_MESSAGE_VIDEO_INVALID`: try MP4 for a Rich animation block.
 - `BOT_NOT_ADMIN`: check bot permissions and method eligibility; this does not always indicate invalid JSON.
 - `chat not found`: a private recipient may need to open the bot and press **Start** first.
 - Upload error: check the path or stream, MIME type, file size, and `File`/`InputFile` usage.
 
-For API verification results and live-test caveats, see the [repository verification report](https://github.com/XbibzOfficial777/telebibz/blob/main/VERIFIKASI-MENDALAM.md). Not all 185 methods were tested live; payments, admin rights, user events, and interactive actions require a real setup.
+For API verification results and live-test caveats, see the [repository verification report](https://github.com/XbibzOfficial777/telebibz/blob/main/VERIFIKASI-MENDALAM.md). Not all 193 methods were tested live; payments, admin rights, user events, and interactive actions require a real setup.

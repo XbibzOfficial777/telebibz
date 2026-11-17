@@ -10,5 +10,8 @@ export * from "./passport.js";
 export * from "./payment.js";
 export * from "./rich.js";
 export * from "./settings.js";
+export * from "./share-theme.js";
 export * from "./story.js";
+export * from "./ton.js";
 export * from "./update.js";
+export * from "./widget.js";

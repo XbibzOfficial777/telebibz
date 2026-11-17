@@ -23,6 +23,16 @@ export interface ApiClient {
   sendMessageDraft(payload: TelegramMethodPayload<'sendMessageDraft'>): Promise<TelegramMethodResult<'sendMessageDraft'>>;
   sendRichMessageDraft(payload: TelegramMethodPayload<'sendRichMessageDraft'>): Promise<TelegramMethodResult<'sendRichMessageDraft'>>;
   answerGuestQuery(payload: TelegramMethodPayload<'answerGuestQuery'>): Promise<TelegramMethodResult<'answerGuestQuery'>>;
+  sendWidget(payload: TelegramMethodPayload<'sendWidget'>): Promise<TelegramMethodResult<'sendWidget'>>;
+  sendSharedWidget(payload: TelegramMethodPayload<'sendSharedWidget'>): Promise<TelegramMethodResult<'sendSharedWidget'>>;
+  answerWidgetQuery(payload: TelegramMethodPayload<'answerWidgetQuery'>): Promise<TelegramMethodResult<'answerWidgetQuery'>>;
+  editMessageWidgetData(payload: TelegramMethodPayload<'editMessageWidgetData'>): Promise<TelegramMethodResult<'editMessageWidgetData'>>;
+  editSharedWidgetData(payload: TelegramMethodPayload<'editSharedWidgetData'>): Promise<TelegramMethodResult<'editSharedWidgetData'>>;
+  getChatShareThemeBackdrops(): Promise<TelegramMethodResult<'getChatShareThemeBackdrops'>>;
+  getUniqueGift(name: string): Promise<TelegramMethodResult<'getUniqueGift'>>;
+  deleteBusinessAccountGift(businessConnectionId: string, ownedGiftId: string): Promise<TelegramMethodResult<'deleteBusinessAccountGift'>>;
+  downloadFile(fileId: string, dest: DownloadDest, opts?: DownloadOptions): Promise<DownloadDest>;
+  downloadFilePath(filePath: string, dest: DownloadDest, opts?: DownloadOptions): Promise<DownloadDest>;
   editEphemeralMessageText(payload: TelegramMethodPayload<'editEphemeralMessageText'>): Promise<TelegramMethodResult<'editEphemeralMessageText'>>;
   editEphemeralMessageMedia(payload: TelegramMethodPayload<'editEphemeralMessageMedia'>): Promise<TelegramMethodResult<'editEphemeralMessageMedia'>>;
   editEphemeralMessageCaption(payload: TelegramMethodPayload<'editEphemeralMessageCaption'>): Promise<TelegramMethodResult<'editEphemeralMessageCaption'>>;
@@ -57,6 +67,19 @@ export interface WizardDef {
   cleanup?: boolean;
   removeKeyboard?: boolean;
 }
+/** Tujuan unduhan: path file atau Writable stream (punya method write()). */
+export type DownloadDest = string | { write(chunk: any): unknown };
+
+export interface DownloadOptions {
+  /** Batas ukuran file yang diterima (byte). Default: tanpa batas. */
+  maxBytes?: number;
+  /** Timeout unduhan dalam ms. Default 60000. */
+  timeoutMs?: number;
+  /** Opsi axios tambahan (headers, adapter, dsb). */
+  axios?: Record<string, unknown>;
+  [option: string]: unknown;
+}
+
 export interface SessionOptions {
   initial?: () => Record<string, unknown>;
   getKey?: (ctx: Context) => string | undefined;
@@ -65,6 +88,8 @@ export interface SessionOptions {
     write(key: string, value: Record<string, unknown>): unknown | Promise<unknown>;
     delete(key: string): unknown | Promise<unknown>;
   } | Map<string, Record<string, unknown>>;
+  /** Hanya tulis session kalau benar-benar berubah (hemat I/O Redis/DB). Default false. */
+  onlyWhenChanged?: boolean;
 }
 export interface TeleBibzOptions {
   allowedUpdates?: string[];
@@ -78,6 +103,10 @@ export interface TeleBibzOptions {
   apiRoot?: string;
   proxy?: string;
   timeoutMs?: number;
+  /** Timeout khusus upload multipart (default: maks(timeoutMs, 300000)). */
+  uploadTimeoutMs?: number;
+  /** Timeout khusus unduhan file (default 60000). */
+  downloadTimeoutMs?: number;
   headers?: Record<string, string>;
 }
 
@@ -137,8 +166,17 @@ export class Context {
   answerCallbackQuery(extra?: object | string): Promise<any>;
   answerInlineQuery(results: any[], extra?: object): Promise<any>;
   answerGuestQuery(result: any): Promise<any>;
+  /** Query dari HTML widget (Bot API 10.4). */
+  widgetQuery?: { id: string; data: string; widget_id?: string; [key: string]: any };
+  widgetQueryId?: string;
+  replyWithWidget(html: string, extra?: object): Promise<any>;
+  replyWithSharedWidget(widgetId: string, extra?: object): Promise<any>;
+  answerWidgetQuery(data?: string): Promise<any>;
+  editWidgetData(extra?: object): Promise<any>;
+  /** Ephemeral reply ke callback query tanpa receiver_user_id (Bot API 10.4). */
+  replyEphemeralToCallback(text: string, extra?: object): Promise<any>;
   getFile(): Promise<any>;
-  downloadFile(dest: string): Promise<string>;
+  downloadFile(dest: DownloadDest, opts?: DownloadOptions): Promise<DownloadDest>;
   [key: string]: any;
 }
 
@@ -187,14 +225,30 @@ export class TeleBibz {
   init(): Promise<any>;
   launch(opts?: Record<string, unknown>): Promise<this>;
   handleUpdate(update: any): Promise<void>;
-  webhook(opts?: { secretToken?: string; maxBodyBytes?: number }): (req: any, res: any) => Promise<void>;
+  webhook(opts?: WebhookOptions): (req: any, res: any) => Promise<void>;
+  /** Tunggu semua handler webhook latar belakang selesai (graceful shutdown). */
+  drainWebhook(): Promise<void>;
   stop(): void;
   readonly runPromise?: Promise<void>;
 }
 export { TeleBibz as Bot };
 
 export function session(opts?: SessionOptions): Handler;
-export function btn(text: string, callbackData: string | number, style?: Color, iconId?: string): any;
+export function btn(text: string, callbackData?: string | number | null, style?: Color, iconId?: string, opts?: { disabled?: boolean }): any;
+export namespace btn {
+  /** Tombol nonaktif yang tidak melakukan apa-apa (Bot API 10.3). */
+  function disabled(text: string, style?: Color, iconId?: string): any;
+}
+export interface WebhookOptions {
+  secretToken?: string;
+  maxBodyBytes?: number;
+  /** true = tunggu handler selesai sebelum membalas (serverless). Default false. */
+  awaitProcessing?: boolean;
+  /** Tolak update_id duplikat (Telegram retry). Default true. */
+  dedupe?: boolean;
+  /** Jumlah update_id yang diingat untuk dedupe. Default 1000. */
+  dedupeWindow?: number;
+}
 export function url(text: string, link: string, style?: Color, iconId?: string): any;
 export function webApp(text: string, link: string, iconId?: string): any;
 export function copy(text: string, value: string, iconId?: string): any;
@@ -209,6 +263,8 @@ export class InlineKeyboard {
   url(text: string, link: string, style?: Color, iconId?: string): this;
   webApp(text: string, link: string, iconId?: string): this;
   copy(text: string, value: string, iconId?: string): this;
+  /** Tombol nonaktif (Bot API 10.3). */
+  disabled(text: string, style?: Color, iconId?: string): this;
   row(): this;
   build(): { reply_markup: { inline_keyboard: any[][] } };
 }
@@ -286,6 +342,7 @@ export function inputRichMessage(content: Partial<InputRichMessage<TelegramFileI
 
 export function makeApi(token: string, transport?: TeleBibzOptions['transport'], transportOpts?: TeleBibzOptions): ApiClient;
 export function createTransport(token: string, opts?: { apiRoot?: string; proxy?: string; timeoutMs?: number; headers?: Record<string, string> }): TeleBibzOptions['transport'];
+export function createDownloader(token: string, opts?: TeleBibzOptions): (filePath: string, dest: DownloadDest, opts?: DownloadOptions) => Promise<DownloadDest>;
 export class ApiError extends Error {
   description: string;
   error_code?: number;

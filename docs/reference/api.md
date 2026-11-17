@@ -8,7 +8,7 @@ description: Akses method Telegram melalui API client, Context, dan transformer.
 `bot.api` dan `ctx.api` mengakses Telegram Bot API. `ctx.api` tersedia di handler; gunakan `bot.api` dari scheduler atau service lain yang berada di luar update.
 
 ::: tip Referensi field payload lengkap
-[Daftar lokal 185 metode dan 950 field](/reference/methods) memuat tabel per metode: nama field, tipe, status wajib/opsional, dan deskripsi. Buka detail metode untuk melihat seluruh field; tautan Telegram di sana hanya pelengkap untuk aturan dan batas endpoint terbaru.
+[Daftar lokal 193 metode dan 1000 field](/reference/methods) memuat tabel per metode: nama field, tipe, status wajib/opsional, dan deskripsi. Buka detail metode untuk melihat seluruh field; tautan Telegram di sana hanya pelengkap untuk aturan dan batas endpoint terbaru.
 :::
 
 ## Shortcut API
@@ -22,7 +22,7 @@ await bot.api.sendPhoto(chatId, fileOrFileId, { caption: 'Contoh' });
 await bot.api.editMessageText(chatId, messageId, 'Teks baru');
 ```
 
-Shortcut positional tersedia untuk method umum seperti pesan/media, edit/copy/forward, file, callback/inline query, administrasi chat, commands/settings, webhook, forum, pembayaran, dan Stars. Lihat [semua 185 nama metode yang dikenali registry TeleBibz](/reference/methods). Context shortcut dan tipe Context tersedia di [referensi Context](/reference/context).
+Shortcut positional tersedia untuk method umum seperti pesan/media, edit/copy/forward, file, callback/inline query, administrasi chat, commands/settings, webhook, forum, pembayaran, dan Stars. Lihat [semua 193 nama metode yang dikenali registry TeleBibz](/reference/methods). Context shortcut dan tipe Context tersedia di [referensi Context](/reference/context).
 
 ## `callApi()` dan `raw()`
 
@@ -37,7 +37,7 @@ await bot.api.callApi('sendMessage', {
 await ctx.api.raw('getChat', { chat_id: ctx.chatId });
 ```
 
-Method yang punya shortcut positional tetap menerima payload Bot API melalui `callApi()`. Nama method harus persis seperti yang digunakan Telegram, misalnya `getChatMember`. [Daftar 185 method yang terindeks](/reference/methods) menautkan setiap nama ke tuple argumen, payload, return type, serta dokumentasi field Telegram. Lihat [referensi TypeScript](/reference/typescript) untuk tipe payload dan hasil.
+Method yang punya shortcut positional tetap menerima payload Bot API melalui `callApi()`. Nama method harus persis seperti yang digunakan Telegram, misalnya `getChatMember`. [Daftar 193 method yang terindeks](/reference/methods) menautkan setiap nama ke tuple argumen, payload, return type, serta dokumentasi field Telegram. Lihat [referensi TypeScript](/reference/typescript) untuk tipe payload dan hasil.
 
 ## Proxy untuk nama lain
 

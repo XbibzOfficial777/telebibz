@@ -5,9 +5,9 @@ description: TeleBibz Bot API 方法及其 payload 字段、类型、必填状�
 
 # Bot API 方法列表
 
-TeleBibz 注册表包含 **185 个方法名称**。本索引由仓库注册表和 Bot API 声明生成。
+TeleBibz 注册表包含 **193 个方法名称**。本索引由仓库注册表和 Bot API 声明生成。
 
-> 本索引包含 **185 个方法**和 **950 个 payload 参数**。字段以 package 声明为准；最新权限规则和限制仍以 Telegram 为准。
+> 本索引包含 **193 个方法**和 **1000 个 payload 参数**。字段以 package 声明为准；最新权限规则和限制仍以 Telegram 为准。
 
 > 方法名称不代表请求一定可用。实际调用仍受 Telegram 权限、聊天上下文、更新类型和接口限制约束。
 
@@ -26,6 +26,8 @@ await bot.api.getMe();
 
 - [sendMessage](#sendmessage)
 - [sendRichMessage](#sendrichmessage)
+- [sendWidget](#sendwidget)
+- [sendSharedWidget](#sendsharedwidget)
 - [forwardMessage](#forwardmessage)
 - [forwardMessages](#forwardmessages)
 - [copyMessage](#copymessage)
@@ -57,6 +59,7 @@ await bot.api.getMe();
 - [editMessageCaption](#editmessagecaption)
 - [editMessageMedia](#editmessagemedia)
 - [editMessageReplyMarkup](#editmessagereplymarkup)
+- [editMessageWidgetData](#editmessagewidgetdata)
 - [deleteMessage](#deletemessage)
 - [deleteMessages](#deletemessages)
 - [deleteMessageReaction](#deletemessagereaction)
@@ -126,6 +129,75 @@ Use this method to send rich messages. If the message contains a block with a me
 | <code>allow_paid_broadcast</code> | 可选 | <code>boolean</code> | Pass True to allow up to 1000 messages per second, ignoring broadcasting limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will be withdrawn from the bot's balance. |
 | <code>message_effect_id</code> | 可选 | <code>string</code> | Unique identifier of the message effect to be added to the message; for private chats only |
 | <code>suggested_post_parameters</code> | 可选 | <code>SuggestedPostParameters</code> | An object containing the parameters of the suggested post to send; for direct messages chats only. If the message is sent as a reply to another suggested post, then that suggested post is automatically declined. |
+| <code>reply_parameters</code> | 可选 | <code>ReplyParameters</code> | Description of the message to reply to |
+| <code>reply_markup</code> | 可选 | <code>InlineKeyboardMarkup &#124; ReplyKeyboardMarkup &#124; ReplyKeyboardRemove &#124; ForceReply</code> | Additional interface options. An object for an inline keyboard, custom reply keyboard, instructions to remove a reply keyboard or to force a reply from the user. |
+
+:::
+
+<span id="sendwidget" aria-hidden="true"></span>
+::: details sendWidget · 19 个字段
+
+**Telegram 文档:** [sendWidget](https://core.telegram.org/bots/api#sendwidget)
+
+Use this method to send a message with an HTML widget. Currently, in the production environment, widgets can be sent only to private chats, and sent widgets automatically have protected content and therefore can't be forwarded. On success, the sent Message is returned.
+
+- 参数: `TelegramMethodArguments<'sendWidget'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'sendWidget'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>chat_id</code> | 必填 | <code>number &#124; string</code> | Unique identifier for the target chat or username of the target supergroup in the format @username |
+| <code>message_thread_id</code> | 可选 | <code>number</code> | Unique identifier for the target message thread (topic) of a forum; for forum supergroups and private chats of bots with forum topic mode enabled only |
+| <code>html</code> | 必填 | <code>string</code> | HTML code of the widget, 1-32768 bytes. The code must not exceed 4096 bytes when compressed by zlib with the maximum compression level. |
+| <code>width</code> | 可选 | <code>number</code> | Width of the widget in logical pixels; omit if the widget must occupy the whole width of the message bubble. The width is clamped by the app to the range from 200 to the maximum width of the message bubble. |
+| <code>height</code> | 可选 | <code>number</code> | Height of the widget in logical pixels; omit if the height of the widget isn't fixed. The height is clamped by the app to the range 50-600. |
+| <code>public_data</code> | 可选 | <code>string</code> | Public data of the widget, 0-1024 bytes, which will be available wherever the widget is shown. If the widget is shared, then all messages with it will have the same public data. |
+| <code>chat_data</code> | 可选 | <code>string</code> | Data of the widget, which is specific to the message, 0-1024 bytes |
+| <code>caption</code> | 可选 | <code>string</code> | Widget caption, 0-1024 characters after entities parsing |
+| <code>parse_mode</code> | 可选 | <code>ParseMode</code> | Mode for parsing entities in the widget caption. See formatting options for more details. |
+| <code>caption_entities</code> | 可选 | <code>MessageEntity[]</code> | A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode |
+| <code>show_caption_above_media</code> | 可选 | <code>boolean</code> | Pass True if the caption must be shown above the widget |
+| <code>allow_queries</code> | 可选 | <code>boolean</code> | Pass True to allow the widget to send queries to the bot |
+| <code>is_shared</code> | 可选 | <code>boolean</code> | Pass True to create a shared widget, which can be sent again using the method sendSharedWidget |
+| <code>disable_notification</code> | 可选 | <code>boolean</code> | Sends the message silently. Users will receive a notification with no sound. |
+| <code>protect_content</code> | 可选 | <code>boolean</code> | Protects the contents of the sent message from forwarding and saving |
+| <code>allow_paid_broadcast</code> | 可选 | <code>boolean</code> | Pass True to allow up to 1000 messages per second, ignoring broadcasting limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will be withdrawn from the bot's balance. |
+| <code>message_effect_id</code> | 可选 | <code>string</code> | Unique identifier of the message effect to be added to the message; for private chats only |
+| <code>reply_parameters</code> | 可选 | <code>ReplyParameters</code> | Description of the message to reply to |
+| <code>reply_markup</code> | 可选 | <code>InlineKeyboardMarkup &#124; ReplyKeyboardMarkup &#124; ReplyKeyboardRemove &#124; ForceReply</code> | Additional interface options. An object for an inline keyboard, custom reply keyboard, instructions to remove a reply keyboard or to force a reply from the user. |
+
+:::
+
+<span id="sendsharedwidget" aria-hidden="true"></span>
+::: details sendSharedWidget · 14 个字段
+
+**Telegram 文档:** [sendSharedWidget](https://core.telegram.org/bots/api#sendsharedwidget)
+
+Use this method to send again a shared widget created by the bot. Currently, in the production environment, widgets can be sent only to private chats, and sent widgets automatically have protected content and therefore can't be forwarded. On success, the sent Message is returned.
+
+- 参数: `TelegramMethodArguments<'sendSharedWidget'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'sendSharedWidget'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>chat_id</code> | 必填 | <code>number &#124; string</code> | Unique identifier for the target chat or username of the target supergroup in the format @username |
+| <code>message_thread_id</code> | 可选 | <code>number</code> | Unique identifier for the target message thread (topic) of a forum; for forum supergroups and private chats of bots with forum topic mode enabled only |
+| <code>widget_id</code> | 必填 | <code>string</code> | Unique identifier of the shared widget |
+| <code>chat_data</code> | 可选 | <code>string</code> | Data of the widget, which is specific to the message, 0-1024 bytes |
+| <code>caption</code> | 可选 | <code>string</code> | Widget caption, 0-1024 characters after entities parsing |
+| <code>parse_mode</code> | 可选 | <code>ParseMode</code> | Mode for parsing entities in the widget caption. See formatting options for more details. |
+| <code>caption_entities</code> | 可选 | <code>MessageEntity[]</code> | A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode |
+| <code>show_caption_above_media</code> | 可选 | <code>boolean</code> | Pass True if the caption must be shown above the widget |
+| <code>disable_notification</code> | 可选 | <code>boolean</code> | Sends the message silently. Users will receive a notification with no sound. |
+| <code>protect_content</code> | 可选 | <code>boolean</code> | Protects the contents of the sent message from forwarding and saving |
+| <code>allow_paid_broadcast</code> | 可选 | <code>boolean</code> | Pass True to allow up to 1000 messages per second, ignoring broadcasting limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will be withdrawn from the bot's balance. |
+| <code>message_effect_id</code> | 可选 | <code>string</code> | Unique identifier of the message effect to be added to the message; for private chats only |
 | <code>reply_parameters</code> | 可选 | <code>ReplyParameters</code> | Description of the message to reply to |
 | <code>reply_markup</code> | 可选 | <code>InlineKeyboardMarkup &#124; ReplyKeyboardMarkup &#124; ReplyKeyboardRemove &#124; ForceReply</code> | Additional interface options. An object for an inline keyboard, custom reply keyboard, instructions to remove a reply keyboard or to force a reply from the user. |
 
@@ -1105,6 +1177,29 @@ Use this method to edit only the reply markup of messages. On success, if the ed
 
 :::
 
+<span id="editmessagewidgetdata" aria-hidden="true"></span>
+::: details editMessageWidgetData · 5 个字段
+
+**Telegram 文档:** [editMessageWidgetData](https://core.telegram.org/bots/api#editmessagewidgetdata)
+
+Use this method to edit data of a widget in a message sent by the bot or via the bot (for inline bots). Public data of a shared widget can be changed at most once per second. On success, True is returned.
+
+- 参数: `TelegramMethodArguments<'editMessageWidgetData'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'editMessageWidgetData'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>chat_id</code> | 可选 | <code>number &#124; string</code> | Required if inline_message_id is not specified. Unique identifier for the target chat or username of the target supergroup in the format &#96;@username&#96;. |
+| <code>message_id</code> | 可选 | <code>number</code> | Required if inline_message_id is not specified. Identifier of the message with the widget. |
+| <code>inline_message_id</code> | 可选 | <code>string</code> | Required if chat_id and message_id are not specified. Identifier of the inline message. |
+| <code>public_data</code> | 可选 | <code>string</code> | New public data of the widget, 0-1024 bytes; pass an empty string to remove the public data. If omitted, then the public data isn't changed. |
+| <code>chat_data</code> | 可选 | <code>string</code> | New data of the widget, which is specific to the message, 0-1024 bytes; pass an empty string to remove the data. If omitted, then the data isn't changed. |
+
+:::
+
 <span id="deletemessage" aria-hidden="true"></span>
 ::: details deleteMessage · 2 个字段
 
@@ -1339,6 +1434,7 @@ Use this method to send a game. On success, the sent Message is returned.
 - [getChatMemberCount](#getchatmembercount)
 - [getChatMember](#getchatmember)
 - [getUserPersonalChatMessages](#getuserpersonalchatmessages)
+- [getChatShareThemeBackdrops](#getchatsharethemebackdrops)
 - [setChatStickerSet](#setchatstickerset)
 - [deleteChatStickerSet](#deletechatstickerset)
 - [getUserChatBoosts](#getuserchatboosts)
@@ -2029,7 +2125,7 @@ Use this method to get information about a member of a chat. The method is only 
 
 **Telegram 文档:** [getUserPersonalChatMessages](https://core.telegram.org/bots/api#getuserpersonalchatmessages)
 
-Use this method to get the last messages from the personal chat (i.e., the chat currently added to their profile) of a given user. On success, an Array of Message objects is returned.
+Telegram 未在 package 声明中提供方法说明。
 
 - 参数: `TelegramMethodArguments<'getUserPersonalChatMessages'>`
 - Payload: 必需
@@ -2041,6 +2137,21 @@ Use this method to get the last messages from the personal chat (i.e., the chat 
 | --- | --- | --- | --- |
 | <code>user_id</code> | 必填 | <code>number</code> | Unique identifier for the target user |
 | <code>limit</code> | 必填 | <code>number</code> | The maximum number of messages to return; 1-20 |
+
+:::
+
+<span id="getchatsharethemebackdrops" aria-hidden="true"></span>
+::: details getChatShareThemeBackdrops · 此方法没有 payload 参数。
+
+**Telegram 文档:** [getChatShareThemeBackdrops](https://core.telegram.org/bots/api#getchatsharethemebackdrops)
+
+Use this method to get the list of backdrops, which can be used as the background of a theme of the screen for sharing a link to a user or a chat. Requires no parameters. Returns a ChatShareThemeBackdrops object.
+
+- 参数: `TelegramMethodArguments<'getChatShareThemeBackdrops'>`
+- Payload: 无
+- 返回值: `Promise<TelegramMethodResult<'getChatShareThemeBackdrops'>>`
+
+此方法没有 payload 参数。
 
 :::
 
@@ -2172,7 +2283,7 @@ Use this method to get the current value of the bot's menu button in a private c
 :::
 
 <span id="verifychat" aria-hidden="true"></span>
-::: details verifyChat · 2 个字段
+::: details verifyChat · 4 个字段
 
 **Telegram 文档:** [verifyChat](https://core.telegram.org/bots/api#verifychat)
 
@@ -2188,6 +2299,8 @@ Verifies a chat on behalf of the organization which is represented by the bot. R
 | --- | --- | --- | --- |
 | <code>chat_id</code> | 必填 | <code>number &#124; string</code> | Unique identifier for the target chat or username of the target bot, supergroup or channel in the format &#96;@username&#96;. Channel direct messages chats can't be verified. |
 | <code>custom_description</code> | 可选 | <code>string</code> | Custom description for the verification; 0-70 characters. Must be empty if the organization isn't allowed to provide a custom verification description. |
+| <code>custom_description_parse_mode</code> | 可选 | <code>ParseMode</code> | Mode for parsing entities in the custom description. See formatting options for more details. |
+| <code>custom_description_entities</code> | 可选 | <code>MessageEntity[]</code> | A JSON-serialized list of special entities that appear in the custom description, which can be specified instead of custom_description_parse_mode |
 
 :::
 
@@ -2804,6 +2917,8 @@ Use this method to get custom emoji stickers, which can be used as a forum topic
 ## Inline 查询、Web App 与访客更新
 
 - [answerGuestQuery](#answerguestquery)
+- [answerWidgetQuery](#answerwidgetquery)
+- [editSharedWidgetData](#editsharedwidgetdata)
 - [answerInlineQuery](#answerinlinequery)
 - [answerWebAppQuery](#answerwebappquery)
 - [savePreparedInlineMessage](#savepreparedinlinemessage)
@@ -2826,6 +2941,47 @@ Use this method to reply to a received guest message. On success, a SentGuestMes
 | --- | --- | --- | --- |
 | <code>guest_query_id</code> | 必填 | <code>string</code> | Unique identifier for the query to be answered |
 | <code>result</code> | 必填 | <code>InlineQueryResult</code> | An object describing the message to be sent |
+
+:::
+
+<span id="answerwidgetquery" aria-hidden="true"></span>
+::: details answerWidgetQuery · 2 个字段
+
+**Telegram 文档:** [answerWidgetQuery](https://core.telegram.org/bots/api#answerwidgetquery)
+
+Use this method to send an answer to a query from a widget. The query must be answered within 15 seconds. The answer is received only by the widget that sent the query and doesn't change data of the widget; use editMessageWidgetData or editSharedWidgetData to change it. On success, True is returned.
+
+- 参数: `TelegramMethodArguments<'answerWidgetQuery'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'answerWidgetQuery'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>widget_query_id</code> | 必填 | <code>string</code> | Unique identifier for the query to be answered |
+| <code>data</code> | 可选 | <code>string</code> | Data to be returned to the widget, 0-1024 bytes |
+
+:::
+
+<span id="editsharedwidgetdata" aria-hidden="true"></span>
+::: details editSharedWidgetData · 3 个字段
+
+**Telegram 文档:** [editSharedWidgetData](https://core.telegram.org/bots/api#editsharedwidgetdata)
+
+Use this method to edit public data of a shared widget created by the bot. A shared widget can be edited at most once per second. On success, True is returned.
+
+- 参数: `TelegramMethodArguments<'editSharedWidgetData'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'editSharedWidgetData'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>widget_id</code> | 必填 | <code>string</code> | Unique identifier of the shared widget |
+| <code>public_data</code> | 必填 | <code>string</code> | New public data of the widget, 0-1024 bytes; pass an empty string to remove the public data |
+| <code>cache_time</code> | 可选 | <code>number</code> | The maximum amount of time in seconds that the public data of the widget may be cached client-side; 5-3600. If omitted, then the current value is kept, which is 30 by default. |
 
 :::
 
@@ -2935,6 +3091,7 @@ Stores a keyboard button that can be used by a user within a Mini App. Returns a
 - [getBusinessAccountStarBalance](#getbusinessaccountstarbalance)
 - [transferBusinessAccountStars](#transferbusinessaccountstars)
 - [getBusinessAccountGifts](#getbusinessaccountgifts)
+- [deleteBusinessAccountGift](#deletebusinessaccountgift)
 - [readBusinessMessage](#readbusinessmessage)
 
 <span id="getbusinessconnection" aria-hidden="true"></span>
@@ -3286,6 +3443,26 @@ Returns the gifts received and owned by a managed business account. Requires the
 
 :::
 
+<span id="deletebusinessaccountgift" aria-hidden="true"></span>
+::: details deleteBusinessAccountGift · 2 个字段
+
+**Telegram 文档:** [deleteBusinessAccountGift](https://core.telegram.org/bots/api#deletebusinessaccountgift)
+
+Deletes a regular gift owned by a managed business account without receiving Telegram Stars for it. Requires the can_convert_gifts_to_stars business bot right. The gift can be deleted only if it isn't limited (the field total_count of the Gift is omitted) and wasn't refunded. Returns True on success.
+
+- 参数: `TelegramMethodArguments<'deleteBusinessAccountGift'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'deleteBusinessAccountGift'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>business_connection_id</code> | 必填 | <code>string</code> | Unique identifier of the business connection |
+| <code>owned_gift_id</code> | 必填 | <code>string</code> | Unique identifier of the regular gift that should be deleted |
+
+:::
+
 <span id="readbusinessmessage" aria-hidden="true"></span>
 ::: details readBusinessMessage · 3 个字段
 
@@ -3310,6 +3487,7 @@ Marks incoming message as read on behalf of a business account. Requires the can
 ## 支付、Stars 与礼物
 
 - [getUserGifts](#getusergifts)
+- [getUniqueGift](#getuniquegift)
 - [convertGiftToStars](#convertgifttostars)
 - [upgradeGift](#upgradegift)
 - [transferGift](#transfergift)
@@ -3347,6 +3525,25 @@ Returns the gifts owned and hosted by a user. Returns OwnedGifts on success.
 | <code>sort_by_price</code> | 可选 | <code>boolean</code> | Pass True to sort results by gift price instead of send date. Sorting is applied before pagination. |
 | <code>offset</code> | 可选 | <code>string</code> | Offset of the first entry to return as received from the previous request; use an empty string to get the first chunk of results |
 | <code>limit</code> | 可选 | <code>number</code> | The maximum number of gifts to be returned; 1-100. Defaults to 100. |
+
+:::
+
+<span id="getuniquegift" aria-hidden="true"></span>
+::: details getUniqueGift · 1 个字段
+
+**Telegram 文档:** [getUniqueGift](https://core.telegram.org/bots/api#getuniquegift)
+
+Use this method to get information about a unique gift by its name. Returns a UniqueGift object on success.
+
+- 参数: `TelegramMethodArguments<'getUniqueGift'>`
+- Payload: 必需
+- 返回值: `Promise<TelegramMethodResult<'getUniqueGift'>>`
+
+**Payload 参数:**
+
+| 字段 | 状态 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| <code>name</code> | 必填 | <code>string</code> | Unique name of the gift |
 
 :::
 
@@ -4354,7 +4551,7 @@ Deletes a story previously posted by the bot on behalf of a managed business acc
 :::
 
 <span id="verifyuser" aria-hidden="true"></span>
-::: details verifyUser · 2 个字段
+::: details verifyUser · 4 个字段
 
 **Telegram 文档:** [verifyUser](https://core.telegram.org/bots/api#verifyuser)
 
@@ -4370,6 +4567,8 @@ Verifies a user on behalf of the organization which is represented by the bot. R
 | --- | --- | --- | --- |
 | <code>user_id</code> | 必填 | <code>number</code> | Unique identifier of the target user |
 | <code>custom_description</code> | 可选 | <code>string</code> | Custom description for the verification; 0-70 characters. Must be empty if the organization isn't allowed to provide a custom verification description. |
+| <code>custom_description_parse_mode</code> | 可选 | <code>ParseMode</code> | Mode for parsing entities in the custom description. See formatting options for more details. |
+| <code>custom_description_entities</code> | 可选 | <code>MessageEntity[]</code> | A JSON-serialized list of special entities that appear in the custom description, which can be specified instead of custom_description_parse_mode |
 
 :::
 

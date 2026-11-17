@@ -221,7 +221,7 @@ Telegram dapat menolak method ini dengan error izin seperti `BOT_NOT_ADMIN`. Tan
 
 Gunakan `ctx.editRichMessage(content, extra?)` untuk mengedit konten rich yang ada. Update pesan ditargetkan ke `chat_id`/`message_id` atau `inline_message_id` sesuai konteks. Uji pada pesan milik bot yang memang dapat diedit, bukan pesan masuk milik pengguna.
 
-## Shortcut Context untuk Bot API 10.3
+## Shortcut Context untuk Bot API 10.4
 
 | Helper | Tujuan |
 | --- | --- |
@@ -237,7 +237,7 @@ Guest query membutuhkan `guest_query_id` yang berasal dari update Telegram asli.
 
 ## Akses Bot API dan tipe
 
-Registry TeleBibz mengenali **185 nama metode** pada versi ini dan mendukung `api.callApi()`/`api.raw()` dengan payload type di TypeScript. Proxy runtime juga menyediakan method berdasarkan nama jika Telegram menambah endpoint baru, tetapi method proxy dinamis di JavaScript tidak otomatis memvalidasi payload.
+Registry TeleBibz mengenali **193 nama metode** pada versi ini dan mendukung `api.callApi()`/`api.raw()` dengan payload type di TypeScript. Proxy runtime juga menyediakan method berdasarkan nama jika Telegram menambah endpoint baru, tetapi method proxy dinamis di JavaScript tidak otomatis memvalidasi payload.
 
 ```js
 await ctx.api.callApi('sendRichMessage', {
@@ -246,15 +246,15 @@ await ctx.api.callApi('sendRichMessage', {
 });
 ```
 
-Tipe yang diekspor mencakup `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, `TelegramApiPayloads`, serta namespace `TelegramTypes`. Lihat [TypeScript](/reference/typescript) dan [daftar 185 metode](/reference/methods). Schema type tidak menjamin semua method lolos live request: beberapa membutuhkan update nyata, hak admin, pembelian, atau konteks chat tertentu.
+Tipe yang diekspor mencakup `TelegramMethodName`, `TelegramMethodPayload<M>`, `TelegramMethodResult<M>`, `TelegramApiMethods`, `TelegramApiPayloads`, serta namespace `TelegramTypes`. Lihat [TypeScript](/reference/typescript) dan [daftar 193 metode](/reference/methods). Schema type tidak menjamin semua method lolos live request: beberapa membutuhkan update nyata, hak admin, pembelian, atau konteks chat tertentu.
 
 ## Batas payload, error, dan validasi
 
-Schema vendored Bot API 10.3 mencatat batas Rich Message berikut: **32.768 karakter UTF-8**, **500 block** termasuk nested block, **16 tingkat nesting**, **50 attachment media**, dan **20 kolom tabel**. Block map memakai zoom 0–24 dan lebar/tinggi 0–10.000; block tombol berisi 1–8 tombol. Batas Telegram dapat berubah, jadi cek dokumentasi resmi sebelum menghasilkan payload besar.
+Schema vendored Bot API 10.4 mencatat batas Rich Message berikut: **32.768 karakter UTF-8**, **500 block** termasuk nested block, **16 tingkat nesting**, **50 attachment media**, dan **20 kolom tabel**. Block map memakai zoom 0–24 dan lebar/tinggi 0–10.000; block tombol berisi 1–8 tombol. Batas Telegram dapat berubah, jadi cek dokumentasi resmi sebelum menghasilkan payload besar.
 
 - `RICH_MESSAGE_VIDEO_INVALID`: coba format MP4 untuk block rich animation.
 - `BOT_NOT_ADMIN`: periksa izin bot dan kelayakan method; error ini tidak selalu menandakan payload JSON salah.
 - `chat not found`: penerima private biasanya perlu membuka bot dan menekan **Start** lebih dulu.
 - Error upload: cek path/stream, MIME type, ukuran berkas, dan penggunaan `File`/`InputFile`.
 
-Untuk ringkasan hasil uji API dan batasan live test, lihat [laporan verifikasi di repository](https://github.com/XbibzOfficial777/telebibz/blob/main/VERIFIKASI-MENDALAM.md). Tidak semua 185 method dijalankan live; pembayaran, hak admin, event dari pengguna, dan aksi interaktif memerlukan setup nyata.
+Untuk ringkasan hasil uji API dan batasan live test, lihat [laporan verifikasi di repository](https://github.com/XbibzOfficial777/telebibz/blob/main/VERIFIKASI-MENDALAM.md). Tidak semua 193 method dijalankan live; pembayaran, hak admin, event dari pengguna, dan aksi interaktif memerlukan setup nyata.
