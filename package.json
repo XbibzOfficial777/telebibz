@@ -1,6 +1,6 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Telegram Bot API 10.4 framework: all 193 methods with typed payloads, HTML widgets, rich messages, live photos, drafts, ephemeral messages, inline queries, sessions, webhooks, menus and wizards. Xbibz Technology ID",
   "main": "index.js",
   "types": "index.d.ts",
