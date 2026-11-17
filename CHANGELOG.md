@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.2.1 — 2026-11-17
+
+Terbit otomatis lewat workflow `auto-publish` (selalu menaikkan patch dari `package.json`),
+jadi nomor di npm adalah **3.2.1** sementara isi patch Bot API 10.4 tetap didokumentasikan
+sebagai 3.2.0 di bawah. Perubahan pada 3.2.1:
+
+- `overrides.vite` → `^6.4.6` (menutup 2 alert Dependabot dev-only pada Vite ≤ 6.4.3).
+- Rilis npm perdana yang memuat Bot API 10.4, `index.mjs`, tipe `widget`/`ton`/`share-theme`,
+  dan perbaikan `ctx.downloadFile()` + webhook ack/dedupe.
+
 ## 3.2.0 — Telegram Bot API 10.4 (2026-11-17)
 
 Rilis ini mengejar Bot API **10.4** (9 November 2026) dan menutup tiga bug runtime yang sebelumnya tidak terdeteksi oleh test suite.
