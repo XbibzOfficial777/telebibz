@@ -17,6 +17,7 @@ Repository TeleBibz punya contoh JavaScript di folder [`examples/`](https://gith
 | [`06-menu.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/06-menu.js) | Menu dengan submenu. |
 | [`07-inline-query.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/07-inline-query.js) | Inline mode. |
 | [`08-rich-message.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/08-rich-message.js) | Rich Message, callback, dan draft. |
+| [`09-widget.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/09-widget.js) | HTML widget Bot API 10.4: kirim, jawab query, edit data. |
 
 Contoh repository memakai `require('..')` karena dijalankan dari dalam repo. Kalau dipindah ke project bot terpisah, ganti dengan `require('@xbibzlibrary/telebibz')`.
 ## Bot layanan dengan throttling dan shutdown tertib

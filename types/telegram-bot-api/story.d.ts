@@ -1,6 +1,6 @@
 import type { ReactionType } from "./message.js";
-/** Describes the position of a clickable area within a story. */
-export interface StoryAreaPosition {
+/** Describes the position of a clickable area within a story or of a sticker on a TON wallet card. */
+export interface AreaPosition {
     /** The abscissa of the area's center, as a percentage of the media width */
     x_percentage: number;
     /** The ordinate of the area's center, as a percentage of the media height */
@@ -14,6 +14,9 @@ export interface StoryAreaPosition {
     /** The radius of the rectangle corner rounding, as a percentage of the media width */
     corner_radius_percentage: number;
 }
+
+/** @deprecated renamed to AreaPosition in Bot API 10.4, use AreaPosition instead */
+export type StoryAreaPosition = AreaPosition;
 /** Describes the physical address of a location. */
 export interface LocationAddress {
     /** The two-letter ISO 3166-1 alpha-2 country code of the country where the location is located */
@@ -83,7 +86,7 @@ export interface StoryAreaTypeUniqueGift {
 /** Describes a clickable area on a story media. */
 export interface StoryArea {
     /** Position of the area */
-    position: StoryAreaPosition;
+    position: AreaPosition;
     /** Type of the area */
     type: StoryAreaType;
 }

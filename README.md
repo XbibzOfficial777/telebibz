@@ -19,7 +19,7 @@ dependencies that are *actually used*, and an Indonesia-first community.
 [![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=CB3837&label=telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=green&label=downloads%2Fmonth)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![node](https://img.shields.io/node/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=node.js&logoColor=white&color=339933&label=node)](https://nodejs.org)
-[![tests](https://img.shields.io/badge/tests-48%2F48%20passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-testing--live-proof)
+[![tests](https://img.shields.io/badge/tests-66%2F66%20passing-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-testing--live-proof)
 [![size](https://img.shields.io/badge/code-2.1k%20lines-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analytics--statistics)
 [![license](https://img.shields.io/npm/l/@xbibzlibrary/telebibz?style=for-the-badge&color=blue)](LICENSE)
 [![views](https://komarev.com/ghpvc/?username=XbibzOfficial777&repo=telebibz&style=for-the-badge&color=blueviolet&label=repo+views)](https://github.com/XbibzOfficial777/telebibz)
@@ -38,7 +38,8 @@ dependencies that are *actually used*, and an Indonesia-first community.
 |---|---|---|
 | ⚡ [Why telebibz?](#why) | 📊 [Feature matrix vs grammY](#matrix) | 📥 [Installation & requirements](#install) |
 | 🚀 [Quick start](#quickstart) | 🧠 [How it works (architecture)](#architecture) | 📖 [Full documentation](#docs) |
-| 🎛️ [Handlers & filters](#handlers) | 💬 [Context shortcuts](#context) | 🧱 [Rich Messages & Bot API 10.3](#rich-messages) |
+| 🎛️ [Handlers & filters](#handlers) | 💬 [Context shortcuts](#context) | 🧱 [Rich Messages](#rich-messages) |
+| 🧩 [HTML Widgets & TON (10.4)](#widgets) | 🍽️ [Menus](#menus) | 🧙 [Wizard](#wizard) |
 | ️ [Interactive menus](#menus) | 🧙 [Wizard (forms + buttons + edit/delete)](#wizard) | ❓ [Inline mode](#inline) |
 | 📣 [Broadcast](#broadcast) | 📎 [Files & media](#files) | 🛡️ [Reliability & rate limiting](#ratelimit) |
 | 🗃️ [Sessions](#sessions) | 🇮🇩 [Human-readable errors](#errors) | 🕸️ [Webhooks & serverless](#webhook) |
@@ -66,8 +67,9 @@ dependencies that are *actually used*, and an Indonesia-first community.
 | Feature | grammY | telebibz |
 |---|:---:|:---:|
 | Proxy API for **any method** (auto-generated) | ✅ | ✅ |
-| **185 method-specific Bot API payload signatures** (`callApi`) | ✅ | ✅ |
+| **193 method-specific Bot API payload signatures** (`callApi`) | ✅ | ✅ |
 | Rich Messages: blocks, entities, drafts, media, animated emoji | varies by API | ✅ built-in |
+| HTML Widgets, widget queries, TON cards (Bot API 10.4) | ❌ | ✅ built-in |
 | ~60 typed shortcuts (sendMessage, banChatMember…) | ✅ | ✅ |
 | Full Context (~70 shortcuts reply/edit/admin/react) | ✅ | ✅ |
 | Business flavor (`business_connection_id` automatic) | plugin | ✅ built-in |
@@ -82,22 +84,23 @@ dependencies that are *actually used*, and an Indonesia-first community.
 | Per-user rate limit | plugin | ✅ built-in `limiter()` |
 | `InputFile` Buffer/path/stream + multipart `attach://` | ✅ | ✅ |
 | `InputMedia` builder + media groups | ✅ | ✅ `InputMediaBuilder` |
-| File download (`getFile`/`downloadFile`) | plugin | ✅ built-in |
+| File download (`getFile`/`downloadFile`) | plugin | ✅ built-in (honours `apiRoot`, proxy, `maxBytes`) |
 | Keyboard & InlineKeyboard fluent classes | ✅ | ✅ |
 | Interactive menus | plugin | ✅ built-in `Menu/MenuContainer` |
 | Wizard/conversations | plugin | ✅ built-in — **+ choice buttons & `edit`/`delete` modes** |
 | 409-resilient long polling | ❌ (fatal crash) | ✅ built-in (auto-retry 5 s) |
+| Webhook: instant 200 ACK + `update_id` dedupe | ❌ | ✅ built-in (`awaitProcessing` opt-in) |
 | Broadcast ready to use | ❌ | ✅ `bot.broadcast()` |
 | Humanized errors + suggestions | ❌ | ✅ `humanize()` |
 | Boot banner + debug logging | ❌ | ✅ (`DEBUG=telebibz*`) |
 | HTTP(S) proxy for VPS | ⚠️ manual | ✅ `proxy` transport option |
-| TypeScript | ✅ full | ✅ method-specific types for 185 Bot API methods |
-| Documentation language | en | **🇬🇧 + 🇮🇩** |
+| TypeScript | ✅ full | ✅ method-specific types for 193 Bot API methods |
+| Documentation language | en | **🇬🇧 + 🇮🇩 + 🇨🇳** |
 
 <a id="install"></a>
 ## 📥 Installation & Requirements
 
-**Requirements:** Node.js ≥ 18 (uses global `FormData`/`Blob` for uploads).
+**Requirements:** Node.js ≥ 20 (uses global `FormData`/`Blob` for uploads; Node 18 is EOL).
 
 ```bash
 npm install @xbibzlibrary/telebibz
@@ -270,11 +273,11 @@ Business accounts: replies inside a business context automatically carry
 `business_connection_id`.
 
 <a id="rich-messages"></a>
-### 🧱 Rich Messages, animated emoji, media & drafts (Bot API 10.3)
+### 🧱 Rich Messages, animated emoji, media & drafts (Bot API 10.4)
 
 A **Rich Message** is Telegram's structured message format: one message can combine rich-text entities, headings, lists, quotations, tables, maps, buttons, media blocks, and more. TeleBibz provides builders and Context shortcuts; the official [Telegram Bot API reference](https://core.telegram.org/bots/api) remains authoritative for current limits and eligibility.
 
-> **Coverage note:** the package includes a type-level registry for **185 Bot API methods** and typed payloads through `api.callApi()`. This does not mean all 185 endpoints can be safely or meaningfully tested live: many require real updates, admin rights, payments, or specific chats. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the live-test matrix and known limitations.
+> **Coverage note:** the package includes a type-level registry for **193 Bot API methods** and typed payloads through `api.callApi()`. This does not mean all 193 endpoints can be safely or meaningfully tested live: many require real updates, admin rights, payments, or specific chats. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the live-test matrix and known limitations.
 
 #### 1. Choose exactly one content mode
 
@@ -485,7 +488,7 @@ Guest query answers require the `guest_query_id` from an actual incoming guest u
 
 #### 8. Complete typed Bot API access
 
-All **185 method names and payload signatures** in the vendored Bot API schema are available in TypeScript through `api.callApi()` and `api.raw()`:
+All **193 method names and payload signatures** in the vendored Bot API schema are available in TypeScript through `api.callApi()` and `api.raw()`:
 
 ```js
 // JavaScript or TypeScript: method name + payload object
@@ -508,7 +511,7 @@ The declarations are vendored from `@grammyjs/types@5.0.0` under MIT (see [`NOTI
 
 #### Limits and troubleshooting
 
-The Bot API 10.3 type schema documents these Rich Message ceilings: **32,768 UTF-8 characters**, **500 blocks** (including nested/list/table/quotation/details content), **16 nesting levels**, **50 media attachments**, and **20 table columns**. Map blocks use zoom 0–24 and width/height 0–10,000; the buttons block allows 1–8 buttons. Telegram can update limits, so check the [official reference](https://core.telegram.org/bots/api) before building large payloads. The server remains the final validator.
+The Bot API 10.4 type schema documents these Rich Message ceilings: **32,768 UTF-8 characters**, **500 blocks** (including nested/list/table/quotation/details content), **16 nesting levels**, **50 media attachments**, and **20 table columns**. Map blocks use zoom 0–24 and width/height 0–10,000; the buttons block allows 1–8 buttons. Telegram can update limits, so check the [official reference](https://core.telegram.org/bots/api) before building large payloads. The server remains the final validator.
 
 Common failures:
 
@@ -519,7 +522,49 @@ Common failures:
 
 #### Live verification and limits
 
-On 2026-09-28, a live smoke test against a user-provided bot succeeded for rich blocks, HTML, Markdown, animated custom emoji, plain/rich drafts, multipart media, photo/audio/document/video/voice-note blocks, collage/slideshow, live photo, GIF via `sendAnimation`, and HTML media references. Ephemeral `sendMessage`/`sendRichMessage` failed with Telegram's `BOT_NOT_ADMIN`; paid media was not sent because it can involve Stars; callback buttons were not clicked; all 185 endpoints were not exercised live. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the exact outcomes and test boundaries.
+On 2026-09-28, a live smoke test against a user-provided bot succeeded for rich blocks, HTML, Markdown, animated custom emoji, plain/rich drafts, multipart media, photo/audio/document/video/voice-note blocks, collage/slideshow, live photo, GIF via `sendAnimation`, and HTML media references. Ephemeral `sendMessage`/`sendRichMessage` failed with Telegram's `BOT_NOT_ADMIN`; paid media was not sent because it can involve Stars; callback buttons were not clicked; all 193 endpoints were not exercised live. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the exact outcomes and test boundaries.
+
+<a id="widgets"></a>
+### 🧩 HTML Widgets, TON cards & share themes (Bot API 10.4)
+
+Bot API 10.4 (9 Nov 2026) lets bots render **HTML widgets** inside a message bubble, receive queries from them, and update their data without resending. Everything is wired in TeleBibz — registry, typed payloads, Context helpers, filters and `allowed_updates`.
+
+```js
+const { btn, kb } = require('@xbibzlibrary/telebibz');
+
+// 1) send a widget (private chats only in production; protected content)
+bot.cmd('status', (ctx) => ctx.replyWithWidget(`
+  <div style="font:600 16px system-ui">Service status</div>
+  <div style="opacity:.7">All systems normal</div>
+`, { width: 320, height: 100, allow_queries: true, is_shared: true }));
+
+// 2) widget queries arrive as their own update types
+bot.on('widget_query', async (ctx) => {
+  console.log(ctx.widgetQueryId, ctx.widget_query.data, ctx.widget_query.type.type);
+  await ctx.answerWidgetQuery('received');       // must answer within 15 s
+});
+bot.on('shared_widget_query:data', (ctx) => ctx.answerWidgetQuery('ok'));
+
+// 3) update widget data in place (shared: max once per second)
+bot.action('refresh', async (ctx) => {
+  await ctx.editWidgetData({ public_data: String(Date.now()) });
+  await ctx.answerCallbackQuery('Updated');
+});
+await bot.api.editSharedWidgetData({ widget_id: 'wid-1', public_data: 'v2', cache_time: 30 });
+
+// 4) resend an existing shared widget, no HTML needed
+await bot.api.sendSharedWidget({ chat_id: 123456789, widget_id: 'wid-1', caption: 'Same widget' });
+```
+
+| Surface | What you get |
+|---|---|
+| Methods | `sendWidget`, `sendSharedWidget`, `answerWidgetQuery`, `editMessageWidgetData`, `editSharedWidgetData`, `getUniqueGift`, `deleteBusinessAccountGift`, `getChatShareThemeBackdrops` |
+| Context | `replyWithWidget`, `replyWithSharedWidget`, `answerWidgetQuery`, `editWidgetData`, `widgetQuery`, `widgetQueryId` |
+| Filters | `on('widget_query')`, `on('shared_widget_query:data')`, `on('message:widget')` |
+| Types | `Widget`, `WidgetQuery`, `SharedWidgetQuery`, `WidgetQueryType*`, `InputWidgetMessageContent`, `InputSharedWidgetMessageContent` |
+| TON (10.4) | `Message.ton_wallet_transfer`, `ChatFullInfo.ton_wallet_card`, `RichTextTonAddress`, `PaidMessagesWaived`, `ChatShareTheme*`, `EmojiType*`, `getChatShareThemeBackdrops()` |
+
+Limits: HTML 1–32,768 bytes (≤ 4,096 bytes after zlib compression at max level), 5 queries / 5 s per user, private chats only, not forwardable, not copyable. Full guide: [docs/guide/widgets.md](docs/guide/widgets.md).
 
 <a id="keyboards"></a>
 ### 🔘 Keyboards & buttons
@@ -769,9 +814,9 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 |---|---|
 | 📦 Source modules | **18 files** in `lib/` |
 | 📝 Total lines of code | **2,105** in `lib/` (no build step) |
-| 🔌 Bot API methods | **185 typed method signatures** via `api.callApi()` + dynamic Proxy |
+| 🔌 Bot API methods | **193 typed method signatures** via `api.callApi()` + dynamic Proxy |
 | ⌨️ Context shortcuts | **50+** (reply/edit/delete/admin/react…) |
-| 🧪 Offline tests | **48/48 passing**, including local HTTP transport and Bot API 10.3 tests |
+| 🧪 Offline tests | **66/66 passing**, including local HTTP transport and Bot API 10.4 tests |
 | 🧩 Ready examples | **8** in `examples/` |
 | 📦 Runtime dependencies | **4** — all used, all tested |
 
@@ -790,8 +835,8 @@ The figures below are generated from the current `lib/*.js` source. They are inf
 context.js          250  Context accessors, replies, edits and helpers
 wizard.js           247  Guided forms, buttons, edit/delete modes
 telebibz.js         209  Bot class, lifecycle, update dispatch
-telegram-methods.js 192  Runtime registry for 185 API method names
-composer.js         185  Middleware composition and filters
+telegram-methods.js 192  Runtime registry for 193 API method names
+composer.js         193  Middleware composition and filters
 rich.js             175  Rich Message, entity and block builders
 api.js              168  Typed API adapters, Proxy and transformers
 net.js              115  HTTP transport and multipart upload
@@ -842,11 +887,11 @@ Run any of them with `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 ## 🔬 Testing & Live Proof
 
 ```bash
-npm test          # 48 offline checks, including local HTTP transport + Bot API 10.3 tests
+npm test          # 66 offline checks, including local HTTP transport + Bot API 10.4 tests
 npm run typecheck # verify declarations and method-specific Bot API payload types
 ```
 
-The 48 automated checks and `npm run typecheck` are offline/mocked and do not need a bot token. A separate live smoke test was performed with the owner's test bot: rich blocks, HTML/Markdown, animated custom emoji, drafts, media blocks, collage/slideshow, live photo, and multipart media references passed. Ephemeral sends were rejected by Telegram with `BOT_NOT_ADMIN`; paid media and all 185 endpoints were not tested live. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the exact matrix, known limits, and failures.
+The 66 automated checks and `npm run typecheck` are offline/mocked and do not need a bot token. A separate live smoke test was performed with the owner's test bot: rich blocks, HTML/Markdown, animated custom emoji, drafts, media blocks, collage/slideshow, live photo, and multipart media references passed. Ephemeral sends were rejected by Telegram with `BOT_NOT_ADMIN`; paid media and all 193 endpoints were not tested live. See [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) for the exact matrix, known limits, and failures.
 
 Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 
@@ -858,7 +903,7 @@ Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 | `lib/net.js` | axios keep-alive transport + multipart `attach://` |
 | `lib/api.js` | Bot API methods + any-method Proxy + transformers |
 | `lib/rich.js` | Rich Message entities, block builders, draft-safe helpers |
-| `lib/telegram-methods.js` | registry of 185 Bot API method names |
+| `lib/telegram-methods.js` | registry of 193 Bot API method names |
 | `lib/composer.js` | middleware, `on('message:photo')` filters, `errorBoundary` |
 | `lib/context.js` | ctx object + 50-ish reply/edit/delete/callback shortcuts |
 | `lib/session.js` | per user:chat sessions (swappable storage) |
@@ -878,7 +923,7 @@ Debug logging: `DEBUG=telebibz:net,telebibz:ratelimit node yourbot.js`.
 <a id="changelog"></a>
 ## 🕐 Changelog
 
-- **Unreleased — Bot API 10.3** — rich messages, animated emoji, drafts, live photos, all 185 typed method payloads; 48 offline checks and richer live verification. Details: [`CHANGELOG.md`](CHANGELOG.md).
+- **Unreleased — Bot API 10.4** — rich messages, animated emoji, drafts, live photos, all 193 typed method payloads; 66 offline checks and richer live verification. Details: [`CHANGELOG.md`](CHANGELOG.md).
 - **3.1.0** — wizard: choice buttons (reply/inline), `edit`/`delete` modes, auto cleanup, programmatic helpers · tests 24 → 30
 - **3.0.0** — production-grade grammY parity: axios keep-alive, transformers, menus, inline query, limiter
 - **2.0.0** — engine rewritten from scratch, multipart transport, native Node webhook

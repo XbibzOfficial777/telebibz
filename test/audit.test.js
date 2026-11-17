@@ -128,7 +128,7 @@ async function main() {
     assert.equal(reaction.p.message_id, 12);
   });
 
-  await test('Bot API 10.3 seluruh tipe Update diminta saat polling default', async () => {
+  await test('Bot API 10.4 seluruh tipe Update diminta saat polling default', async () => {
     let bot;
     let captured;
     const transport = async (method, payload) => {
@@ -142,6 +142,8 @@ async function main() {
     for (const field of [
       'channel_post', 'edited_channel_post', 'deleted_business_messages', 'guest_message',
       'chat_boost', 'removed_chat_boost', 'stopped_message_generation', 'purchased_paid_media',
+      // tipe yang dulu hilang dari whitelist → bot tidak pernah menerimanya
+      'managed_bot', 'subscription', 'widget_query', 'shared_widget_query',
     ]) assert.ok(captured.includes(field), `allowed_updates hilang: ${field}`);
     assert.equal(new Set(captured).size, captured.length, 'allowed_updates berisi duplikat');
   });
@@ -386,17 +388,21 @@ async function main() {
     assert.equal(payload('editMessageText').rich_message.markdown, '**Rich**');
   });
 
-  await test('Seluruh 185 nama metode Bot API 10.3 lewat jalur callApi generic', async () => {
+  await test('Seluruh 193 nama metode Bot API 10.4 lewat jalur callApi generic', async () => {
     const { TELEGRAM_API_METHODS } = require('..');
     const calls = [];
     const api = makeApi('123456:TESTTOKEN', async (method, payload) => { calls.push([method, payload]); return true; });
-    assert.equal(TELEGRAM_API_METHODS.length, 185);
+    assert.equal(TELEGRAM_API_METHODS.length, 193);
     assert.equal(new Set(TELEGRAM_API_METHODS).size, TELEGRAM_API_METHODS.length, 'registry tidak boleh berisi duplikat');
     const methodTypes = await fs.readFile(path.join(__dirname, '../types/telegram-bot-api/methods.d.ts'), 'utf8');
     const declaredMethods = [...methodTypes.matchAll(/^ {4}([A-Za-z0-9_]+)\(/gm)].map((match) => match[1]);
     assert.deepEqual([...TELEGRAM_API_METHODS].sort(), declaredMethods.sort(), 'registry runtime harus sinkron dengan schema method TypeScript vendored');
     await Promise.all(TELEGRAM_API_METHODS.map((method) => api.callApi(method, {})));
     assert.deepEqual(calls.map(([method]) => method).sort(), [...TELEGRAM_API_METHODS].sort());
+    for (const method of ['sendWidget', 'sendSharedWidget', 'answerWidgetQuery', 'editMessageWidgetData',
+      'editSharedWidgetData', 'getUniqueGift', 'deleteBusinessAccountGift', 'getChatShareThemeBackdrops']) {
+      assert.ok(TELEGRAM_API_METHODS.includes(method), `${method} (Bot API 10.4) belum terdaftar`);
+    }
     for (const method of ['sendRichMessage', 'sendRichMessageDraft', 'editEphemeralMessageText', 'answerGuestQuery', 'setManagedBotAccessSettings']) {
       assert.ok(TELEGRAM_API_METHODS.includes(method), `${method} belum terdaftar`);
     }

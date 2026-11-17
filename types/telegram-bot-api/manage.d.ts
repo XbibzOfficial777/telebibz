@@ -1,5 +1,7 @@
 import type { Audio, Location, Message, PhotoSize, ReactionType, Sticker } from "./message.js";
 import type { UniqueGiftColors } from "./payment.js";
+import type { ChatShareTheme } from "./share-theme.js";
+import type { TonWalletCard } from "./ton.js";
 import type { Update } from "./update.js";
 /** Describes the current status of a webhook. */
 export interface WebhookInfo {
@@ -222,6 +224,10 @@ export declare namespace ChatFullInfo {
         max_reaction_count: number;
         /** Chat photo */
         photo?: ChatPhoto;
+        /** TON wallet card of the user; available for private chats */
+        ton_wallet_card?: TonWalletCard;
+        /** Theme of the screen for sharing a link to the user or the chat */
+        share_theme?: ChatShareTheme;
         /** For private chats, the first audio added to the profile of the user */
         first_profile_audio?: Audio;
         /** If non-empty, the list of all active chat usernames; for private chats, supergroups and channels */
@@ -331,6 +337,10 @@ export declare namespace ChatFullInfo {
         max_reaction_count: number;
         /** Chat photo */
         photo?: ChatPhoto;
+        /** TON wallet card of the user; available for private chats */
+        ton_wallet_card?: TonWalletCard;
+        /** Theme of the screen for sharing a link to the user or the chat */
+        share_theme?: ChatShareTheme;
         /** For private chats, the first audio added to the profile of the user */
         first_profile_audio?: undefined;
         /** If non-empty, the list of all active chat usernames; for private chats, supergroups and channels */
@@ -440,6 +450,10 @@ export declare namespace ChatFullInfo {
         max_reaction_count: number;
         /** Chat photo */
         photo?: ChatPhoto;
+        /** TON wallet card of the user; available for private chats */
+        ton_wallet_card?: TonWalletCard;
+        /** Theme of the screen for sharing a link to the user or the chat */
+        share_theme?: ChatShareTheme;
         /** For private chats, the first audio added to the profile of the user */
         first_profile_audio?: undefined;
         /** If non-empty, the list of all active chat usernames; for private chats, supergroups and channels */
@@ -549,6 +563,10 @@ export declare namespace ChatFullInfo {
         max_reaction_count: number;
         /** Chat photo */
         photo?: ChatPhoto;
+        /** TON wallet card of the user; available for private chats */
+        ton_wallet_card?: TonWalletCard;
+        /** Theme of the screen for sharing a link to the user or the chat */
+        share_theme?: ChatShareTheme;
         /** For private chats, the first audio added to the profile of the user */
         first_profile_audio?: undefined;
         /** If non-empty, the list of all active chat usernames; for private chats, supergroups and channels */

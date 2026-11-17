@@ -17,6 +17,7 @@ TeleBibz 仓库的 [`examples/`](https://github.com/XbibzOfficial777/telebibz/tr
 | [`06-menu.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/06-menu.js) | 带子菜单的菜单。 |
 | [`07-inline-query.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/07-inline-query.js) | Inline 模式。 |
 | [`08-rich-message.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/08-rich-message.js) | Rich Messages、回调与草稿。 |
+| [`09-widget.js`](https://github.com/XbibzOfficial777/telebibz/blob/main/examples/09-widget.js) | Bot API 10.4 HTML widget：发送、回答查询、修改数据。 |
 
 仓库示例在仓库内部运行，因此使用 `require('..')`。若移至独立机器人项目，请改为 `require('@xbibzlibrary/telebibz')`。
 ## 带节流与优雅关闭的服务机器人

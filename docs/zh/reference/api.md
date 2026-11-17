@@ -8,7 +8,7 @@ description: 通过快捷方法、callApi 或 raw 调用 Telegram Bot API。
 每个 `TeleBibz` 实例都通过 `bot.api` 提供 API 客户端；处理器中可使用 `ctx.api`。常见接口提供便捷快捷方法，软件包注册表中的其他方法可通过 `callApi()` 和动态方法代理访问。
 
 ::: tip 完整的 payload 字段参考
-本地[185 个方法、950 个字段的参考表](/zh/reference/methods)为每个方法列出字段名、类型、必填/可选状态和说明。展开方法即可查看完整字段；Telegram 链接用于补充最新接口规则和限制，而不是替代本地 schema。
+本地[193 个方法、1000 个字段的参考表](/zh/reference/methods)为每个方法列出字段名、类型、必填/可选状态和说明。展开方法即可查看完整字段；Telegram 链接用于补充最新接口规则和限制，而不是替代本地 schema。
 :::
 
 ## API 快捷方法
@@ -44,7 +44,7 @@ await bot.api.getChat(chatId);
 await bot.api.setMyCommands({ commands: [{ command: 'start', description: '开始' }] });
 ```
 
-请使用准确的 Telegram 方法名和 payload 字段。[生成的方法列表](/zh/reference/methods)包含 185 个已注册名称，并链接到各自的参数元组、payload、返回类型和 Telegram 字段文档。
+请使用准确的 Telegram 方法名和 payload 字段。[生成的方法列表](/zh/reference/methods)包含 193 个已注册名称，并链接到各自的参数元组、payload、返回类型和 Telegram 字段文档。
 
 ## 响应与错误
 

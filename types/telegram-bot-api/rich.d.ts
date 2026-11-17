@@ -399,7 +399,16 @@ export interface InputRichMessageMedia<F> {
 - RichTextAnchorLink
 - RichTextReference
 - RichTextReferenceLink */
-export type RichText = string | RichText[] | RichTextBold | RichTextItalic | RichTextUnderline | RichTextStrikethrough | RichTextSpoiler | RichTextDateTime | RichTextTextMention | RichTextSubscript | RichTextSuperscript | RichTextMarked | RichTextCode | RichTextCustomEmoji | RichTextMathematicalExpression | RichTextUrl | RichTextEmailAddress | RichTextPhoneNumber | RichTextBankCardNumber | RichTextMention | RichTextHashtag | RichTextCashtag | RichTextBotCommand | RichTextButton | RichTextAnchor | RichTextAnchorLink | RichTextReference | RichTextReferenceLink;
+export type RichText = string | RichText[] | RichTextTonAddress | RichTextBold | RichTextItalic | RichTextUnderline | RichTextStrikethrough | RichTextSpoiler | RichTextDateTime | RichTextTextMention | RichTextSubscript | RichTextSuperscript | RichTextMarked | RichTextCode | RichTextCustomEmoji | RichTextMathematicalExpression | RichTextUrl | RichTextEmailAddress | RichTextPhoneNumber | RichTextBankCardNumber | RichTextMention | RichTextHashtag | RichTextCashtag | RichTextBotCommand | RichTextButton | RichTextAnchor | RichTextAnchorLink | RichTextReference | RichTextReferenceLink;
+/** An address in the TON blockchain. */
+export interface RichTextTonAddress {
+    /** Type of the rich text, always “ton_address” */
+    type: "ton_address";
+    /** Text of the address */
+    text: RichText;
+    /** The address */
+    address: string;
+}
 /** A bold text. */
 export interface RichTextBold {
     /** Type of the rich text, always “bold” */

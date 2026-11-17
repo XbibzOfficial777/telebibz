@@ -8,7 +8,7 @@ description: Call Telegram Bot API methods through shortcuts, callApi, or raw.
 Each `TeleBibz` instance exposes an API client at `bot.api`; handlers can use `ctx.api`. Common methods have convenience shortcuts, while every method in the package registry is available through `callApi()` and the dynamic method proxy.
 
 ::: tip Full payload-field reference
-The local [185-method, 950-field reference](/en/reference/methods) has a per-method table with field name, type, required/optional status, and description. Expand a method to inspect every field; Telegram links supplement the local schema with current endpoint rules and limits.
+The local [193-method, 1000-field reference](/en/reference/methods) has a per-method table with field name, type, required/optional status, and description. Expand a method to inspect every field; Telegram links supplement the local schema with current endpoint rules and limits.
 :::
 
 ## API shortcuts
@@ -44,7 +44,7 @@ await bot.api.getChat(chatId);
 await bot.api.setMyCommands({ commands: [{ command: 'start', description: 'Start' }] });
 ```
 
-Use the exact Telegram method name and payload fields. The [generated method list](/en/reference/methods) links all 185 registered names to their argument tuple, payload, result type, and Telegram's field reference.
+Use the exact Telegram method name and payload fields. The [generated method list](/en/reference/methods) links all 193 registered names to their argument tuple, payload, result type, and Telegram's field reference.
 
 ## Responses and errors
 

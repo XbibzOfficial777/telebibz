@@ -1,9 +1,20 @@
 {
   "name": "@xbibzlibrary/telebibz",
-  "version": "3.1.11",
-  "description": "Telegram Bot API 10.3 framework: all 185 methods with typed payloads, rich messages, live photos, drafts, ephemeral messages, inline queries, sessions, webhooks, menus and wizards. Xbibz Technology ID",
+  "version": "3.2.0",
+  "description": "Telegram Bot API 10.4 framework: all 193 methods with typed payloads, HTML widgets, rich messages, live photos, drafts, ephemeral messages, inline queries, sessions, webhooks, menus and wizards. Xbibz Technology ID",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "import": "./index.mjs"
+    },
+    "./lib/*": "./lib/*.js",
+    "./lib/*.js": "./lib/*.js",
+    "./types/*": "./types/*",
+    "./package.json": "./package.json"
+  },
   "type": "commonjs",
   "license": "MIT",
   "author": "Xbibz Technology ID",
@@ -26,10 +37,10 @@
     "telegram-bot-library"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
-    "axios": "^1.20.0",
+    "axios": "^1.21.1",
     "debug": "^4.4.3",
     "https-proxy-agent": "^9.1.0",
     "mime-types": "^3.0.2"
@@ -45,6 +56,7 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "index.mjs",
     "lib/",
     "types/telegram-bot-api/",
     "examples/",
@@ -69,6 +81,8 @@
   },
   "overrides": {
     "vite": "^6.4.3",
-    "esbuild": "^0.25.0"
-  }
+    "esbuild": "^0.25.0",
+    "follow-redirects": "^1.16.3"
+  },
+  "sideEffects": false
 }

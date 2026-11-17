@@ -19,7 +19,7 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 [![npm version](https://img.shields.io/npm/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=CB3837&label=telebibz)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![downloads](https://img.shields.io/npm/dm/@xbibzlibrary/telebibz?style=for-the-badge&logo=npm&logoColor=white&color=green&label=unduh%2Fbulan)](https://www.npmjs.com/package/@xbibzlibrary/telebibz)
 [![node](https://img.shields.io/node/v/@xbibzlibrary/telebibz?style=for-the-badge&logo=node.js&logoColor=white&color=339933&label=node)](https://nodejs.org)
-[![tests](https://img.shields.io/badge/test-48%2F48%20lulus-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-test--bukti-live)
+[![tests](https://img.shields.io/badge/test-66%2F66%20lulus-brightgreen?style=for-the-badge&logo=checkmarx&logoColor=white)](#-test--bukti-live)
 [![size](https://img.shields.io/badge/kode-2.1k%20baris-orange?style=for-the-badge&logo=codeigniter&logoColor=white)](#-analitik--statistik)
 [![license](https://img.shields.io/npm/l/@xbibzlibrary/telebibz?style=for-the-badge&color=blue)](LICENSE)
 [![views](https://komarev.com/ghpvc/?username=XbibzOfficial777&repo=telebibz&style=for-the-badge&color=blueviolet&label=kunjungan+repo)](https://github.com/XbibzOfficial777/telebibz)
@@ -38,7 +38,8 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 |---|---|---|
 | ⚡ [Kenapa telebibz?](#kenapa) | 📊 [Matriks fitur vs grammY](#matriks) | 📥 [Instalasi & persyaratan](#instalasi) |
 | 🚀 [Mulai cepat](#mulai) | 🧠 [Cara kerja (arsitektur)](#arsitektur) | 📖 [Dokumentasi lengkap](#dokumentasi) |
-| 🎛️ [Handler & filter](#handler) | 💬 [Shortcut Context](#context) | 🧱 [Rich Message & Bot API 10.3](#rich-messages) |
+| 🎛️ [Handler & filter](#handler) | 💬 [Shortcut Context](#context) | 🧱 [Rich Message](#rich-messages) |
+| 🧩 [HTML Widget & TON (10.4)](#widget) | 🍽️ [Menu interaktif](#menu) | 🧙 [Wizard](#wizard) |
 | 🍽️ [Menu interaktif](#menu) | 🧙 [Wizard (form + tombol + edit/delete)](#wizard) | ❓ [Mode inline](#inline) |
 | 📣 [Broadcast](#broadcast) | 📎 [File & media](#file) | 🛡️ [Keandalan & rate limit](#ratelimit) |
 | 🗃️ [Session](#session) | 🇮🇩 [Error manusiawi](#error) | 🕸️ [Webhook & serverless](#webhook) |
@@ -67,8 +68,9 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 | Fitur | grammY | telebibz |
 |---|:---:|:---:|
 | Proxy API **segala metode** (auto-generated) | ✅ | ✅ |
-| **185 signature payload Bot API spesifik** (`callApi`) | ✅ | ✅ |
+| **193 signature payload Bot API spesifik** (`callApi`) | ✅ | ✅ |
 | Rich Message: block, entity, draft, media, emoji bergerak | beragam per API | ✅ bawaan |
+| HTML Widget, widget query, kartu TON (Bot API 10.4) | ❌ | ✅ bawaan |
 | ~60 shortcut bertipe (sendMessage, banChatMember…) | ✅ | ✅ |
 | Context lengkap (~70 pintasan reply/edit/admin/react) | ✅ | ✅ |
 | Context flavor business (`business_connection_id` otomatis) | plugin | ✅ bawaan |
@@ -88,17 +90,18 @@ produksi yang *benar-benar dipakai*, dokumentasi 🇮🇩 Indonesia-first, dan n
 | Menu interaktif | plugin | ✅ bawaan `Menu/MenuContainer` |
 | Wizard/percakapan | plugin | ✅ bawaan — **+ tombol pilihan & mode `edit`/`delete`** |
 | Long polling tahan-409 | ❌ (fatal crash) | ✅ bawaan (auto-retry 5 dtk) |
+| Webhook: ACK 200 instan + dedupe `update_id` | ❌ | ✅ bawaan (`awaitProcessing` opsional) |
 | Broadcast siap pakai | ❌ | ✅ `bot.broadcast()` |
 | Humanisasi error + saran (🇮🇩) | ❌ | ✅ `humanize()` |
 | Banner boot + log debug | ❌ | ✅ (`DEBUG=telebibz*`) |
 | Proxy HTTP(S) untuk VPS | ⚠️ manual | ✅ opsi `proxy` transport |
-| TypeScript | ✅ full | ✅ tipe spesifik untuk 185 metode Bot API |
-| Bahasa dokumentasi | en | **🇬🇧 + 🇮🇩** |
+| TypeScript | ✅ full | ✅ tipe spesifik untuk 193 metode Bot API |
+| Bahasa dokumentasi | en | **🇬🇧 + 🇮🇩 + 🇨🇳** |
 
 <a id="instalasi"></a>
 ## 📥 Instalasi & Persyaratan
 
-**Persyaratan:** Node.js ≥ 18 (memakai `FormData`/`Blob` global untuk upload).
+**Persyaratan:** Node.js ≥ 20 (memakai `FormData`/`Blob` global untuk upload; Node 18 sudah EOL).
 
 ```bash
 npm install @xbibzlibrary/telebibz
@@ -271,11 +274,11 @@ Akun business: balasan dalam konteks business otomatis menyertakan
 `business_connection_id`.
 
 <a id="rich-messages"></a>
-### 🧱 Rich Message, emoji bergerak, media & draft (Bot API 10.3)
+### 🧱 Rich Message, emoji bergerak, media & draft (Bot API 10.4)
 
 **Rich Message** adalah format Telegram terstruktur: satu pesan dapat memuat rich-text entities, heading, list, kutipan, tabel, peta, tombol, blok media, dan elemen lainnya. TeleBibz menyediakan builder dan shortcut Context; [referensi resmi Telegram Bot API](https://core.telegram.org/bots/api) tetap menjadi sumber otoritatif untuk batasan dan kelayakan fitur.
 
-> **Catatan cakupan:** schema memuat **185 nama metode Bot API** dan payload bertipe melalui `api.callApi()`. Ini tidak berarti seluruh 185 endpoint aman atau bermakna untuk dites live: sebagian memerlukan update nyata, hak admin, pembayaran, atau chat tertentu. Matriks live test dan batasannya ada di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
+> **Catatan cakupan:** schema memuat **193 nama metode Bot API** dan payload bertipe melalui `api.callApi()`. Ini tidak berarti seluruh 193 endpoint aman atau bermakna untuk dites live: sebagian memerlukan update nyata, hak admin, pembayaran, atau chat tertentu. Matriks live test dan batasannya ada di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
 
 #### 1. Pilih tepat satu mode konten
 
@@ -486,7 +489,7 @@ Jawaban guest query membutuhkan `guest_query_id` dari update masuk yang asli; ID
 
 #### 8. Akses penuh Bot API dengan tipe
 
-Semua **185 nama metode dan signature payload** pada schema Bot API vendored tersedia lewat `api.callApi()` dan `api.raw()` di TypeScript:
+Semua **193 nama metode dan signature payload** pada schema Bot API vendored tersedia lewat `api.callApi()` dan `api.raw()` di TypeScript:
 
 ```js
 // JavaScript maupun TypeScript: nama metode + object payload
@@ -509,7 +512,7 @@ Deklarasi ini vendored dari `@grammyjs/types@5.0.0` berlisensi MIT (lihat [`NOTI
 
 #### Batas payload dan pemecahan masalah
 
-Schema tipe Bot API 10.3 mencatat batas Rich Message berikut: **32.768 karakter UTF-8**, **500 block** (termasuk konten nested/list/tabel/kutipan/details), **16 level nesting**, **50 attachment media**, dan **20 kolom tabel**. Block map memakai zoom 0–24 dan lebar/tinggi 0–10.000; block tombol berisi 1–8 tombol. Batas Telegram dapat berubah, jadi cek [referensi resmi](https://core.telegram.org/bots/api) sebelum membuat payload besar. Server Telegram tetap validator terakhir.
+Schema tipe Bot API 10.4 mencatat batas Rich Message berikut: **32.768 karakter UTF-8**, **500 block** (termasuk konten nested/list/tabel/kutipan/details), **16 level nesting**, **50 attachment media**, dan **20 kolom tabel**. Block map memakai zoom 0–24 dan lebar/tinggi 0–10.000; block tombol berisi 1–8 tombol. Batas Telegram dapat berubah, jadi cek [referensi resmi](https://core.telegram.org/bots/api) sebelum membuat payload besar. Server Telegram tetap validator terakhir.
 
 Error yang umum:
 
@@ -520,7 +523,46 @@ Error yang umum:
 
 #### Hasil live test dan batasan
 
-Pada 2026-09-28, smoke test live dengan bot yang diberikan pengguna berhasil untuk rich blocks, HTML, Markdown, custom emoji bergerak, draft teks/rich, multipart media, blok photo/audio/document/video/voice-note, collage/slideshow, live photo, GIF melalui `sendAnimation`, dan HTML media reference. Ephemeral `sendMessage`/`sendRichMessage` ditolak Telegram dengan `BOT_NOT_ADMIN`; paid media tidak dikirim karena dapat melibatkan Stars; callback tidak diklik; seluruh 185 endpoint tidak dijalankan live. Rincian hasil dan batas cakupan ada di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
+Pada 2026-09-28, smoke test live dengan bot yang diberikan pengguna berhasil untuk rich blocks, HTML, Markdown, custom emoji bergerak, draft teks/rich, multipart media, blok photo/audio/document/video/voice-note, collage/slideshow, live photo, GIF melalui `sendAnimation`, dan HTML media reference. Ephemeral `sendMessage`/`sendRichMessage` ditolak Telegram dengan `BOT_NOT_ADMIN`; paid media tidak dikirim karena dapat melibatkan Stars; callback tidak diklik; seluruh 193 endpoint tidak dijalankan live. Rincian hasil dan batas cakupan ada di [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md).
+
+<a id="widget"></a>
+### 🧩 HTML Widget, kartu TON & share theme (Bot API 10.4)
+
+Bot API 10.4 (9 November 2026) memungkinkan bot merender **HTML widget** di dalam bubble pesan, menerima query darinya, dan mengubah datanya tanpa mengirim ulang. Semua sudah tersambung di TeleBibz: registry, payload bertipe, helper Context, filter, dan `allowed_updates`.
+
+```js
+// 1) kirim widget (produksi: hanya private chat, otomatis protected content)
+bot.cmd('status', (ctx) => ctx.replyWithWidget(`
+  <div style="font:600 16px system-ui">Status layanan</div>
+  <div style="opacity:.7">Semua sistem normal</div>
+`, { width: 320, height: 100, allow_queries: true, is_shared: true }));
+
+// 2) query dari widget datang sebagai tipe update sendiri
+bot.on('widget_query', async (ctx) => {
+  console.log(ctx.widgetQueryId, ctx.widget_query.data, ctx.widget_query.type.type);
+  await ctx.answerWidgetQuery('diterima');       // wajib dijawab ≤ 15 detik
+});
+bot.on('shared_widget_query:data', (ctx) => ctx.answerWidgetQuery('ok'));
+
+// 3) ubah data widget tanpa kirim ulang (shared widget: maks 1×/detik)
+bot.action('refresh', async (ctx) => {
+  await ctx.editWidgetData({ public_data: String(Date.now()) });
+  await ctx.answerCallbackQuery('Diperbarui');
+});
+
+// 4) kirim ulang shared widget tanpa HTML
+await bot.api.sendSharedWidget({ chat_id: 123456789, widget_id: 'wid-1', caption: 'Widget sama' });
+```
+
+| Permukaan | Yang tersedia |
+|---|---|
+| Metode | `sendWidget`, `sendSharedWidget`, `answerWidgetQuery`, `editMessageWidgetData`, `editSharedWidgetData`, `getUniqueGift`, `deleteBusinessAccountGift`, `getChatShareThemeBackdrops` |
+| Context | `replyWithWidget`, `replyWithSharedWidget`, `answerWidgetQuery`, `editWidgetData`, `widgetQuery`, `widgetQueryId` |
+| Filter | `on('widget_query')`, `on('shared_widget_query:data')`, `on('message:widget')` |
+| Tipe | `Widget`, `WidgetQuery`, `SharedWidgetQuery`, `WidgetQueryType*`, `InputWidgetMessageContent`, `InputSharedWidgetMessageContent` |
+| TON (10.4) | `Message.ton_wallet_transfer`, `ChatFullInfo.ton_wallet_card`, `RichTextTonAddress`, `PaidMessagesWaived`, `ChatShareTheme*`, `EmojiType*`, `getChatShareThemeBackdrops()` |
+
+Batas: HTML 1–32.768 byte (≤ 4.096 byte setelah kompresi zlib level maksimum), 5 query / 5 detik per pengguna, hanya private chat, tidak bisa diforward/dicopy. Panduan lengkap: [docs/guide/widgets.md](docs/guide/widgets.md).
 
 <a id="keyboard"></a>
 ### 🔘 Keyboard & tombol
@@ -770,9 +812,9 @@ await bot.api.sendDiceCustom({ chat_id: 1, emoji: '🎲' });
 |---|---|
 | 📦 Modul sumber | **18 file** di `lib/` |
 | 📝 Total baris kode | **2.105** di `lib/` (tanpa build step) |
-| 🔌 Metode Bot API | **185 signature bertipe** lewat `api.callApi()` + dynamic Proxy |
+| 🔌 Metode Bot API | **193 signature bertipe** lewat `api.callApi()` + dynamic Proxy |
 | ⌨️ Shortcut Context | **50+** (reply/edit/delete/admin/react…) |
-| 🧪 Test offline | **48/48 lulus**, termasuk transport HTTP lokal dan fitur Bot API 10.3 |
+| 🧪 Test offline | **66/66 lulus**, termasuk transport HTTP lokal dan fitur Bot API 10.4 |
 | 🧩 Contoh siap jalan | **8** di `examples/` |
 | 📦 Dependency runtime | **4** — semuanya terpakai & ter-test |
 
@@ -791,8 +833,8 @@ Angka berikut dihitung dari source terkini `lib/*.js`; ini informasi source, buk
 context.js          250  accessor Context, reply, edit dan helper
 wizard.js           247  form terpandu, tombol, mode edit/delete
 telebibz.js         209  kelas bot, lifecycle dan dispatch update
-telegram-methods.js 192  registry runtime 185 nama metode Bot API
-composer.js         185  komposisi middleware dan filter
+telegram-methods.js 192  registry runtime 193 nama metode Bot API
+composer.js         193  komposisi middleware dan filter
 rich.js             175  builder Rich Message, entity dan block
 api.js              168  adapter API, Proxy dan transformer
 net.js              115  transport HTTP dan multipart upload
@@ -843,11 +885,11 @@ Jalankan dengan `BOT_TOKEN=123:abc node examples/01-quickstart.js`.
 ## 🔬 Test & Bukti Live
 
 ```bash
-npm test       # 48 test offline (mock + HTTP server lokal), tanpa token Telegram
+npm test       # 66 test offline (mock + HTTP server lokal), tanpa token Telegram
 npm run typecheck # cek declaration TypeScript + payload method-specific
 ```
 
-48 test otomatis dan `npm run typecheck` berjalan offline dengan mock tanpa token bot. Secara terpisah dilakukan live smoke test pada bot uji milik pengguna: rich blocks, HTML/Markdown, custom emoji bergerak, draft, blok media, collage/slideshow, live photo, dan referensi media multipart berhasil. Pengiriman ephemeral ditolak Telegram dengan `BOT_NOT_ADMIN`; paid media dan semua 185 endpoint tidak diuji live. Lihat [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) untuk matriks lengkap, batasan, serta hasil yang gagal.
+66 test otomatis dan `npm run typecheck` berjalan offline dengan mock tanpa token bot. Secara terpisah dilakukan live smoke test pada bot uji milik pengguna: rich blocks, HTML/Markdown, custom emoji bergerak, draft, blok media, collage/slideshow, live photo, dan referensi media multipart berhasil. Pengiriman ephemeral ditolak Telegram dengan `BOT_NOT_ADMIN`; paid media dan semua 193 endpoint tidak diuji live. Lihat [`VERIFIKASI-MENDALAM.md`](VERIFIKASI-MENDALAM.md) untuk matriks lengkap, batasan, serta hasil yang gagal.
 
 Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 
@@ -859,7 +901,7 @@ Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 | `lib/net.js` | transport axios keep-alive + multipart `attach://` |
 | `lib/api.js` | metode Bot API + Proxy segala metode + transformer |
 | `lib/rich.js` | entity Rich Message, builder block, helper draft-safe |
-| `lib/telegram-methods.js` | registry 185 nama metode Bot API |
+| `lib/telegram-methods.js` | registry 193 nama metode Bot API |
 | `lib/composer.js` | middleware, filter `on('message:photo')`, `errorBoundary` |
 | `lib/context.js` | objek ctx + 50-an pintasan reply/edit/delete/callback |
 | `lib/session.js` | sesi per user:chat (storage swappable) |
@@ -879,7 +921,7 @@ Log debug: `DEBUG=telebibz:net,telebibz:ratelimit node botkamu.js`.
 <a id="changelog"></a>
 ## 🕐 Changelog
 
-- **Unreleased — Bot API 10.3** — rich message, emoji bergerak, draft, live photo, payload bertipe untuk 185 metode; 48 test offline dan live verification lebih luas. Detail: [`CHANGELOG.md`](CHANGELOG.md).
+- **Unreleased — Bot API 10.4** — rich message, emoji bergerak, draft, live photo, payload bertipe untuk 193 metode; 66 test offline dan live verification lebih luas. Detail: [`CHANGELOG.md`](CHANGELOG.md).
 - **3.1.0** — wizard: tombol pilihan (reply/inline), mode `edit`/`delete`, cleanup otomatis, helper programatis · test 24 → 30
 - **3.0.0** — parity grammY production-grade: axios keep-alive, transformer, menu, inline query, limiter
 - **2.0.0** — engine ditulis ulang dari nol, transport multipart, webhook Node murni

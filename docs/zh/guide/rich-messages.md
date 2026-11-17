@@ -221,7 +221,7 @@ Telegram 可能因权限问题以 `BOT_NOT_ADMIN` 等错误拒绝请求。请处
 
 如果当前更新包含可编辑消息，可使用 `ctx.editRichMessage(content, extra?)`。目标由上下文中的 `chat_id`/`message_id` 或 `inline_message_id` 决定。请针对机器人自己发送且确实可以编辑的消息进行测试。
 
-## Bot API 10.3 的 Context 快捷方法
+## Bot API 10.4 的 Context 快捷方法
 
 | Helper | 用途 |
 | --- | --- |
@@ -237,7 +237,7 @@ Guest query 必须包含来自真实 Telegram 更新的 `guest_query_id`。对�
 
 ## Bot API 访问与类型
 
-此版本的 TeleBibz 注册表识别 **185 个方法名称**，并为 TypeScript 中的 `api.callApi()` 和 `api.raw()` 提供 payload 类型。运行时代理也可按名称访问新增方法，但 JavaScript 的动态代理调用不会自动验证 payload。
+此版本的 TeleBibz 注册表识别 **193 个方法名称**，并为 TypeScript 中的 `api.callApi()` 和 `api.raw()` 提供 payload 类型。运行时代理也可按名称访问新增方法，但 JavaScript 的动态代理调用不会自动验证 payload。
 
 ```js
 await ctx.api.callApi('sendRichMessage', {
@@ -246,15 +246,15 @@ await ctx.api.callApi('sendRichMessage', {
 });
 ```
 
-导出的类型包括 `TelegramMethodName`、`TelegramMethodPayload<M>`、`TelegramMethodResult<M>`、`TelegramApiMethods`、`TelegramApiPayloads` 和 `TelegramTypes` namespace。请参阅 [TypeScript](/zh/reference/typescript) 与 [185 个方法列表](/zh/reference/methods)。类型定义不保证每个方法都能通过真实请求；部分方法需要真实 update、管理员权限、购买行为或特定聊天上下文。
+导出的类型包括 `TelegramMethodName`、`TelegramMethodPayload<M>`、`TelegramMethodResult<M>`、`TelegramApiMethods`、`TelegramApiPayloads` 和 `TelegramTypes` namespace。请参阅 [TypeScript](/zh/reference/typescript) 与 [193 个方法列表](/zh/reference/methods)。类型定义不保证每个方法都能通过真实请求；部分方法需要真实 update、管理员权限、购买行为或特定聊天上下文。
 
 ## Payload 限制、错误与校验
 
-随包提供的 Bot API 10.3 schema 记录了 Rich Message 限制：**32,768 个 UTF-8 字符**、包含嵌套区块在内的 **500 个区块**、**16 层嵌套**、**50 个媒体附件**和**20 列表格**。Map 区块的缩放范围为 0–24，宽高为 0–10,000；按钮区块包含 1–8 个按钮。Telegram 可能调整限制；构造大型 payload 前请核对[官方文档](https://core.telegram.org/bots/api)。
+随包提供的 Bot API 10.4 schema 记录了 Rich Message 限制：**32,768 个 UTF-8 字符**、包含嵌套区块在内的 **500 个区块**、**16 层嵌套**、**50 个媒体附件**和**20 列表格**。Map 区块的缩放范围为 0–24，宽高为 0–10,000；按钮区块包含 1–8 个按钮。Telegram 可能调整限制；构造大型 payload 前请核对[官方文档](https://core.telegram.org/bots/api)。
 
 - `RICH_MESSAGE_VIDEO_INVALID`：Rich animation 区块可尝试 MP4。
 - `BOT_NOT_ADMIN`：检查机器人权限和方法资格；该错误不一定表示 JSON payload 无效。
 - `chat not found`：私聊接收者通常需要先打开机器人并点击 **Start**。
 - 上传错误：检查路径或 stream、MIME 类型、文件大小以及 `File`/`InputFile` 用法。
 
-API 验证结果和实时测试限制请参阅[仓库验证报告](https://github.com/XbibzOfficial777/telebibz/blob/main/VERIFIKASI-MENDALAM.md)。并非所有 185 个方法都经过实时调用；支付、管理员权限、用户事件和交互操作需要真实环境。
+API 验证结果和实时测试限制请参阅[仓库验证报告](https://github.com/XbibzOfficial777/telebibz/blob/main/VERIFIKASI-MENDALAM.md)。并非所有 193 个方法都经过实时调用；支付、管理员权限、用户事件和交互操作需要真实环境。
