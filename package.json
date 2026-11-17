@@ -80,7 +80,7 @@
     "vitepress": "^1.6.4"
   },
   "overrides": {
-    "vite": "^6.4.3",
+    "vite": "^6.4.6",
     "esbuild": "^0.25.0",
     "follow-redirects": "^1.16.3"
   },
